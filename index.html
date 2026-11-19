@@ -1,0 +1,1702 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ОСОБНЯК // БЕЗМОЛВИЕ</title>
+<style>
+  :root {
+    --bg-dark: #020302;
+    --mold-green: #596b57;
+    --rust-red: #8f3222;
+    --bone-white: #d0cbc0;
+    --amber-glow: #bd7d3b;
+    --panel-bg: rgba(5, 7, 5, 0.92);
+    --border-dim: rgba(120, 138, 115, 0.22);
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+  }
+
+  body, html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--bg-dark);
+    color: var(--bone-white);
+    font-family: 'Courier New', Courier, monospace;
+    cursor: crosshair;
+  }
+
+  #gl-canvas, #fx-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: block;
+  }
+
+  #gl-canvas { z-index: 1; }
+  #fx-canvas { z-index: 2; pointer-events: none; }
+
+  .vignette-overlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
+    background:
+      radial-gradient(circle at 50% 50%, transparent 40%, rgba(1, 2, 1, 0.88) 78%, rgba(0, 0, 0, 0.995) 100%),
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 1px, transparent 1px, transparent 3px);
+  }
+
+  /* Стартовый экран */
+  #intro-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: radial-gradient(circle at center, #0a0d0a 0%, #010201 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 24px;
+    text-align: center;
+    transition: opacity 0.8s ease, visibility 0.8s ease;
+  }
+
+  #intro-screen.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .intro-box {
+    max-width: 640px;
+    border: 1px solid var(--border-dim);
+    background: rgba(7, 9, 7, 0.96);
+    padding: 36px 32px;
+    box-shadow: 0 25px 90px rgba(0,0,0,0.99);
+  }
+
+  .intro-tag {
+    font-size: 10px;
+    letter-spacing: 3.5px;
+    color: var(--rust-red);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .intro-title {
+    font-size: 28px;
+    letter-spacing: 6px;
+    font-weight: bold;
+    color: var(--bone-white);
+    margin-bottom: 14px;
+  }
+
+  .intro-desc {
+    font-size: 13px;
+    line-height: 1.68;
+    color: #929c8e;
+    margin-bottom: 24px;
+  }
+
+  .intro-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+  }
+
+  .btn {
+    background: rgba(18, 22, 18, 0.94);
+    color: var(--bone-white);
+    border: 1px solid var(--mold-green);
+    padding: 11px 18px;
+    font-family: inherit;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn:hover { background: var(--mold-green); color: #020302; }
+
+  .btn-primary {
+    border-color: var(--rust-red);
+    background: rgba(143, 50, 34, 0.28);
+  }
+
+  .btn-primary:hover {
+    background: var(--rust-red);
+    color: #fff;
+    box-shadow: 0 0 22px rgba(143, 50, 34, 0.7);
+  }
+
+  /* Верхний HUD */
+  .top-hud {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 22px;
+    background: linear-gradient(180deg, rgba(2,3,2,0.96) 0%, rgba(2,3,2,0) 100%);
+    pointer-events: none;
+  }
+
+  .top-hud > * { pointer-events: auto; }
+
+  .brand-title { font-size: 15px; letter-spacing: 4px; font-weight: bold; }
+  .room-indicator { font-size: 11px; letter-spacing: 2px; color: var(--amber-glow); margin-top: 3px; }
+
+  .hud-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+  .hud-btn {
+    background: rgba(8, 10, 8, 0.9);
+    border: 1px solid var(--border-dim);
+    color: #a8b3a4;
+    padding: 7px 11px;
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 1.3px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .hud-btn:hover, .hud-btn.active {
+    border-color: var(--amber-glow);
+    color: var(--bone-white);
+    background: rgba(30, 24, 18, 0.92);
+  }
+
+  /* Правая шкала глубины */
+  .depth-nav {
+    position: fixed;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    background: rgba(5, 7, 5, 0.85);
+    border: 1px solid var(--border-dim);
+    padding: 14px 10px;
+  }
+
+  .depth-node {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    cursor: pointer;
+    opacity: 0.55;
+    transition: all 0.2s ease;
+  }
+
+  .depth-node:hover, .depth-node.active { opacity: 1; }
+
+  .depth-label {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    display: none;
+  }
+
+  .depth-node:hover .depth-label,
+  .depth-node.active .depth-label { display: inline-block; }
+
+  .depth-dot { width: 10px; height: 10px; border: 1px solid var(--mold-green); }
+
+  .depth-node.active .depth-dot {
+    background: var(--amber-glow);
+    border-color: var(--amber-glow);
+    box-shadow: 0 0 10px var(--amber-glow);
+  }
+
+  .depth-node.solved .depth-dot {
+    border-color: #528c63;
+    background: rgba(82, 140, 99, 0.5);
+  }
+
+  /* Нижний HUD */
+  .bottom-hud {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 16px 22px;
+    background: linear-gradient(0deg, rgba(2,3,2,0.98) 0%, rgba(2,3,2,0) 100%);
+    pointer-events: none;
+  }
+
+  .bottom-hud > * { pointer-events: auto; }
+
+  .room-dossier {
+    max-width: 560px;
+    background: var(--panel-bg);
+    border-left: 3px solid var(--rust-red);
+    border-top: 1px solid var(--border-dim);
+    border-right: 1px solid var(--border-dim);
+    border-bottom: 1px solid var(--border-dim);
+    padding: 13px 16px;
+  }
+
+  .dossier-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--amber-glow);
+    margin-bottom: 5px;
+  }
+
+  .dossier-title { font-size: 15px; letter-spacing: 2px; margin-bottom: 5px; }
+  .dossier-text { font-size: 12px; line-height: 1.48; color: #9da69a; margin-bottom: 9px; }
+
+  .puzzle-status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(120, 138, 115, 0.25);
+  }
+
+  .status-badge {
+    padding: 3px 8px;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    border: 1px solid var(--rust-red);
+    color: #e67c6a;
+    background: rgba(143, 50, 34, 0.2);
+  }
+
+  .status-badge.unlocked {
+    border-color: #528c63;
+    color: #8ce0a4;
+    background: rgba(45, 95, 60, 0.25);
+  }
+
+  .nav-controls { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .nav-buttons { display: flex; gap: 8px; }
+
+  #whisper-subtitle {
+    position: fixed;
+    top: 17%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 25;
+    max-width: 600px;
+    width: 90%;
+    text-align: center;
+    background: rgba(3, 4, 3, 0.92);
+    border: 1px solid rgba(143, 50, 34, 0.6);
+    padding: 13px 20px;
+    font-size: 14px;
+    font-style: italic;
+    letter-spacing: 1.5px;
+    color: #ded6cc;
+    text-shadow: 0 0 12px rgba(143, 50, 34, 0.9);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+
+  #whisper-subtitle.visible { opacity: 1; }
+
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    background: rgba(1, 2, 1, 0.86);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.22s ease, visibility 0.22s ease;
+  }
+
+  .modal-backdrop.open { opacity: 1; visibility: visible; }
+
+  .modal-card {
+    width: 100%;
+    max-width: 540px;
+    background: #080a08;
+    border: 1px solid var(--mold-green);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.98);
+    padding: 24px;
+    position: relative;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    background: none;
+    border: none;
+    color: #828e7f;
+    font-family: inherit;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  .modal-tag { font-size: 10px; letter-spacing: 2.5px; color: var(--rust-red); margin-bottom: 6px; }
+  .modal-title { font-size: 18px; letter-spacing: 2px; margin-bottom: 10px; }
+  .modal-body { font-size: 12px; line-height: 1.6; color: #9da69a; margin-bottom: 16px; }
+
+  .puzzle-interactive {
+    background: rgba(12, 16, 12, 0.94);
+    border: 1px solid var(--border-dim);
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+
+  .puzzle-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .puzzle-feedback { font-size: 11px; min-height: 18px; letter-spacing: 1px; color: var(--amber-glow); }
+
+  input[type="range"] { width: 100%; accent-color: var(--rust-red); cursor: pointer; }
+
+  .code-slots { display: flex; gap: 10px; justify-content: center; margin: 12px 0; }
+  .code-slot-btn {
+    width: 64px; height: 48px; background: #0f130f; border: 1px solid var(--mold-green);
+    color: var(--bone-white); font-family: inherit; font-size: 18px; font-weight: bold; cursor: pointer;
+  }
+
+  .scale-pan-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 10px 0; }
+  .weight-card { border: 1px solid var(--border-dim); padding: 10px; text-align: center; background: #0d110d; }
+
+  .photo-grid { display: grid; grid-template-columns: 1fr; gap: 10px; max-height: 310px; overflow-y: auto; margin: 12px 0; }
+  .photo-slot { display: flex; justify-content: space-between; align-items: center; background: #0f130f; border: 1px solid var(--border-dim); padding: 8px 12px; font-size: 11px; }
+  .photo-slot-status { color: var(--amber-glow); font-size: 10px; }
+  .photo-slot-status.loaded { color: #7cd492; }
+
+  @media (max-width: 768px) {
+    .bottom-hud { flex-direction: column; align-items: stretch; gap: 10px; }
+    .nav-controls { align-items: stretch; }
+    .depth-nav { right: 8px; padding: 8px 6px; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="gl-canvas"></canvas>
+<canvas id="fx-canvas"></canvas>
+<div class="vignette-overlay"></div>
+<div id="whisper-subtitle"></div>
+
+<!-- Стартовый экран -->
+<div id="intro-screen">
+  <div class="intro-box">
+    <div class="intro-tag">АРХИВНОЕ ДЕЛО № 404-06</div>
+    <h1 class="intro-title">ОСОБНЯК // БЕЗМОЛВИЕ</h1>
+    <p class="intro-desc">
+      В этих стенах произошло то, о чём не осталось ни одной официальной записи. 
+      Используйте луч фонаря, чтобы находить скрытые улики, решайте механические замки комнат и будьте осторожны в темноте.
+    </p>
+    <div class="intro-actions">
+      <button class="btn btn-primary" id="btn-enter-house">ВОЙТИ В ДОМ</button>
+      <button class="btn" id="btn-intro-upload">ЗАГРУЗИТЬ 5 ФОТО КОМНАТ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Верхний HUD -->
+<header class="top-hud">
+  <div>
+    <div class="brand-title">ОСОБНЯК // БЕЗМОЛВИЕ</div>
+    <div class="room-indicator" id="hud-room-indicator">ЛОКАЦИЯ 01 / 05 — ПРИХОЖАЯ С ДИКТОФОНОМ</div>
+  </div>
+  <div class="hud-controls">
+    <button class="hud-btn" id="btn-open-photos">ФОТО КОМНАТ [0/5]</button>
+    <button class="hud-btn active" id="btn-toggle-flashlight">ФОНАРЬ [F]: ВКЛ</button>
+    <button class="hud-btn" id="btn-toggle-freemode">РЕЖИМ: КВЕСТ</button>
+    <button class="hud-btn" id="btn-toggle-sound">ЗВУК: ВЫКЛ</button>
+  </div>
+</header>
+
+<nav class="depth-nav" id="depth-nav"></nav>
+
+<footer class="bottom-hud">
+  <div class="room-dossier">
+    <div class="dossier-header">
+      <span id="dossier-code">СЕКТОР 01 // ВХОДНАЯ ГРУППА</span>
+      <span id="dossier-file-hint">ФАЙЛ: 1000404062.jpg</span>
+    </div>
+    <h2 class="dossier-title" id="dossier-title">Прихожая с катушечным диктофоном</h2>
+    <p class="dossier-text" id="dossier-text">
+      Сырые обои в чёрной плесени. На гниющем столе — ржавый магнитофон. Справа — проём вглубь дома.
+    </p>
+    <div class="puzzle-status-bar">
+      <span class="status-badge" id="puzzle-badge">ПРОХОД ЗАБЛОКИРОВАН</span>
+      <button class="hud-btn" id="btn-open-puzzle">ОСМОТРЕТЬ МЕХАНИЗМ</button>
+    </div>
+  </div>
+
+  <div class="nav-controls">
+    <div class="nav-buttons">
+      <button class="btn" id="btn-prev-room">← НАЗАД</button>
+      <button class="btn btn-primary" id="btn-next-room">ВПЕРЁД В ПРОЁМ →</button>
+    </div>
+  </div>
+</footer>
+
+<div class="modal-backdrop" id="puzzle-modal">
+  <div class="modal-card">
+    <button class="modal-close" id="btn-close-puzzle">✕</button>
+    <div class="modal-tag" id="modal-tag">МЕХАНИЗМ КОМНАТЫ</div>
+    <h3 class="modal-title" id="modal-title">Загадка</h3>
+    <p class="modal-body" id="modal-desc"></p>
+    <div class="puzzle-interactive" id="modal-interactive"></div>
+    <div class="puzzle-feedback" id="modal-feedback">Исследуйте стены лучом фонаря.</div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="photos-modal">
+  <div class="modal-card">
+    <button class="modal-close" id="btn-close-photos">✕</button>
+    <div class="modal-tag">ТЕКСТУРЫ ЛОКАЦИЙ</div>
+    <h3 class="modal-title">Загрузка рендеров комнат</h3>
+    <p class="modal-body">Выберите файлы <code>1000404061.jpg</code> — <code>1000404065.jpg</code> или перетащите их в окно.</p>
+    <input type="file" id="bulk-file-input" multiple accept="image/*" style="display:none">
+    <button class="btn btn-primary" id="btn-select-bulk" style="width:100%; margin-bottom:10px;">ВЫБРАТЬ ВСЕ 5 ФАЙЛОВ</button>
+    <div class="photo-grid" id="photo-slots-container"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+const ROOMS = [
+  {
+    id: 0,
+    code: "СЕКТОР 01 // ПРИХОЖАЯ",
+    fileName: "1000404062.jpg",
+    title: "Прихожая с катушечным диктофоном",
+    desc: "Сырые обои отслаиваются от гнилой штукатурки. В центре на покосившемся столе стоит ржавый бобинный диктофон. Справа — тёмный проём.",
+    portal: { x: 0.62, y: 0.48, label: "Проём в коридор" },
+    artifact: { x: 0.41, y: 0.42, label: "Катушечный диктофон" },
+    reels: [
+      { x: 0.388, y: 0.342, radius: 0.036, speedMul: 1.0 },
+      { x: 0.443, y: 0.348, radius: 0.034, speedMul: 1.06 }
+    ],
+    shadowSpots: [
+      { x: 0.59, y: 0.52, scale: 1.05 },
+      { x: 0.67, y: 0.55, scale: 0.90 }
+    ],
+    clues: [
+      { x: 0.46, y: 0.78, text: "НА ЛЕНТЕ ВЫЦАРАПАНО: 442 Гц" },
+      { x: 0.21, y: 0.34, text: "НЕ ВКЛЮЧАЙ ЗАПИСЬ НА ЧУЖОЙ СКОРОСТИ" }
+    ],
+    palette: { wall: "#18201b", floor: "#0d110e", light: "#6c8074" },
+    reverbDecay: 3.5,
+    solved: false,
+    tapePlaying: false,
+    puzzleTitle: "Бобинный диктофон «ЭХО-4»",
+    puzzleDesc: "Настройте частоту на 442 Гц по подсказке на полу, чтобы запустить катушки и прослушать запись с плёнки.",
+    puzzleType: "frequency",
+    targetFreq: 442
+  },
+  {
+    id: 1,
+    code: "СЕКТОР 02 // ГАЛЕРЕЯ",
+    fileName: "1000404063.jpg",
+    title: "Коридор с пустыми рамами и верёвками",
+    desc: "Вытянутая анфилада с облезлыми стенами, пустыми рамами и тяжёлыми цепями.",
+    portal: { x: 0.50, y: 0.46, label: "Дальний переход к чердаку" },
+    artifact: { x: 0.31, y: 0.44, label: "Узел с кодовым замком" },
+    shadowSpots: [
+      { x: 0.45, y: 0.52, scale: 0.85 },
+      { x: 0.55, y: 0.50, scale: 0.92 }
+    ],
+    clues: [
+      { x: 0.24, y: 0.38, text: "ПОД ПЕТЛЁЙ: I — IV" },
+      { x: 0.83, y: 0.62, text: "В ЦАРАПИНАХ НА СТЕНЕ: VII — IX" }
+    ],
+    palette: { wall: "#1c221b", floor: "#121510", light: "#7a8c76" },
+    reverbDecay: 4.0,
+    solved: false,
+    puzzleTitle: "Четырёхдисковый замок смотрителя",
+    puzzleDesc: "Выставьте 4 римских символа, найденных на стенах коридора.",
+    puzzleType: "roman_code",
+    targetCode: ["I", "IV", "VII", "IX"]
+  },
+  {
+    id: 2,
+    code: "СЕКТОР 03 // ЧЕРДАК",
+    fileName: "1000404064.jpg",
+    title: "Чердак с заляпанными простынями",
+    desc: "Под гниющими стропилами стоят сундуки и мебель под заляпанными простынями.",
+    portal: { x: 0.50, y: 0.45, label: "Люк в шахту лазарета" },
+    artifact: { x: 0.14, y: 0.72, label: "Кованый сундук с противовесами" },
+    shadowSpots: [
+      { x: 0.42, y: 0.48, scale: 0.82 },
+      { x: 0.73, y: 0.50, scale: 0.95 }
+    ],
+    clues: [
+      { x: 0.63, y: 0.58, text: "НА ПРОСТЫНЕ: 2 КГ + 4 КГ = 6 КГ" },
+      { x: 0.84, y: 0.66, text: "РАВНОВЕСИЕ: 6 = 6" }
+    ],
+    palette: { wall: "#211c16", floor: "#14110d", light: "#9c896e" },
+    reverbDecay: 3.2,
+    solved: false,
+    puzzleTitle: "Рычажные весы чердачного люка",
+    puzzleDesc: "Уравновесьте чаши весов: 6 кг = 6 кг.",
+    puzzleType: "weights"
+  },
+  {
+    id: 3,
+    code: "СЕКТОР 04 // ЛАЗАРЕТ",
+    fileName: "1000404065.jpg",
+    title: "Заброшенная операционная",
+    desc: "Потрескавшийся кафель, ржавые ширмы и операционный стол.",
+    portal: { x: 0.64, y: 0.49, label: "Гермошлюз в подземный бункер" },
+    artifact: { x: 0.48, y: 0.54, label: "Хирургический стол и дозатор" },
+    shadowSpots: [
+      { x: 0.26, y: 0.53, scale: 1.02 },
+      { x: 0.64, y: 0.51, scale: 0.88 }
+    ],
+    clues: [
+      { x: 0.89, y: 0.36, text: "НА СТЕКЛЕ: ТИОПЕНТАЛ = 3 ЧАСТИ" },
+      { x: 0.80, y: 0.84, text: "У НОСИЛОК: МОРФИН = 1 ЧАСТЬ" }
+    ],
+    palette: { wall: "#172420", floor: "#0e1412", light: "#779c8e" },
+    reverbDecay: 4.5,
+    solved: false,
+    puzzleTitle: "Дозатор инфузионной стойки №9",
+    puzzleDesc: "Установите дозировку в пропорции 3 : 1.",
+    puzzleType: "dosage",
+    targetA: 3,
+    targetB: 1
+  },
+  {
+    id: 4,
+    code: "СЕКТОР 05 // БУНКЕР",
+    fileName: "1000404061.jpg",
+    title: "Подземный бункер связи",
+    desc: "Массивная ржавая гермодверь, аварийный маяк и полевой телефон.",
+    portal: { x: 0.90, y: 0.52, label: "Коридор эвакуации (В начало)" },
+    artifact: { x: 0.33, y: 0.56, label: "Полевой телефон и гермовентиль" },
+    shadowSpots: [
+      { x: 0.87, y: 0.54, scale: 0.96 },
+      { x: 0.76, y: 0.55, scale: 0.85 }
+    ],
+    clues: [
+      { x: 0.24, y: 0.26, text: "НА КАБЕЛЕ: 3 ОБОРОТА ВПРАВО (R)" },
+      { x: 0.52, y: 0.45, text: "У МАХОВИКА: ЗАТЕМ 2 ОБОРОТА ВЛЕВО (L)" }
+    ],
+    palette: { wall: "#1b1917", floor: "#0f0d0c", light: "#c93b2b" },
+    reverbDecay: 5.2,
+    solved: false,
+    puzzleTitle: "Штурвал гермошлюза и аварийный передатчик",
+    puzzleDesc: "Проверните маховик: 3 оборота вправо (R), затем 2 оборота влево (L).",
+    puzzleType: "valve",
+    targetSequence: ["R", "R", "R", "L", "L"]
+  }
+];
+
+class DarkAmbientAudio {
+  constructor() {
+    this.ctx = null;
+    this.enabled = false;
+    this.master = null;
+    this.convolver = null;
+    this.wetGain = null;
+    this.dryGain = null;
+    this.ambientBuffer = null;
+    this.crackleBuffer = null;
+    this.scheduler = null;
+  }
+
+  init() {
+    if (this.ctx) return;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    this.ctx = new AudioCtx();
+
+    this.master = this.ctx.createGain();
+    this.master.gain.value = 0.92;
+    this.master.connect(this.ctx.destination);
+
+    this.dryGain = this.ctx.createGain();
+    this.dryGain.gain.value = 0.62;
+    this.dryGain.connect(this.master);
+
+    this.convolver = this.ctx.createConvolver();
+    this.wetGain = this.ctx.createGain();
+    this.wetGain.gain.value = 0.85;
+    this.convolver.connect(this.wetGain);
+    this.wetGain.connect(this.master);
+
+    this.ambientBuffer = this.buildDarkNoiseBuffer(8.0);
+    this.crackleBuffer = this.buildCrackleBuffer(4.0);
+    this.updateCavernReverb(4.5);
+    this.startSubbassDroneBed();
+
+    this.enabled = true;
+    this.startEnvironmentalScheduler();
+  }
+
+  buildDarkNoiseBuffer(sec) {
+    const sr = this.ctx.sampleRate;
+    const len = sr * sec;
+    const buf = this.ctx.createBuffer(2, len, sr);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch);
+      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0;
+      for (let i = 0; i < len; i++) {
+        const white = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + white * 0.0555;
+        b1 = 0.99332 * b1 + white * 0.0750;
+        b2 = 0.96900 * b2 + white * 0.1538;
+        b3 = 0.86650 * b3 + white * 0.3104;
+        b4 = 0.55000 * b4 + white * 0.5329;
+        d[i] = (b0 + b1 + b2 + b3 + b4 + white * 0.53) * 0.035;
+      }
+    }
+    return buf;
+  }
+
+  buildCrackleBuffer(sec) {
+    const sr = this.ctx.sampleRate;
+    const len = sr * sec;
+    const buf = this.ctx.createBuffer(1, len, sr);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) {
+      const hiss = (Math.random() * 2 - 1) * 0.025;
+      const pop = Math.random() < 0.0012 ? (Math.random() * 2 - 1) * 0.75 : 0;
+      d[i] = hiss + pop;
+    }
+    return buf;
+  }
+
+  updateCavernReverb(decaySec) {
+    if (!this.ctx) return;
+    const sr = this.ctx.sampleRate;
+    const len = Math.floor(sr * decaySec);
+    const imp = this.ctx.createBuffer(2, len, sr);
+    for (let ch = 0; ch < 2; ch++) {
+      const out = imp.getChannelData(ch);
+      for (let i = 0; i < len; i++) {
+        const t = i / sr;
+        const noise = Math.random() * 2 - 1;
+        const env = Math.pow(1 - i / len, 3.2) * Math.exp(-t * (2.1 / decaySec));
+        out[i] = noise * env * 0.55;
+      }
+    }
+    this.convolver.buffer = imp;
+  }
+
+  startSubbassDroneBed() {
+    const src1 = this.ctx.createBufferSource();
+    src1.buffer = this.ambientBuffer;
+    src1.loop = true;
+    const lp1 = this.ctx.createBiquadFilter();
+    lp1.type = "lowpass";
+    lp1.frequency.value = 42;
+    lp1.Q.value = 4.0;
+
+    const g1 = this.ctx.createGain();
+    g1.gain.value = 0.85;
+
+    src1.connect(lp1);
+    lp1.connect(g1);
+    g1.connect(this.convolver);
+    g1.connect(this.dryGain);
+    src1.start();
+  }
+
+  toggle() {
+    if (!this.ctx) {
+      this.init();
+      return true;
+    }
+    this.enabled = !this.enabled;
+    if (this.enabled) {
+      this.ctx.resume();
+      this.master.gain.setTargetAtTime(0.92, this.ctx.currentTime, 0.2);
+    } else {
+      this.master.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.2);
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+    }
+    return this.enabled;
+  }
+
+  playSteelChains() {
+    if (!this.ctx || !this.enabled) return;
+    const count = 8 + Math.floor(Math.random() * 6);
+    const pan = (Math.random() * 1.6) - 0.8;
+
+    for (let i = 0; i < count; i++) {
+      const t = this.ctx.currentTime + i * (0.045 + Math.random() * 0.07);
+      const panner = this.ctx.createStereoPanner();
+      panner.pan.value = Math.max(-1, Math.min(1, pan + (Math.random() - 0.5) * 0.25));
+
+      const hit = this.ctx.createBufferSource();
+      hit.buffer = this.crackleBuffer;
+
+      const env = this.ctx.createGain();
+      env.gain.setValueAtTime(0.001, t);
+      env.gain.linearRampToValueAtTime(0.65, t + 0.003);
+      env.gain.exponentialRampToValueAtTime(0.0005, t + 0.05);
+
+      [1450, 2320, 3780, 5120].forEach((freq, idx) => {
+        const bp = this.ctx.createBiquadFilter();
+        bp.type = "bandpass";
+        bp.frequency.value = freq + Math.random() * 150;
+        bp.Q.value = 55 + idx * 15;
+
+        const g = this.ctx.createGain();
+        g.gain.value = 1.4 / (idx + 1);
+
+        hit.connect(env);
+        env.connect(bp);
+        bp.connect(g);
+        g.connect(panner);
+      });
+
+      panner.connect(this.dryGain);
+      panner.connect(this.convolver);
+      hit.start(t);
+      hit.stop(t + 0.32);
+    }
+  }
+
+  playSubterraneanRumble() {
+    if (!this.ctx || !this.enabled) return;
+    const now = this.ctx.currentTime;
+    const dur = 3.2 + Math.random() * 1.5;
+
+    const panner = this.ctx.createStereoPanner();
+    panner.pan.value = (Math.random() * 1.4) - 0.7;
+
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.ambientBuffer;
+    src.loop = true;
+
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.setValueAtTime(32, now);
+    lp.frequency.exponentialRampToValueAtTime(65, now + dur * 0.5);
+    lp.frequency.exponentialRampToValueAtTime(28, now + dur);
+    lp.Q.value = 6.0;
+
+    const env = this.ctx.createGain();
+    env.gain.setValueAtTime(0.0001, now);
+    env.gain.linearRampToValueAtTime(0.95, now + 0.8);
+    env.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+    src.connect(lp);
+    lp.connect(env);
+    env.connect(panner);
+    panner.connect(this.convolver);
+
+    src.start(now);
+    src.stop(now + dur);
+  }
+
+  playHumanSobbingTape(onDone) {
+    if (!this.ctx) this.init();
+    if (!this.enabled) this.toggle();
+
+    const subEl = document.getElementById("whisper-subtitle");
+
+    const tapeSrc = this.ctx.createBufferSource();
+    tapeSrc.buffer = this.crackleBuffer;
+    tapeSrc.loop = true;
+
+    const tf = this.ctx.createBiquadFilter();
+    tf.type = "bandpass";
+    tf.frequency.value = 1750;
+    tf.Q.value = 1.2;
+
+    const tg = this.ctx.createGain();
+    tg.gain.setValueAtTime(0.28, this.ctx.currentTime);
+
+    tapeSrc.connect(tf);
+    tf.connect(tg);
+    tg.connect(this.dryGain);
+    tg.connect(this.convolver);
+    tapeSrc.start();
+
+    const triggerGasp = () => {
+      const t = this.ctx.currentTime;
+      const gSrc = this.ctx.createBufferSource();
+      gSrc.buffer = this.ambientBuffer;
+      const f = this.ctx.createBiquadFilter();
+      f.type = "bandpass";
+      f.frequency.setValueAtTime(620, t);
+      f.frequency.exponentialRampToValueAtTime(1250, t + 0.2);
+      f.Q.value = 4.0;
+
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.001, t);
+      g.gain.linearRampToValueAtTime(0.55, t + 0.12);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+
+      gSrc.connect(f);
+      f.connect(g);
+      g.connect(this.dryGain);
+      g.connect(this.convolver);
+      gSrc.start(t);
+      gSrc.stop(t + 0.42);
+    };
+
+    const lines = [
+      { sub: "«...слышишь меня?.. я здесь... ...не уходи...»", say: "Слышишь меня... я здесь... не уходи..." },
+      { sub: "«...они заперли дверь снаружи... ...мне страшно...»", say: "Они заперли дверь снаружи... мне страшно..." },
+      { sub: "«...не смотри в темноту... ...оно уже рядом...»", say: "Не смотри в темноту... оно уже рядом..." }
+    ];
+
+    let step = 0;
+    const runLine = () => {
+      if (step >= lines.length) {
+        tg.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.8);
+        setTimeout(() => {
+          try { tapeSrc.stop(); } catch (e) {}
+          subEl.classList.remove("visible");
+          if (onDone) onDone();
+        }, 850);
+        return;
+      }
+
+      const item = lines[step];
+      subEl.textContent = item.sub;
+      subEl.classList.add("visible");
+
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(item.say);
+        utter.lang = "ru-RU";
+        utter.rate = 0.72;
+        utter.pitch = 0.68;
+        utter.volume = 0.6;
+
+        const voices = window.speechSynthesis.getVoices();
+        const ruVoice = voices.find(v => v.lang.toLowerCase().includes("ru"));
+        if (ruVoice) utter.voice = ruVoice;
+
+        utter.onend = () => { triggerGasp(); step++; setTimeout(runLine, 1000); };
+        utter.onerror = () => { triggerGasp(); step++; setTimeout(runLine, 2500); };
+        window.speechSynthesis.speak(utter);
+      } else {
+        triggerGasp();
+        step++;
+        setTimeout(runLine, 3000);
+      }
+    };
+
+    triggerGasp();
+    setTimeout(runLine, 500);
+  }
+
+  playFootsteps() {
+    if (!this.ctx || !this.enabled) return;
+    for (let i = 0; i < 4; i++) {
+      const t = this.ctx.currentTime + i * 0.35;
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.ambientBuffer;
+      const lp = this.ctx.createBiquadFilter();
+      lp.type = "lowpass";
+      lp.frequency.setValueAtTime(130, t);
+      lp.frequency.exponentialRampToValueAtTime(38, t + 0.18);
+
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.8, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+
+      src.connect(lp);
+      lp.connect(g);
+      g.connect(this.dryGain);
+      g.connect(this.convolver);
+      src.start(t);
+      src.stop(t + 0.24);
+    }
+  }
+
+  triggerRandomAmbient() {
+    if (!this.ctx) this.init();
+    if (!this.enabled) this.toggle();
+    if (Math.random() < 0.5) this.playSteelChains();
+    else this.playSubterraneanRumble();
+  }
+
+  startEnvironmentalScheduler() {
+    if (this.scheduler) clearInterval(this.scheduler);
+    this.scheduler = setInterval(() => {
+      if (this.enabled && Math.random() < 0.75) {
+        this.triggerRandomAmbient();
+      }
+    }, 7000);
+  }
+}
+
+const audioEngine = new DarkAmbientAudio();
+
+const glCanvas = document.getElementById("gl-canvas");
+const fxCanvas = document.getElementById("fx-canvas");
+const fxCtx = fxCanvas.getContext("2d");
+
+const renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 0, 10);
+
+const ambientLight = new THREE.AmbientLight(0x222a24, 0.7);
+scene.add(ambientLight);
+
+const spotLight = new THREE.SpotLight(0xffe6bd, 2.8, 35, Math.PI * 0.22, 0.65, 1.2);
+spotLight.position.set(0, 0, 10);
+scene.add(spotLight);
+scene.add(spotLight.target);
+
+const roomPlaneGeo = new THREE.PlaneGeometry(16, 9);
+const roomPlaneMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+const roomMesh = new THREE.Mesh(roomPlaneGeo, roomPlaneMat);
+scene.add(roomMesh);
+
+function createProceduralTexture(room) {
+  const c = document.createElement("canvas");
+  c.width = 1280; c.height = 720;
+  const g = c.getContext("2d");
+
+  const grad = g.createRadialGradient(640, 320, 40, 640, 360, 780);
+  grad.addColorStop(0, room.palette.wall);
+  grad.addColorStop(1, "#020302");
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 1280, 720);
+
+  const px = 1280 * room.portal.x;
+  const py = 720 * room.portal.y;
+  g.strokeStyle = "rgba(120, 138, 115, 0.18)";
+  g.lineWidth = 2;
+  g.beginPath();
+  g.moveTo(0, 0); g.lineTo(px - 110, py - 150);
+  g.moveTo(1280, 0); g.lineTo(px + 110, py - 150);
+  g.moveTo(0, 720); g.lineTo(px - 110, py + 150);
+  g.moveTo(1280, 720); g.lineTo(px + 110, py + 150);
+  g.stroke();
+
+  g.fillStyle = "#010201";
+  g.fillRect(px - 110, py - 150, 220, 300);
+
+  if (room.id === 0) {
+    const tx = 1280 * 0.415; const ty = 720 * 0.42;
+    g.fillStyle = "#161310";
+    g.fillRect(tx - 95, ty + 35, 190, 16);
+    g.fillRect(tx - 75, ty + 51, 14, 140);
+    g.fillRect(tx + 61, ty + 51, 14, 140);
+    g.fillStyle = "#2b241e";
+    g.fillRect(tx - 68, ty - 95, 136, 130);
+    g.strokeStyle = "#5c4f42";
+    g.lineWidth = 3;
+    g.strokeRect(tx - 68, ty - 95, 136, 130);
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function build3DReelMesh() {
+  const reelGroup = new THREE.Group();
+  const metalMat = new THREE.MeshStandardMaterial({ color: 0x928a7e, metalness: 0.85, roughness: 0.32, side: THREE.DoubleSide });
+  const tapeMat = new THREE.MeshStandardMaterial({ color: 0x110f0d, metalness: 0.2, roughness: 0.7 });
+
+  const tapeRollGeo = new THREE.CylinderGeometry(0.76, 0.76, 0.16, 36);
+  tapeRollGeo.rotateX(Math.PI / 2);
+  reelGroup.add(new THREE.Mesh(tapeRollGeo, tapeMat));
+
+  const flangeShape = new THREE.Shape();
+  flangeShape.absarc(0, 0, 1.0, 0, Math.PI * 2, false);
+  const centerHole = new THREE.Path();
+  centerHole.absarc(0, 0, 0.22, 0, Math.PI * 2, true);
+  flangeShape.holes.push(centerHole);
+
+  for (let i = 0; i < 3; i++) {
+    const a0 = (i * Math.PI * 2) / 3 + 0.18;
+    const a1 = ((i + 1) * Math.PI * 2) / 3 - 0.18;
+    const hole = new THREE.Path();
+    hole.moveTo(Math.cos(a0) * 0.36, Math.sin(a0) * 0.36);
+    hole.absarc(0, 0, 0.84, a0, a1, false);
+    hole.absarc(0, 0, 0.36, a1, a0, true);
+    flangeShape.holes.push(hole);
+  }
+
+  const extrudeSettings = { depth: 0.025, bevelEnabled: true, bevelSegments: 2, steps: 1, bevelSize: 0.01, bevelThickness: 0.01 };
+  const flangeGeo = new THREE.ExtrudeGeometry(flangeShape, extrudeSettings);
+
+  const f1 = new THREE.Mesh(flangeGeo, metalMat); f1.position.z = 0.08; reelGroup.add(f1);
+  const f2 = new THREE.Mesh(flangeGeo, metalMat); f2.position.z = -0.105; reelGroup.add(f2);
+
+  const hubGeo = new THREE.CylinderGeometry(0.24, 0.26, 0.24, 18);
+  hubGeo.rotateX(Math.PI / 2);
+  reelGroup.add(new THREE.Mesh(hubGeo, metalMat));
+
+  reelGroup.rotation.y = 0.24;
+  reelGroup.rotation.x = -0.04;
+  return reelGroup;
+}
+
+const reelMeshes = [build3DReelMesh(), build3DReelMesh()];
+reelMeshes.forEach(m => scene.add(m));
+
+function build3DShadowEntity() {
+  const group = new THREE.Group();
+  const shadowMat = new THREE.MeshStandardMaterial({ color: 0x020302, roughness: 0.98, transparent: true, opacity: 0.0 });
+
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.32, 1.45, 16), shadowMat);
+  group.add(torso);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.21, 16, 16), shadowMat);
+  head.scale.set(0.88, 1.18, 0.92); head.position.set(0.06, 0.92, 0.08); head.rotation.z = -0.22;
+  group.add(head);
+
+  const armGeo = new THREE.CylinderGeometry(0.065, 0.045, 1.35, 10);
+  const leftArm = new THREE.Mesh(armGeo, shadowMat); leftArm.position.set(-0.32, -0.12, 0.05); leftArm.rotation.z = 0.12; group.add(leftArm);
+  const rightArm = new THREE.Mesh(armGeo, shadowMat); rightArm.position.set(0.32, -0.14, 0.05); rightArm.rotation.z = -0.10; group.add(rightArm);
+
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0xd9e0d4, transparent: true, opacity: 0.0 });
+  const eyeGeo = new THREE.SphereGeometry(0.018, 8, 8);
+  const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-0.01, 0.94, 0.26); group.add(eyeL);
+  const eyeR = new THREE.Mesh(eyeGeo, eyeMat); eyeR.position.set(0.11, 0.92, 0.25); group.add(eyeR);
+
+  group.userData = { shadowMat, eyeMat };
+  return group;
+}
+
+const shadowEntity = build3DShadowEntity();
+scene.add(shadowEntity);
+
+let currentRoomIndex = 0;
+let freeMode = false;
+let flashlightOn = true;
+
+const roomTextures = {};
+const roomImageDims = {};
+
+const pointer = { x: window.innerWidth * 0.5, y: window.innerHeight * 0.5, targetX: window.innerWidth * 0.5, targetY: window.innerHeight * 0.5, normX: 0, normY: 0 };
+const transition = { active: false, phase: "none", progress: 0, targetRoom: 0, focusX: 0.5, focusY: 0.5 };
+const entityState = { visible: false, opacity: 0, targetOpacity: 0, evading: false, timer: 0, spot: { x: 0.59, y: 0.52, scale: 1.0 } };
+
+function spawnShadowEntity(force = false) {
+  const room = ROOMS[currentRoomIndex];
+  if (!room.shadowSpots || room.shadowSpots.length === 0) return;
+  if (entityState.visible && !force) return;
+
+  const spot = room.shadowSpots[Math.floor(Math.random() * room.shadowSpots.length)];
+  entityState.spot = spot;
+  entityState.visible = true;
+  entityState.opacity = 0.05;
+  entityState.targetOpacity = 0.92;
+  entityState.evading = false;
+  entityState.timer = 340;
+
+  if (audioEngine.enabled) audioEngine.playSubterraneanRumble();
+}
+
+setInterval(() => {
+  if (document.getElementById("intro-screen").classList.contains("hidden") && !transition.active) {
+    if (Math.random() < 0.65) spawnShadowEntity(false);
+  }
+}, 5500);
+
+function updateWorldPlaneLayout() {
+  const dist = camera.position.z;
+  const vFov = THREE.MathUtils.degToRad(camera.fov);
+  const viewH = 2 * Math.tan(vFov / 2) * dist;
+  const viewW = viewH * camera.aspect;
+
+  const dims = roomImageDims[currentRoomIndex] || { w: 16, h: 9 };
+  const imgAspect = dims.w / dims.h;
+  const viewAspect = viewW / viewH;
+
+  let planeW, planeH;
+  if (viewAspect > imgAspect) {
+    planeW = viewW * 1.08;
+    planeH = planeW / imgAspect;
+  } else {
+    planeH = viewH * 1.08;
+    planeW = planeH * imgAspect;
+  }
+  roomMesh.scale.set(planeW / 16, planeH / 9, 1);
+  return { planeW, planeH, viewW, viewH };
+}
+
+function applyRoomTexture(idx) {
+  if (roomTextures[idx]) {
+    roomPlaneMat.map = roomTextures[idx];
+  } else {
+    roomPlaneMat.map = createProceduralTexture(ROOMS[idx]);
+  }
+  roomPlaneMat.needsUpdate = true;
+}
+
+function tryAutoLoadImages() {
+  const loader = new THREE.TextureLoader();
+  ROOMS.forEach((room, idx) => {
+    loader.load(room.fileName, (tex) => {
+      roomTextures[idx] = tex;
+      roomImageDims[idx] = { w: tex.image.width, h: tex.image.height };
+      if (idx === currentRoomIndex) applyRoomTexture(idx);
+      updateLoadedCounter();
+    }, undefined, () => {
+      if (idx === currentRoomIndex) applyRoomTexture(idx);
+    });
+  });
+}
+tryAutoLoadImages();
+applyRoomTexture(0);
+
+function updateLoadedCounter() {
+  const count = Object.keys(roomTextures).length;
+  const btn = document.getElementById("btn-open-photos");
+  if (btn) btn.textContent = `ФОТО КОМНАТ [${count}/5]`;
+  renderPhotoSlotsModal();
+}
+
+function resizeAll() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  fxCanvas.width = window.innerWidth;
+  fxCanvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resizeAll);
+resizeAll();
+
+const dustParticles = Array.from({ length: 80 }, () => ({
+  x: Math.random(), y: Math.random(), z: 0.3 + Math.random() * 0.9,
+  vx: (Math.random() - 0.5) * 0.00025, vy: -0.00015 - Math.random() * 0.00035, size: 1.0 + Math.random() * 2.3
+}));
+
+let reelRotation = 0;
+
+function animate(time) {
+  requestAnimationFrame(animate);
+
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const room = ROOMS[currentRoomIndex];
+
+  pointer.x += (pointer.targetX - pointer.x) * 0.12;
+  pointer.y += (pointer.targetY - pointer.y) * 0.12;
+  pointer.normX = (pointer.x / w - 0.5) * 2;
+  pointer.normY = (pointer.y / h - 0.5) * 2;
+
+  const { planeW, planeH, viewW, viewH } = updateWorldPlaneLayout();
+
+  let camZ = 10.0;
+  let camX = pointer.normX * 0.32;
+  let camY = -pointer.normY * 0.22 + Math.sin(time * 0.0022) * 0.03;
+  let blackFade = 0;
+
+  if (transition.active) {
+    transition.progress += 0.026;
+    if (transition.phase === "in") {
+      const ease = transition.progress * transition.progress;
+      camZ = 10.0 - ease * 6.4;
+      const targetWorldX = (transition.focusX - 0.5) * planeW;
+      const targetWorldY = (0.5 - transition.focusY) * planeH;
+      camX += targetWorldX * ease * 0.85;
+      camY += targetWorldY * ease * 0.85 + Math.sin(transition.progress * Math.PI * 5) * 0.12;
+      blackFade = Math.min(1, transition.progress * 1.15);
+
+      if (transition.progress >= 1) {
+        currentRoomIndex = transition.targetRoom;
+        entityState.visible = false;
+        applyRoomTexture(currentRoomIndex);
+        updateRoomHUD();
+        if (audioEngine.ctx) audioEngine.updateCavernReverb(ROOMS[currentRoomIndex].reverbDecay);
+        transition.phase = "out";
+        transition.progress = 0;
+      }
+    } else if (transition.phase === "out") {
+      const ease = 1 - Math.pow(1 - transition.progress, 3);
+      camZ = 7.6 + ease * 2.4;
+      blackFade = 1 - ease;
+      if (transition.progress >= 1) {
+        transition.active = false;
+        transition.phase = "none";
+      }
+    }
+  }
+
+  camera.position.set(camX, camY, camZ);
+  camera.lookAt(camX * 0.65, camY * 0.65, 0);
+
+  const lightWorldX = pointer.normX * (viewW * 0.5);
+  const lightWorldY = -pointer.normY * (viewH * 0.5);
+  spotLight.position.set(camX, camY, camZ);
+  spotLight.target.position.set(lightWorldX, lightWorldY, 0);
+  spotLight.intensity = flashlightOn ? 2.8 : 0.35;
+
+  if (room.id === 0 && room.reels) {
+    const spinning = room.tapePlaying || room.solved;
+    if (spinning) reelRotation -= 0.055;
+    else reelRotation = Math.sin(time * 0.003) * 0.06;
+
+    room.reels.forEach((rCfg, idx) => {
+      const mesh = reelMeshes[idx];
+      mesh.visible = true;
+      const wx = (rCfg.x - 0.5) * planeW;
+      const wy = (0.5 - rCfg.y) * planeH;
+      const s = rCfg.radius * planeW;
+      mesh.position.set(wx, wy, 0.14);
+      mesh.scale.set(s, s, s);
+      mesh.rotation.z = reelRotation * rCfg.speedMul + idx * 0.5;
+    });
+  } else {
+    reelMeshes.forEach(m => { m.visible = false; });
+  }
+
+  if (entityState.visible) {
+    const ex = (entityState.spot.x - 0.5) * planeW;
+    const ey = (0.5 - entityState.spot.y) * planeH;
+    const esc = (entityState.spot.scale || 1.0) * (planeH * 0.16);
+
+    shadowEntity.visible = true;
+    shadowEntity.scale.set(esc, esc, esc);
+
+    const distToSpot = Math.hypot(lightWorldX - ex, lightWorldY - ey);
+    if (distToSpot < planeW * 0.18 && !entityState.evading) {
+      entityState.evading = true;
+      entityState.targetOpacity = 0;
+      if (audioEngine.enabled) audioEngine.playSteelChains();
+    }
+
+    entityState.timer--;
+    if (entityState.timer <= 0) entityState.targetOpacity = 0;
+
+    const speed = entityState.evading ? 0.14 : 0.035;
+    entityState.opacity += (entityState.targetOpacity - entityState.opacity) * speed;
+
+    const recoilX = entityState.evading ? (ex > 0 ? 0.75 : -0.75) * (1 - entityState.opacity) : Math.sin(time * 0.004) * 0.04;
+    const recoilZ = entityState.evading ? -0.3 * (1 - entityState.opacity) : 0.35;
+    shadowEntity.position.set(ex + recoilX, ey, recoilZ);
+
+    shadowEntity.userData.shadowMat.opacity = entityState.opacity * 0.95;
+    shadowEntity.userData.eyeMat.opacity = entityState.evading ? 0 : entityState.opacity * 0.8;
+
+    if (entityState.opacity < 0.01 && entityState.targetOpacity === 0) {
+      entityState.visible = false;
+      shadowEntity.visible = false;
+    }
+  } else {
+    shadowEntity.visible = false;
+  }
+
+  renderer.render(scene, camera);
+  render2DOverlay(w, h, room, planeW, planeH, viewW, viewH, blackFade, time);
+}
+
+function render2DOverlay(w, h, room, planeW, planeH, viewW, viewH, blackFade, time) {
+  fxCtx.clearRect(0, 0, w, h);
+
+  const scaleX = (planeW / viewW) * w;
+  const scaleY = (planeH / viewH) * h;
+  const offsetX = (w - scaleX) * 0.5 - pointer.normX * 16;
+  const offsetY = (h - scaleY) * 0.5 - pointer.normY * 11;
+
+  dustParticles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    if (p.y < 0) p.y = 1; if (p.x < 0) p.x = 1; if (p.x > 1) p.x = 0;
+    const px = p.x * w - pointer.normX * 20 * p.z;
+    const py = p.y * h - pointer.normY * 14 * p.z;
+    const dist = Math.hypot(px - pointer.x, py - pointer.y);
+    const boost = (flashlightOn && dist < 240) ? (1 - dist / 240) * 0.7 : 0;
+
+    fxCtx.fillStyle = `rgba(195, 208, 188, ${Math.min(0.92, 0.12 + boost)})`;
+    fxCtx.beginPath(); fxCtx.arc(px, py, p.size * p.z, 0, Math.PI * 2); fxCtx.fill();
+  });
+
+  if (flashlightOn) {
+    room.clues.forEach(clue => {
+      const cx = offsetX + clue.x * scaleX;
+      const cy = offsetY + clue.y * scaleY;
+      const dist = Math.hypot(cx - pointer.x, cy - pointer.y);
+      const rad = Math.min(w, h) * 0.24;
+      if (dist < rad) {
+        const alpha = Math.pow(1 - dist / rad, 1.4);
+        fxCtx.save();
+        fxCtx.font = "bold 14px 'Courier New', monospace";
+        fxCtx.fillStyle = `rgba(235, 198, 132, ${alpha * 0.96})`;
+        fxCtx.shadowColor = "rgba(180, 65, 40, 0.95)"; fxCtx.shadowBlur = 10;
+        fxCtx.fillText(clue.text, cx - 75, cy);
+        fxCtx.restore();
+      }
+    });
+  }
+
+  drawMarker2D(offsetX + room.artifact.x * scaleX, offsetY + room.artifact.y * scaleY, room.artifact.label, room.solved ? "#528c63" : "#bd7d3b", time);
+  const canPass = room.solved || freeMode;
+  drawMarker2D(offsetX + room.portal.x * scaleX, offsetY + room.portal.y * scaleY, room.portal.label, canPass ? "#528c63" : "#8f3222", time);
+
+  const flicker = Math.sin(time * 0.041) * Math.sin(time * 0.017) > 0.96 ? 0.72 : 1.0;
+  if (flashlightOn) {
+    const rad = Math.min(w, h) * 0.34 * flicker;
+    const grad = fxCtx.createRadialGradient(pointer.x, pointer.y, rad * 0.08, pointer.x, pointer.y, rad);
+    grad.addColorStop(0, "rgba(255, 244, 214, 0.02)");
+    grad.addColorStop(0.48, "rgba(5, 7, 5, 0.42)");
+    grad.addColorStop(1, "rgba(1, 2, 1, 0.94)");
+    fxCtx.fillStyle = grad;
+    fxCtx.fillRect(0, 0, w, h);
+  } else {
+    fxCtx.fillStyle = "rgba(1, 2, 1, 0.91)";
+    fxCtx.fillRect(0, 0, w, h);
+  }
+
+  if (blackFade > 0.01) {
+    fxCtx.fillStyle = `rgba(1, 2, 1, ${blackFade})`;
+    fxCtx.fillRect(0, 0, w, h);
+  }
+}
+
+function drawMarker2D(x, y, label, color, time) {
+  const pulse = 1 + Math.sin(time * 0.005) * 0.2;
+  fxCtx.save();
+  fxCtx.strokeStyle = color; fxCtx.lineWidth = 1.6;
+  fxCtx.beginPath(); fxCtx.arc(x, y, 14 * pulse, 0, Math.PI * 2); fxCtx.stroke();
+  fxCtx.fillStyle = color; fxCtx.beginPath(); fxCtx.arc(x, y, 4, 0, Math.PI * 2); fxCtx.fill();
+
+  fxCtx.font = "11px 'Courier New', monospace";
+  const tw = fxCtx.measureText(label).width + 14;
+  fxCtx.fillStyle = "rgba(5, 7, 5, 0.88)";
+  fxCtx.fillRect(x - tw * 0.5, y + 19, tw, 20);
+  fxCtx.strokeStyle = color; fxCtx.strokeRect(x - tw * 0.5, y + 19, tw, 20);
+  fxCtx.fillStyle = "#ded6cc"; fxCtx.textAlign = "center";
+  fxCtx.fillText(label, x, y + 33);
+  fxCtx.restore();
+}
+
+function buildDepthNav() {
+  const nav = document.getElementById("depth-nav");
+  nav.innerHTML = "";
+  ROOMS.forEach((r, idx) => {
+    const node = document.createElement("div");
+    node.className = `depth-node ${idx === currentRoomIndex ? "active" : ""} ${r.solved ? "solved" : ""}`;
+    node.innerHTML = `<span class="depth-label">0${idx + 1} // ${r.title.split(" ")[0]}</span><span class="depth-dot"></span>`;
+    node.addEventListener("click", () => attemptRoomTransition(idx));
+    nav.appendChild(node);
+  });
+}
+
+function updateRoomHUD() {
+  const room = ROOMS[currentRoomIndex];
+  document.getElementById("hud-room-indicator").textContent = `ЛОКАЦИЯ 0${currentRoomIndex + 1} / 05 — ${room.title.toUpperCase()}`;
+  document.getElementById("dossier-code").textContent = room.code;
+  document.getElementById("dossier-file-hint").textContent = `ФАЙЛ: ${room.fileName}`;
+  document.getElementById("dossier-title").textContent = room.title;
+  document.getElementById("dossier-text").textContent = room.desc;
+
+  const badge = document.getElementById("puzzle-badge");
+  if (room.solved || freeMode) {
+    badge.textContent = room.solved ? "ЗАМОК ОТКРЫТ" : "СВОБОДНЫЙ ОБХОД";
+    badge.className = "status-badge unlocked";
+  } else {
+    badge.textContent = "ПРОХОД ЗАБЛОКИРОВАН";
+    badge.className = "status-badge";
+  }
+  buildDepthNav();
+}
+
+function attemptRoomTransition(targetIdx) {
+  if (transition.active || targetIdx === currentRoomIndex) return;
+  if (targetIdx < 0 || targetIdx >= ROOMS.length) return;
+
+  const currentRoom = ROOMS[currentRoomIndex];
+  if (targetIdx > currentRoomIndex && !currentRoom.solved && !freeMode) {
+    audioEngine.playSubterraneanRumble();
+    openPuzzleModal();
+    return;
+  }
+
+  audioEngine.playFootsteps();
+  transition.active = true;
+  transition.phase = "in";
+  transition.progress = 0;
+  transition.targetRoom = targetIdx;
+  transition.focusX = currentRoom.portal.x;
+  transition.focusY = currentRoom.portal.y;
+}
+
+glCanvas.addEventListener("click", (e) => {
+  if (transition.active) return;
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const room = ROOMS[currentRoomIndex];
+
+  const { planeW, planeH, viewW, viewH } = updateWorldPlaneLayout();
+  const scaleX = (planeW / viewW) * w;
+  const scaleY = (planeH / viewH) * h;
+  const offsetX = (w - scaleX) * 0.5;
+  const offsetY = (h - scaleY) * 0.5;
+
+  const artX = offsetX + room.artifact.x * scaleX;
+  const artY = offsetY + room.artifact.y * scaleY;
+  if (Math.hypot(e.clientX - artX, e.clientY - artY) < 90) {
+    openPuzzleModal();
+    return;
+  }
+
+  const portX = offsetX + room.portal.x * scaleX;
+  const portY = offsetY + room.portal.y * scaleY;
+  if (Math.hypot(e.clientX - portX, e.clientY - portY) < 90) {
+    attemptRoomTransition((currentRoomIndex + 1) % ROOMS.length);
+  }
+});
+
+window.addEventListener("mousemove", (e) => {
+  pointer.targetX = e.clientX; pointer.targetY = e.clientY;
+});
+window.addEventListener("touchmove", (e) => {
+  if (e.touches.length > 0) {
+    pointer.targetX = e.touches[0].clientX; pointer.targetY = e.touches[0].clientY;
+  }
+}, { passive: true });
+
+let lastWheelTime = 0;
+window.addEventListener("wheel", (e) => {
+  const now = performance.now();
+  if (now - lastWheelTime < 1100) return;
+  if (document.querySelector(".modal-backdrop.open")) return;
+  if (e.deltaY > 25) { lastWheelTime = now; attemptRoomTransition(Math.min(ROOMS.length - 1, currentRoomIndex + 1)); }
+  else if (e.deltaY < -25) { lastWheelTime = now; attemptRoomTransition(Math.max(0, currentRoomIndex - 1)); }
+});
+
+window.addEventListener("keydown", (e) => {
+  if (e.key.toLowerCase() === "f" || e.key.toLowerCase() === "а") {
+    document.getElementById("btn-toggle-flashlight").click();
+  }
+});
+
+function openPuzzleModal() {
+  const room = ROOMS[currentRoomIndex];
+  const modal = document.getElementById("puzzle-modal");
+  document.getElementById("modal-tag").textContent = room.code;
+  document.getElementById("modal-title").textContent = room.puzzleTitle;
+  document.getElementById("modal-desc").textContent = room.puzzleDesc;
+
+  const container = document.getElementById("modal-interactive");
+  const feedback = document.getElementById("modal-feedback");
+  container.innerHTML = "";
+
+  feedback.textContent = room.solved ? "МЕХАНИЗМ УЖЕ РАЗБЛОКИРОВАН." : "Осветите стены фонарём для поиска улик.";
+
+  if (room.puzzleType === "frequency") {
+    let cur = room.solved ? 442 : 390;
+    container.innerHTML = `
+      <div class="puzzle-row"><span>ЧАСТОТА ТОНВАЛА:</span><strong id="freq-rd" style="color:var(--amber-glow); font-size:16px;">${cur} Гц</strong></div>
+      <input type="range" id="freq-sl" min="350" max="500" step="1" value="${cur}">
+      <div style="margin-top:12px; display:flex; justify-content:flex-end;"><button class="btn btn-primary" id="btn-chk">ЗАПУСТИТЬ КАТУШКИ</button></div>
+    `;
+    const sl = container.querySelector("#freq-sl");
+    const rd = container.querySelector("#freq-rd");
+    sl.addEventListener("input", () => { rd.textContent = `${sl.value} Гц`; });
+    container.querySelector("#btn-chk").addEventListener("click", () => {
+      if (parseInt(sl.value, 10) === room.targetFreq) {
+        room.tapePlaying = true;
+        solveCurrentRoom("Бобины пришли в движение! Слушайте запись...");
+        setTimeout(() => { modal.classList.remove("open"); audioEngine.playHumanSobbingTape(); }, 500);
+      } else {
+        audioEngine.playSubterraneanRumble();
+        feedback.textContent = "Неверная частота. Лента жужжит и проскальзывает.";
+      }
+    });
+  } else if (room.puzzleType === "roman_code") {
+    const syms = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"];
+    const st = room.solved ? [...room.targetCode] : ["I", "I", "I", "I"];
+    const wrap = document.createElement("div"); wrap.className = "code-slots";
+    st.forEach((s, i) => {
+      const b = document.createElement("button"); b.className = "code-slot-btn"; b.textContent = s;
+      b.addEventListener("click", () => {
+        st[i] = syms[(syms.indexOf(st[i]) + 1) % syms.length];
+        b.textContent = st[i];
+        audioEngine.playSteelChains();
+      });
+      wrap.appendChild(b);
+    });
+    const cb = document.createElement("button"); cb.className = "btn btn-primary"; cb.style.width = "100%"; cb.textContent = "ПРОВЕРНУТЬ ЗАСОВ";
+    cb.addEventListener("click", () => {
+      if (st.join("-") === room.targetCode.join("-")) solveCurrentRoom("Кольца совпали. Цепи упали.");
+      else { audioEngine.playSubterraneanRumble(); feedback.textContent = "Замок заклинило."; }
+    });
+    container.appendChild(wrap); container.appendChild(cb);
+  } else if (room.puzzleType === "weights") {
+    const weights = [{ kg: 2, side: "L" }, { kg: 4, side: room.solved ? "L" : "R" }, { kg: 6, side: "R" }];
+    const renderW = () => {
+      const l = weights.filter(w => w.side === "L").reduce((a,b)=>a+b.kg,0);
+      const r = weights.filter(w => w.side === "R").reduce((a,b)=>a+b.kg,0);
+      container.innerHTML = `
+        <div class="puzzle-row"><span>ЛЕВАЯ: <strong>${l} КГ</strong></span><span>ПРАВАЯ: <strong>${r} КГ</strong></span></div>
+        <div class="scale-pan-group" id="w-grid"></div>
+        <button class="btn btn-primary" id="btn-w" style="width:100%; margin-top:8px;">ОСВОБОДИТЬ СТОПОР</button>
+      `;
+      const grid = container.querySelector("#w-grid");
+      weights.forEach(w => {
+        const card = document.createElement("div"); card.className = "weight-card";
+        card.innerHTML = `<div style="font-size:14px; font-weight:bold; margin-bottom:6px;">ГИРЯ ${w.kg}КГ</div><button class="hud-btn" style="width:100%">${w.side==="L"?"ЛЕВАЯ":"ПРАВАЯ"}</button>`;
+        card.querySelector("button").addEventListener("click", () => {
+          w.side = w.side === "L" ? "R" : "L"; audioEngine.playSteelChains(); renderW();
+        });
+        grid.appendChild(card);
+      });
+      container.querySelector("#btn-w").addEventListener("click", () => {
+        if (l === 6 && r === 6) solveCurrentRoom("Весы в равновесии. Люк открыт.");
+        else { audioEngine.playSubterraneanRumble(); feedback.textContent = `Перекос (${l} против ${r}). Нужен баланс 6=6.`; }
+      });
+    };
+    renderW();
+  } else if (room.puzzleType === "dosage") {
+    let dA = room.solved ? 3 : 0, dB = room.solved ? 1 : 0;
+    const renderD = () => {
+      container.innerHTML = `
+        <div class="puzzle-row"><span>ТИОПЕНТАЛ (А): <strong>${dA} мл</strong></span><button class="hud-btn" id="ba">+1 МЛ</button></div>
+        <div class="puzzle-row"><span>МОРФИН (B): <strong>${dB} мл</strong></span><button class="hud-btn" id="bb">+1 МЛ</button></div>
+        <div style="display:flex; gap:8px; margin-top:12px;"><button class="btn" id="br" style="flex:1;">СЛИТЬ</button><button class="btn btn-primary" id="bi" style="flex:2;">ПОДАТЬ</button></div>
+      `;
+      container.querySelector("#ba").addEventListener("click", () => { dA = (dA + 1) % 7; renderD(); });
+      container.querySelector("#bb").addEventListener("click", () => { dB = (dB + 1) % 7; renderD(); });
+      container.querySelector("#br").addEventListener("click", () => { dA = 0; dB = 0; renderD(); });
+      container.querySelector("#bi").addEventListener("click", () => {
+        if (dA === 3 && dB === 1) solveCurrentRoom("Давление стабильно. Шлюз открыт.");
+        else { audioEngine.playSubterraneanRumble(); feedback.textContent = `Неверно (${dA}:${dB}). Пропорция 3:1.`; }
+      });
+    };
+    renderD();
+  } else if (room.puzzleType === "valve") {
+    let seq = [];
+    const renderV = () => {
+      container.innerHTML = `
+        <div class="puzzle-row"><span>ОБОРОТЫ:</span><strong style="color:var(--amber-glow);">${seq.join(" → ") || "НЕТ"}</strong></div>
+        <div style="display:flex; gap:8px; margin-bottom:12px;"><button class="btn" id="vr" style="flex:1;">↻ ВПРАВО (R)</button><button class="btn" id="vl" style="flex:1;">↺ ВЛЕВО (L)</button><button class="hud-btn" id="vrs">СБРОС</button></div>
+        <input type="text" id="b-msg" placeholder="Сообщение в эфир..." style="width:100%; padding:9px; background:#050705; border:1px solid var(--mold-green); color:var(--bone-white); font-family:inherit; margin-bottom:8px;">
+        <button class="btn btn-primary" id="bs" style="width:100%;">ОТПРАВИТЬ СИГНАЛ</button>
+      `;
+      const chk = () => {
+        if (seq.join(",") === "R,R,R,L,L") solveCurrentRoom("Гермошлюз разгерметизирован.");
+        else if (seq.length >= 5) { audioEngine.playSubterraneanRumble(); feedback.textContent = "Клапан сорвался (нужно R,R,R,L,L)."; seq = []; setTimeout(renderV, 500); }
+      };
+      container.querySelector("#vr").addEventListener("click", () => { seq.push("R"); audioEngine.playSteelChains(); renderV(); chk(); });
+      container.querySelector("#vl").addEventListener("click", () => { seq.push("L"); audioEngine.playSteelChains(); renderV(); chk(); });
+      container.querySelector("#vrs").addEventListener("click", () => { seq = []; renderV(); });
+      container.querySelector("#bs").addEventListener("click", () => {
+        const msg = container.querySelector("#b-msg").value.trim();
+        audioEngine.playSteelChains();
+        feedback.textContent = msg ? `СИГНАЛ УШЁЛ: «${msg}» // ФИНАЛ.` : "АВАРИЙНЫЙ МАЯК ОТПРАВЛЕН // ФИНАЛ.";
+      });
+    };
+    renderV();
+  }
+
+  modal.classList.add("open");
+}
+
+function solveCurrentRoom(msg) {
+  const room = ROOMS[currentRoomIndex];
+  room.solved = true;
+  audioEngine.playSteelChains();
+  document.getElementById("modal-feedback").textContent = msg;
+  updateRoomHUD();
+}
+
+function renderPhotoSlotsModal() {
+  const container = document.getElementById("photo-slots-container");
+  if (!container) return;
+  container.innerHTML = "";
+  ROOMS.forEach((room, idx) => {
+    const isLoaded = Boolean(roomTextures[idx]);
+    const row = document.createElement("div"); row.className = "photo-slot";
+    row.innerHTML = `<div><strong>0${idx+1}. ${room.title}</strong><br><span style="color:#828e7f;">${room.fileName}</span></div>
+      <div style="display:flex; align-items:center; gap:8px;"><span class="photo-slot-status ${isLoaded?"loaded":""}">${isLoaded?"ЗАГРУЖЕНО":"ПРОЦЕДУРНО"}</span>
+      <label class="hud-btn" style="cursor:pointer;">ВЫБРАТЬ<input type="file" accept="image/*" style="display:none"></label></div>`;
+    row.querySelector("input").addEventListener("change", (e) => {
+      if (e.target.files && e.target.files[0]) loadSingleFileAsTexture(e.target.files[0], idx);
+    });
+    container.appendChild(row);
+  });
+}
+
+function loadSingleFileAsTexture(file, roomIdx) {
+  const url = URL.createObjectURL(file);
+  new THREE.TextureLoader().load(url, (tex) => {
+    roomTextures[roomIdx] = tex;
+    roomImageDims[roomIdx] = { w: tex.image.width, h: tex.image.height };
+    if (roomIdx === currentRoomIndex) applyRoomTexture(roomIdx);
+    updateLoadedCounter();
+  });
+}
+
+function handleBulkFiles(fileList) {
+  const files = Array.from(fileList).filter(f => f.type.startsWith("image/"));
+  if (!files.length) return;
+  files.forEach((file, idx) => { if (idx < 5) loadSingleFileAsTexture(file, idx); });
+}
+
+window.addEventListener("dragover", (e) => e.preventDefault());
+window.addEventListener("drop", (e) => { e.preventDefault(); if (e.dataTransfer && e.dataTransfer.files.length) handleBulkFiles(e.dataTransfer.files); });
+
+document.getElementById("btn-enter-house").addEventListener("click", () => {
+  document.getElementById("intro-screen").classList.add("hidden");
+  audioEngine.init();
+  document.getElementById("btn-toggle-sound").textContent = "ЗВУК: ВКЛ";
+  document.getElementById("btn-toggle-sound").classList.add("active");
+  setTimeout(() => { spawnShadowEntity(true); audioEngine.playSteelChains(); }, 800);
+});
+
+document.getElementById("btn-intro-upload").addEventListener("click", () => document.getElementById("photos-modal").classList.add("open"));
+document.getElementById("btn-open-photos").addEventListener("click", () => { renderPhotoSlotsModal(); document.getElementById("photos-modal").classList.add("open"); });
+document.getElementById("btn-close-photos").addEventListener("click", () => document.getElementById("photos-modal").classList.remove("open"));
+document.getElementById("btn-select-bulk").addEventListener("click", () => document.getElementById("bulk-file-input").click());
+document.getElementById("bulk-file-input").addEventListener("change", (e) => { if (e.target.files) handleBulkFiles(e.target.files); });
+
+document.getElementById("btn-open-puzzle").addEventListener("click", openPuzzleModal);
+document.getElementById("btn-close-puzzle").addEventListener("click", () => document.getElementById("puzzle-modal").classList.remove("open"));
+
+document.getElementById("btn-toggle-flashlight").addEventListener("click", (e) => {
+  flashlightOn = !flashlightOn;
+  e.target.textContent = `ФОНАРЬ [F]: ${flashlightOn ? "ВКЛ" : "ВЫКЛ"}`;
+  e.target.classList.toggle("active", flashlightOn);
+});
+
+document.getElementById("btn-toggle-freemode").addEventListener("click", (e) => {
+  freeMode = !freeMode;
+  e.target.textContent = `РЕЖИМ: ${freeMode ? "СВОБОДНЫЙ" : "КВЕСТ"}`;
+  e.target.classList.toggle("active", freeMode);
+  updateRoomHUD();
+});
+
+document.getElementById("btn-toggle-sound").addEventListener("click", (e) => {
+  const on = audioEngine.toggle();
+  e.target.textContent = `ЗВУК: ${on ? "ВКЛ" : "ВЫКЛ"}`;
+  e.target.classList.toggle("active", on);
+});
+
+document.getElementById("btn-prev-room").addEventListener("click", () => attemptRoomTransition(Math.max(0, currentRoomIndex - 1)));
+document.getElementById("btn-next-room").addEventListener("click", () => attemptRoomTransition((currentRoomIndex + 1) % ROOMS.length));
+
+updateRoomHUD();
+renderPhotoSlotsModal();
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
