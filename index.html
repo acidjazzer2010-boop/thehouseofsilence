@@ -16,422 +16,149 @@
     --panel-bg: rgba(5, 7, 5, 0.92);
     --border-dim: rgba(120, 138, 115, 0.22);
   }
-
-  * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
-
+  * { box-sizing: border-box; margin: 0; padding: 0; }
   body, html {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background-color: var(--bg-dark);
-    color: var(--bone-white);
-    font-family: 'Courier New', Courier, monospace;
-    cursor: crosshair;
+    width: 100%; height: 100%; overflow: hidden;
+    background-color: var(--bg-dark); color: var(--bone-white);
+    font-family: 'Courier New', Courier, monospace; cursor: crosshair;
   }
-
   canvas, button, .hud-btn, .btn, .depth-node, .code-slot-btn, label {
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-tap-highlight-color: transparent;
+    user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
   }
-
-  #gl-canvas {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    display: block;
-    z-index: 1;
-    touch-action: none;
-  }
-
+  #gl-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; z-index: 1; touch-action: none; }
   #tape-video {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    object-fit: cover;
-    z-index: 1;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.65s ease;
+    position: fixed; inset: 0; width: 100vw; height: 100vh;
+    object-fit: cover; z-index: 1; opacity: 0; pointer-events: none; transition: opacity 0.65s ease;
   }
-
-  #tape-video.playing {
-    opacity: 1;
-  }
-
-  #fx-canvas {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    display: block;
-    z-index: 2;
-    pointer-events: none;
-  }
-
+  #tape-video.playing { opacity: 1; }
+  #fx-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; z-index: 2; pointer-events: none; }
   .vignette-overlay {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 3;
+    position: fixed; inset: 0; pointer-events: none; z-index: 3;
     background:
-      radial-gradient(circle at 50% 50%, transparent 40%, rgba(1, 2, 1, 0.88) 78%, rgba(0, 0, 0, 0.995) 100%),
+      radial-gradient(circle at 50% 50%, transparent 40%, rgba(1,2,1,0.88) 78%, rgba(0,0,0,0.995) 100%),
       repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 1px, transparent 1px, transparent 3px);
   }
-
   #intro-screen {
-    position: fixed;
-    inset: 0;
-    z-index: 50;
+    position: fixed; inset: 0; z-index: 50;
     background: radial-gradient(circle at center, #0a0d0a 0%, #010201 100%);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding: 24px;
-    text-align: center;
-    transition: opacity 0.8s ease, visibility 0.8s ease;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    padding: 24px; text-align: center; transition: opacity 0.8s ease, visibility 0.8s ease;
   }
-
-  #intro-screen.hidden {
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-  }
-
-  .intro-box {
-    max-width: 640px;
-    border: 1px solid var(--border-dim);
-    background: rgba(7, 9, 7, 0.96);
-    padding: 36px 32px;
-    box-shadow: 0 25px 90px rgba(0,0,0,0.99);
-  }
-
-  .intro-tag {
-    font-size: 10px;
-    letter-spacing: 3.5px;
-    color: var(--rust-red);
-    text-transform: uppercase;
-    margin-bottom: 10px;
-  }
-
-  .intro-title {
-    font-size: 28px;
-    letter-spacing: 6px;
-    font-weight: bold;
-    color: var(--bone-white);
-    margin-bottom: 14px;
-  }
-
-  .intro-desc {
-    font-size: 13px;
-    line-height: 1.68;
-    color: #929c8e;
-    margin-bottom: 24px;
-  }
-
-  .intro-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    justify-content: center;
-  }
-
+  #intro-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+  .intro-box { max-width: 640px; border: 1px solid var(--border-dim); background: rgba(7,9,7,0.96); padding: 36px 32px; box-shadow: 0 25px 90px rgba(0,0,0,0.99); }
+  .intro-tag { font-size: 10px; letter-spacing: 3.5px; color: var(--rust-red); text-transform: uppercase; margin-bottom: 10px; }
+  .intro-title { font-size: 28px; letter-spacing: 6px; font-weight: bold; color: var(--bone-white); margin-bottom: 14px; }
+  .intro-desc { font-size: 13px; line-height: 1.68; color: #929c8e; margin-bottom: 24px; }
+  .intro-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
   .btn {
-    background: rgba(18, 22, 18, 0.94);
-    color: var(--bone-white);
-    border: 1px solid var(--mold-green);
-    padding: 11px 18px;
-    font-family: inherit;
-    font-size: 12px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    background: rgba(18,22,18,0.94); color: var(--bone-white); border: 1px solid var(--mold-green);
+    padding: 11px 18px; font-family: inherit; font-size: 12px; letter-spacing: 2px;
+    text-transform: uppercase; cursor: pointer; transition: all 0.2s ease;
   }
-
   .btn:hover { background: var(--mold-green); color: #020302; }
-
-  .btn:focus-visible,
-  .hud-btn:focus-visible,
-  .depth-node:focus-visible {
-    outline: 2px solid var(--amber-glow);
-    outline-offset: 2px;
+  .btn:focus-visible, .hud-btn:focus-visible, .depth-node:focus-visible {
+    outline: 2px solid var(--amber-glow); outline-offset: 2px;
   }
-
-  .btn-primary {
-    border-color: var(--rust-red);
-    background: rgba(143, 50, 34, 0.28);
-  }
-
-  .btn-primary:hover {
-    background: var(--rust-red);
-    color: #fff;
-    box-shadow: 0 0 22px rgba(143, 50, 34, 0.7);
-  }
-
+  .btn-primary { border-color: var(--rust-red); background: rgba(143,50,34,0.28); }
+  .btn-primary:hover { background: var(--rust-red); color: #fff; box-shadow: 0 0 22px rgba(143,50,34,0.7); }
   .top-hud {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    z-index: 10;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 14px 22px;
-    background: linear-gradient(180deg, rgba(2,3,2,0.96) 0%, rgba(2,3,2,0) 100%);
+    position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 22px; background: linear-gradient(180deg, rgba(2,3,2,0.96) 0%, rgba(2,3,2,0) 100%);
     pointer-events: none;
   }
-
   .top-hud > * { pointer-events: auto; }
-
   .brand-title { font-size: 15px; letter-spacing: 4px; font-weight: bold; }
   .room-indicator { font-size: 11px; letter-spacing: 2px; color: var(--amber-glow); margin-top: 3px; }
-
   .hud-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-
   .hud-btn {
-    background: rgba(8, 10, 8, 0.9);
-    border: 1px solid var(--border-dim);
-    color: #a8b3a4;
-    padding: 7px 11px;
-    font-family: inherit;
-    font-size: 11px;
-    letter-spacing: 1.3px;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    background: rgba(8,10,8,0.9); border: 1px solid var(--border-dim); color: #a8b3a4;
+    padding: 7px 11px; font-family: inherit; font-size: 11px; letter-spacing: 1.3px;
+    cursor: pointer; transition: all 0.2s ease;
   }
-
-  .hud-btn:hover, .hud-btn.active {
-    border-color: var(--amber-glow);
-    color: var(--bone-white);
-    background: rgba(30, 24, 18, 0.92);
-  }
-
+  .hud-btn:hover, .hud-btn.active { border-color: var(--amber-glow); color: var(--bone-white); background: rgba(30,24,18,0.92); }
   .depth-nav {
-    position: fixed;
-    right: 20px;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 10;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    background: rgba(5, 7, 5, 0.85);
-    border: 1px solid var(--border-dim);
-    padding: 14px 10px;
+    position: fixed; right: 20px; top: 50%; transform: translateY(-50%); z-index: 10;
+    display: flex; flex-direction: column; gap: 14px;
+    background: rgba(5,7,5,0.85); border: 1px solid var(--border-dim); padding: 14px 10px;
   }
-
-  .depth-node {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 8px;
-    cursor: pointer;
-    opacity: 0.55;
-    transition: all 0.2s ease;
-  }
-
+  .depth-node { display: flex; align-items: center; justify-content: flex-end; gap: 8px; cursor: pointer; opacity: 0.55; transition: all 0.2s ease; }
   .depth-node:hover, .depth-node.active { opacity: 1; }
-
-  .depth-label {
-    font-size: 10px;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    display: none;
-  }
-
-  .depth-node:hover .depth-label,
-  .depth-node.active .depth-label { display: inline-block; }
-
+  .depth-label { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; display: none; }
+  .depth-node:hover .depth-label, .depth-node.active .depth-label { display: inline-block; }
   .depth-dot { width: 10px; height: 10px; border: 1px solid var(--mold-green); }
-
-  .depth-node.active .depth-dot {
-    background: var(--amber-glow);
-    border-color: var(--amber-glow);
-    box-shadow: 0 0 10px var(--amber-glow);
-  }
-
-  .depth-node.solved .depth-dot {
-    border-color: #528c63;
-    background: rgba(82, 140, 99, 0.5);
-  }
-
-  .depth-node.procedural .depth-dot {
-    border-color: #8f3222;
-    border-style: dashed;
-  }
-
+  .depth-node.active .depth-dot { background: var(--amber-glow); border-color: var(--amber-glow); box-shadow: 0 0 10px var(--amber-glow); }
+  .depth-node.solved .depth-dot { border-color: #528c63; background: rgba(82,140,99,0.5); }
+  .depth-node.procedural .depth-dot { border-color: #8f3222; border-style: dashed; }
   .bottom-hud {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    z-index: 10;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    padding: 16px 22px;
-    background: linear-gradient(0deg, rgba(2,3,2,0.98) 0%, rgba(2,3,2,0) 100%);
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+    display: flex; justify-content: space-between; align-items: flex-end;
+    padding: 16px 22px; background: linear-gradient(0deg, rgba(2,3,2,0.98) 0%, rgba(2,3,2,0) 100%);
     pointer-events: none;
   }
-
   .bottom-hud > * { pointer-events: auto; }
-
   .room-dossier {
-    max-width: 560px;
-    background: var(--panel-bg);
+    max-width: 560px; background: var(--panel-bg);
     border-left: 3px solid var(--rust-red);
     border-top: 1px solid var(--border-dim);
     border-right: 1px solid var(--border-dim);
     border-bottom: 1px solid var(--border-dim);
     padding: 13px 16px;
   }
-
-  .dossier-header {
-    display: flex;
-    justify-content: space-between;
-    font-size: 10px;
-    letter-spacing: 2px;
-    color: var(--amber-glow);
-    margin-bottom: 5px;
-  }
-
+  .dossier-header { display: flex; justify-content: space-between; font-size: 10px; letter-spacing: 2px; color: var(--amber-glow); margin-bottom: 5px; }
   .dossier-title { font-size: 15px; letter-spacing: 2px; margin-bottom: 5px; }
   .dossier-text { font-size: 12px; line-height: 1.48; color: #9da69a; margin-bottom: 9px; }
-
-  .puzzle-status-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    padding-top: 8px;
-    border-top: 1px dashed rgba(120, 138, 115, 0.25);
-  }
-
-  .status-badge {
-    padding: 3px 8px;
-    font-size: 10px;
-    letter-spacing: 1.5px;
-    border: 1px solid var(--rust-red);
-    color: #e67c6a;
-    background: rgba(143, 50, 34, 0.2);
-  }
-
-  .status-badge.unlocked {
-    border-color: #528c63;
-    color: #8ce0a4;
-    background: rgba(45, 95, 60, 0.25);
-  }
-
+  .puzzle-status-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 8px; border-top: 1px dashed rgba(120,138,115,0.25); }
+  .status-badge { padding: 3px 8px; font-size: 10px; letter-spacing: 1.5px; border: 1px solid var(--rust-red); color: #e67c6a; background: rgba(143,50,34,0.2); }
+  .status-badge.unlocked { border-color: #528c63; color: #8ce0a4; background: rgba(45,95,60,0.25); }
   .nav-controls { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
   .nav-buttons { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
-
   .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 30;
-    background: rgba(1, 2, 1, 0.86);
-    backdrop-filter: blur(4px);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.22s ease, visibility 0.22s ease;
+    position: fixed; inset: 0; z-index: 30; background: rgba(1,2,1,0.86); backdrop-filter: blur(4px);
+    display: flex; justify-content: center; align-items: center; padding: 20px;
+    opacity: 0; visibility: hidden; transition: opacity 0.22s ease, visibility 0.22s ease;
   }
-
   .modal-backdrop.open { opacity: 1; visibility: visible; }
-
   .modal-card {
-    width: 100%;
-    max-width: 540px;
-    background: #080a08;
-    border: 1px solid var(--mold-green);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.98);
-    padding: 24px;
-    position: relative;
+    width: 100%; max-width: 540px; background: #080a08; border: 1px solid var(--mold-green);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.98); padding: 24px; position: relative;
   }
-
   .modal-close {
-    position: absolute;
-    top: 14px;
-    right: 16px;
-    background: none;
-    border: none;
-    color: #828e7f;
-    font-family: inherit;
-    font-size: 16px;
-    cursor: pointer;
+    position: absolute; top: 14px; right: 16px; background: none; border: none;
+    color: #828e7f; font-family: inherit; font-size: 16px; cursor: pointer;
   }
-
   .modal-close:hover { color: var(--bone-white); }
-
   .modal-tag { font-size: 10px; letter-spacing: 2.5px; color: var(--rust-red); margin-bottom: 6px; }
   .modal-title { font-size: 18px; letter-spacing: 2px; margin-bottom: 10px; }
   .modal-body { font-size: 12px; line-height: 1.6; color: #9da69a; margin-bottom: 16px; }
-
-  .puzzle-interactive {
-    background: rgba(12, 16, 12, 0.94);
-    border: 1px solid var(--border-dim);
-    padding: 16px;
-    margin-bottom: 14px;
-  }
-
+  .puzzle-interactive { background: rgba(12,16,12,0.94); border: 1px solid var(--border-dim); padding: 16px; margin-bottom: 14px; }
   .puzzle-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
   .puzzle-feedback { font-size: 11px; min-height: 18px; letter-spacing: 1px; color: var(--amber-glow); }
-
   input[type="range"] { width: 100%; accent-color: var(--rust-red); cursor: pointer; }
-
   .code-slots { display: flex; gap: 10px; justify-content: center; margin: 12px 0; }
   .code-slot-btn {
     width: 64px; height: 48px; background: #0f130f; border: 1px solid var(--mold-green);
     color: var(--bone-white); font-family: inherit; font-size: 18px; font-weight: bold; cursor: pointer;
   }
-
   .scale-pan-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 10px 0; }
   .weight-card { border: 1px solid var(--border-dim); padding: 10px; text-align: center; background: #0d110d; }
-
   .photo-grid { display: grid; grid-template-columns: 1fr; gap: 10px; max-height: 310px; overflow-y: auto; margin: 12px 0; }
   .photo-slot { display: flex; justify-content: space-between; align-items: center; background: #0f130f; border: 1px solid var(--border-dim); padding: 8px 12px; font-size: 11px; }
   .photo-slot-status { color: var(--amber-glow); font-size: 10px; }
   .photo-slot-status.loaded { color: #7cd492; }
-
   #fatal-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
-    background: rgba(1,2,1,0.97);
-    color: var(--bone-white);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    text-align: center;
-    font-size: 14px;
-    letter-spacing: 1.5px;
+    position: fixed; inset: 0; z-index: 9999; background: rgba(1,2,1,0.97);
+    color: var(--bone-white); display: none; align-items: center; justify-content: center;
+    padding: 24px; text-align: center; font-size: 14px; letter-spacing: 1.5px;
   }
-
   #fatal-overlay.visible { display: flex; }
-
   @media (max-width: 768px) {
     .bottom-hud { flex-direction: column; align-items: stretch; gap: 10px; }
     .nav-controls { align-items: stretch; }
     .depth-nav { right: 8px; padding: 8px 6px; }
   }
-
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-      animation-duration: 0.01ms !important;
-      transition-duration: 0.01ms !important;
-    }
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   }
 </style>
 </head>
@@ -491,7 +218,6 @@
       </div>
     </div>
   </div>
-
   <div class="nav-controls">
     <div class="nav-buttons">
       <button class="btn" id="btn-prev-room">← НАЗАД</button>
@@ -516,7 +242,7 @@
     <button class="modal-close" id="btn-close-photos" aria-label="Закрыть">✕</button>
     <div class="modal-tag">ТЕКСТУРЫ ЛОКАЦИЙ</div>
     <h3 class="modal-title" id="photos-title">Загрузка рендеров комнат</h3>
-    <p class="modal-body">Выберите файлы <code>1000404061.jpg</code> — <code>1000404065.jpg</code> или перетащите их в окно. Максимум 25 МБ на файл.</p>
+    <p class="modal-body">Выберите файлы <code>1000404061.jpg</code> — <code>1000404065.jpg</code> или перетащите их в окно. Максимум 25 МБ на файл. Без файлов комнаты используют процедурные заглушки со встроенными подсказками.</p>
     <input type="file" id="bulk-file-input" multiple accept="image/jpeg,image/png,image/webp" style="display:none">
     <button class="btn btn-primary" id="btn-select-bulk" style="width:100%; margin-bottom:10px;">ВЫБРАТЬ ВСЕ 5 ФАЙЛОВ</button>
     <div class="photo-grid" id="photo-slots-container"></div>
@@ -549,7 +275,7 @@
 const MAX_UPLOAD_SIZE   = 25 * 1024 * 1024;
 const MAX_TEXTURE_DIM   = 4096;
 const REDUCE_MOTION     = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const STORAGE_KEY       = 'osobnyak_progress_v2';
+const STORAGE_KEY       = 'osobnyak_progress_v3';
 const FLASHLIGHT_RATIO  = 0.34;
 const TRANSITION_SPEED  = 0.026;
 const POINTER_LERP      = 0.12;
@@ -558,7 +284,6 @@ const ENTITY_EVADE_LERP = 0.14;
 
 /* ============================================================
    КОНФИГУРАЦИЯ КОМНАТ (5 ОСНОВНЫХ + 1 ПРОЦЕДУРНАЯ АНОМАЛИЯ)
-   Подсказки нанесены на сами текстуры изображений — 2D-оверлей текста отключён.
 ============================================================ */
 const ROOMS = [
   {
@@ -569,7 +294,7 @@ const ROOMS = [
     artifact: { x: 0.41, y: 0.42, label: "Катушечный диктофон" },
     shadowSpots: [{ x: 0.59, y: 0.52, scale: 1.05 }, { x: 0.67, y: 0.55, scale: 0.90 }],
     palette: { wall: "#18201b", floor: "#0d110e", light: "#6c8074" },
-    reverbDecay: 3.5, solved: false, tapePlaying: false, tapeFinished: false,
+    reverbDecay: 3.5, solved: false, solvedOnce: false, tapePlaying: false, tapeFinished: false,
     puzzleTitle: "Бобинный диктофон «ЭХО-4»",
     puzzleDesc: "Осмотрите сырую штукатурку слева лучом фонаря — на стене нацарапана несущая частота плёнки.",
     puzzleType: "frequency", targetFreq: 442
@@ -582,7 +307,7 @@ const ROOMS = [
     artifact: { x: 0.31, y: 0.44, label: "Узел с кодовым замком" },
     shadowSpots: [{ x: 0.45, y: 0.52, scale: 0.85 }, { x: 0.55, y: 0.50, scale: 0.92 }],
     palette: { wall: "#1c221b", floor: "#121510", light: "#7a8c76" },
-    reverbDecay: 4.0, solved: false,
+    reverbDecay: 4.0, solved: false, solvedOnce: false,
     puzzleTitle: "Четырёхдисковый замок смотрителя",
     puzzleDesc: "Посветите фонариком на глубокие царапины на правой стене под рамами — там вырезаны 4 римских знака.",
     puzzleType: "roman_code", targetCode: ["I", "IV", "VII", "IX"]
@@ -595,7 +320,7 @@ const ROOMS = [
     artifact: { x: 0.14, y: 0.72, label: "Кованый сундук с противовесами" },
     shadowSpots: [{ x: 0.42, y: 0.48, scale: 0.82 }, { x: 0.73, y: 0.50, scale: 0.95 }],
     palette: { wall: "#211c16", floor: "#14110d", light: "#9c896e" },
-    reverbDecay: 3.2, solved: false,
+    reverbDecay: 3.2, solved: false, solvedOnce: false,
     puzzleTitle: "Рычажные весы чердачного люка",
     puzzleDesc: "Осветите заляпанную простыню на центральном кресле — на ткани проступает распределение гирь для левой (Л) и правой (П) чаш.",
     puzzleType: "weights"
@@ -608,7 +333,7 @@ const ROOMS = [
     artifact: { x: 0.48, y: 0.54, label: "Хирургический стол и дозатор" },
     shadowSpots: [{ x: 0.26, y: 0.53, scale: 1.02 }, { x: 0.64, y: 0.51, scale: 0.88 }],
     palette: { wall: "#172420", floor: "#0e1412", light: "#779c8e" },
-    reverbDecay: 4.5, solved: false,
+    reverbDecay: 4.5, solved: false, solvedOnce: false,
     puzzleTitle: "Дозатор инфузионной стойки №9",
     puzzleDesc: "Осмотрите треснувший кафель за операционным столом — там процарапана пропорция для колб А и B.",
     puzzleType: "dosage", targetA: 3, targetB: 1
@@ -621,7 +346,7 @@ const ROOMS = [
     artifact: { x: 0.33, y: 0.56, label: "Полевой телефон и гермовентиль" },
     shadowSpots: [{ x: 0.87, y: 0.54, scale: 0.96 }, { x: 0.76, y: 0.55, scale: 0.85 }],
     palette: { wall: "#1b1917", floor: "#0f0d0c", light: "#c93b2b" },
-    reverbDecay: 5.2, solved: false,
+    reverbDecay: 5.2, solved: false, solvedOnce: false,
     puzzleTitle: "Штурвал гермошлюза и аварийный передатчик",
     puzzleDesc: "На ржавой гермодвери прямо над маховиком выбита последовательность оборотов вправо (R) и влево (L).",
     puzzleType: "valve", targetSequence: ["R", "R", "R", "L", "L"]
@@ -635,7 +360,7 @@ const ROOMS = [
     artifact: { x: 0.35, y: 0.55, label: "Ржавый релейный шкаф" },
     shadowSpots: [{ x: 0.74, y: 0.53, scale: 1.05 }, { x: 0.22, y: 0.56, scale: 0.92 }],
     palette: { wall: "#161a18", floor: "#0a0c0b", light: "#8f3222" },
-    reverbDecay: 5.8, solved: false,
+    reverbDecay: 5.8, solved: false, solvedOnce: false,
     puzzleTitle: "Релейный замок аномалии",
     puzzleDesc: "Осмотрите стены и бетонные балки этой камеры фонарём — на них процарапаны 3 цифры актуального шифра.",
     puzzleType: "procedural_pin",
@@ -643,178 +368,15 @@ const ROOMS = [
   }
 ];
 
-/* ============================================================
-   ПРОЦЕДУРНЫЙ ГЕНЕРАТОР МРАЧНЫХ КОМНАТ (ДЛЯ СЕКТОРА 06)
-============================================================ */
 const PROCEDURAL_ARCHETYPES = [
-  {
-    name: "Затопленный коллектор под фундаментом",
-    desc: "Чёрная стоячая вода отражает треснувшие бетонные своды и ржавые вентили. Откуда-то снизу доносится глухой стук.",
-    bgTop: "#0e1513", bgBot: "#040605", accent: "#2c3d37", rust: "#5e251a"
-  },
-  {
-    name: "Изолятор с облупленной кафельной кладкой",
-    desc: "Узкая камера без окон. С потолка свисают обрывки проводов и крюки, а по углам расползлась чёрная плесень.",
-    bgTop: "#171915", bgBot: "#050604", accent: "#393e33", rust: "#6b2b1e"
-  },
-  {
-    name: "Архивный склеп с обрушенными стеллажами",
-    desc: "Покосившиеся железные шкафы завалены истлевшими папками и битым стеклом. Воздух тяжёлый и ледяной.",
-    bgTop: "#1a1412", bgBot: "#050403", accent: "#42332d", rust: "#7a2c1d"
-  },
-  {
-    name: "Шахта старого грузового подъёмника",
-    desc: "Ржавые тросы уходят в непроглядную черноту наверху. На сыром бетоне видны следы чьих-то ногтей.",
-    bgTop: "#121316", bgBot: "#030405", accent: "#2d313b", rust: "#6e261b"
-  }
+  { name: "Затопленный коллектор под фундаментом", desc: "Чёрная стоячая вода отражает треснувшие бетонные своды и ржавые вентили. Откуда-то снизу доносится глухой стук.", bgTop: "#0e1513", bgBot: "#040605", accent: "#2c3d37", rust: "#5e251a" },
+  { name: "Изолятор с облупленной кафельной кладкой", desc: "Узкая камера без окон. С потолка свисают обрывки проводов и крюки, а по углам расползлась чёрная плесень.", bgTop: "#171915", bgBot: "#050604", accent: "#393e33", rust: "#6b2b1e" },
+  { name: "Архивный склеп с обрушенными стеллажами", desc: "Покосившиеся железные шкафы завалены истлевшими папками и битым стеклом. Воздух тяжёлый и ледяной.", bgTop: "#1a1412", bgBot: "#050403", accent: "#42332d", rust: "#7a2c1d" },
+  { name: "Шахта старого грузового подъёмника", desc: "Ржавые тросы уходят в непроглядную черноту наверху. На сыром бетоне видны следы чьих-то ногтей.", bgTop: "#121316", bgBot: "#030405", accent: "#2d313b", rust: "#6e261b" }
 ];
 
-function generateRandomHorrorRoom(roomObj) {
-  const arch = PROCEDURAL_ARCHETYPES[Math.floor(Math.random() * PROCEDURAL_ARCHETYPES.length)];
-  const d1 = Math.floor(Math.random() * 10);
-  const d2 = Math.floor(Math.random() * 10);
-  const d3 = Math.floor(Math.random() * 10);
-  roomObj.targetPin = [d1, d2, d3];
-  roomObj.solved = false;
-  roomObj.title = arch.name;
-  roomObj.desc = arch.desc;
-
-  // Случайные координаты портала и механизма
-  const portalX = 0.68 + Math.random() * 0.18;
-  const portalY = 0.44 + Math.random() * 0.10;
-  const artX = 0.22 + Math.random() * 0.24;
-  const artY = 0.48 + Math.random() * 0.14;
-  roomObj.portal = { x: portalX, y: portalY, label: "Выход на поверхность (В начало)" };
-  roomObj.artifact = { x: artX, y: artY, label: "Ржавый релейный шкаф" };
-  roomObj.shadowSpots = [
-    { x: Math.min(0.88, portalX - 0.04), y: portalY + 0.04, scale: 1.04 },
-    { x: 0.16 + Math.random() * 0.65, y: 0.54, scale: 0.90 }
-  ];
-
-  const c = document.createElement("canvas");
-  c.width = 1600;
-  c.height = 900;
-  const g = c.getContext("2d");
-
-  // 1. Гнетущий градиент пространства
-  const bg = g.createRadialGradient(800, 380, 60, 800, 450, 980);
-  bg.addColorStop(0, arch.bgTop);
-  bg.addColorStop(0.65, arch.bgBot);
-  bg.addColorStop(1, "#010201");
-  g.fillStyle = bg;
-  g.fillRect(0, 0, 1600, 900);
-
-  // 2. Перспектива коридора / камеры
-  const px = portalX * 1600;
-  const py = portalY * 900;
-  const pw = 230 + Math.random() * 60;
-  const ph = 340 + Math.random() * 60;
-
-  g.strokeStyle = "rgba(130, 145, 125, 0.16)";
-  g.lineWidth = 2;
-  g.beginPath();
-  g.moveTo(0, 0); g.lineTo(px - pw * 0.5, py - ph * 0.5);
-  g.moveTo(1600, 0); g.lineTo(px + pw * 0.5, py - ph * 0.5);
-  g.moveTo(0, 900); g.lineTo(px - pw * 0.5, py + ph * 0.5);
-  g.moveTo(1600, 900); g.lineTo(px + pw * 0.5, py + ph * 0.5);
-  g.stroke();
-
-  // Вертикальные ребра / колонны / трубы
-  const ribs = 4 + Math.floor(Math.random() * 5);
-  for (let i = 1; i <= ribs; i++) {
-    const t = i / (ribs + 1);
-    const xL = (px - pw * 0.5) * t;
-    const xR = 1600 - (1600 - (px + pw * 0.5)) * t;
-    const yT = (py - ph * 0.5) * t;
-    const yB = 900 - (900 - (py + ph * 0.5)) * t;
-    g.strokeStyle = "rgba(95, 110, 95, 0.14)";
-    g.lineWidth = 3;
-    g.strokeRect(xL, yT, xR - xL, yB - yT);
-  }
-
-  // Тёмный проём выхода
-  g.fillStyle = "#010201";
-  g.fillRect(px - pw * 0.5, py - ph * 0.5, pw, ph);
-  g.strokeStyle = arch.rust;
-  g.lineWidth = 4;
-  g.strokeRect(px - pw * 0.5, py - ph * 0.5, pw, ph);
-
-  // 3. Пятна сырости, плесени и ржавые подтёки
-  for (let i = 0; i < 65; i++) {
-    const mx = Math.random() * 1600;
-    const my = Math.random() * 900;
-    const mr = 25 + Math.random() * 110;
-    const mg = g.createRadialGradient(mx, my, 4, mx, my, mr);
-    mg.addColorStop(0, i % 3 === 0 ? "rgba(65, 22, 14, 0.34)" : "rgba(10, 14, 10, 0.52)");
-    mg.addColorStop(1, "rgba(0,0,0,0)");
-    g.fillStyle = mg;
-    g.beginPath();
-    g.arc(mx, my, mr, 0, Math.PI * 2);
-    g.fill();
-  }
-
-  // Свисающие цепи / провода сверху
-  const cables = 3 + Math.floor(Math.random() * 4);
-  for (let i = 0; i < cables; i++) {
-    const cx = 180 + Math.random() * 1240;
-    const len = 140 + Math.random() * 340;
-    g.strokeStyle = "rgba(25, 28, 25, 0.85)";
-    g.lineWidth = 2 + Math.random() * 3;
-    g.beginPath();
-    g.moveTo(cx, 0);
-    g.quadraticCurveTo(cx + (Math.random() - 0.5) * 80, len * 0.5, cx + (Math.random() - 0.5) * 40, len);
-    g.stroke();
-  }
-
-  // Релейный шкаф (механизм)
-  const ax = artX * 1600;
-  const ay = artY * 900;
-  g.fillStyle = "#171412";
-  g.fillRect(ax - 75, ay - 95, 150, 190);
-  g.strokeStyle = "#4d3c30";
-  g.lineWidth = 3;
-  g.strokeRect(ax - 75, ay - 95, 150, 190);
-
-  // 4. Впечатываем случайный 3-значный код прямо в фактуру стены (чтобы игрок нашёл его фонарём!)
-  const clueSpots = [
-    { x: 0.16, y: 0.34 },
-    { x: 0.52, y: 0.30 },
-    { x: 0.56, y: 0.72 },
-    { x: 0.22, y: 0.76 }
-  ];
-  const chosen = clueSpots[Math.floor(Math.random() * clueSpots.length)];
-  const codeText = `${d1} - ${d2} - ${d3}`;
-
-  g.save();
-  g.translate(chosen.x * 1600, chosen.y * 900);
-  g.rotate((Math.random() - 0.5) * 0.18);
-  g.font = "bold 34px 'Courier New', monospace";
-  g.fillStyle = "rgba(12, 10, 9, 0.82)";
-  g.fillText(codeText, 3, 3);
-  g.fillStyle = "rgba(205, 190, 165, 0.58)";
-  g.fillText(codeText, 0, 0);
-  g.strokeStyle = "rgba(200, 185, 160, 0.32)";
-  g.lineWidth = 1.4;
-  g.beginPath();
-  g.moveTo(-18, -32); g.lineTo(145, -26);
-  g.moveTo(-12, 16); g.lineTo(138, 20);
-  g.stroke();
-  g.restore();
-
-  const tex = new THREE.CanvasTexture(c);
-  tex.minFilter = THREE.LinearFilter;
-  tex.magFilter = THREE.LinearFilter;
-  tex.generateMipmaps = false;
-  tex.needsUpdate = true;
-
-  if (roomTextures[5]) roomTextures[5].dispose();
-  roomTextures[5] = tex;
-  roomImageDims[5] = { w: 1600, h: 900 };
-}
-
 /* ============================================================
-   АУДИО-ДВИЖОК С ХОРРОР-ЭФФЕКТАМИ В КАЖДОЙ КОМНАТЕ
-   (сердцебиение, вскрики/вздохи, скрипы, царапанье по стенам, цепи, гул)
+   АУДИО-ДВИЖОК
 ============================================================ */
 class DarkAmbientAudio {
   constructor() {
@@ -829,6 +391,8 @@ class DarkAmbientAudio {
     this.scheduler = null;
     this.heartbeatTimer = null;
     this._irCache = new Map();
+    this.activeVoices = 0;
+    this.maxVoices = 8;
   }
 
   init() {
@@ -934,10 +498,7 @@ class DarkAmbientAudio {
   }
 
   toggle() {
-    if (!this.ctx) {
-      this.init();
-      return true;
-    }
+    if (!this.ctx) { this.init(); return true; }
     this.enabled = !this.enabled;
     if (this.enabled) {
       this.ctx.resume();
@@ -948,7 +509,23 @@ class DarkAmbientAudio {
     return this.enabled;
   }
 
-  // 1. Глухое сердцебиение (двойной удар тук-тук)
+  _canPlay() { return this.ctx && this.enabled && this.activeVoices < this.maxVoices; }
+
+  _trackVoice(ms) {
+    this.activeVoices++;
+    setTimeout(() => { this.activeVoices = Math.max(0, this.activeVoices - 1); }, ms);
+  }
+
+  duckForPanic() {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const curr = this.master.gain.value;
+    this.master.gain.cancelScheduledValues(now);
+    this.master.gain.setValueAtTime(curr, now);
+    this.master.gain.linearRampToValueAtTime(0.45, now + 0.1);
+    this.master.gain.linearRampToValueAtTime(this.enabled ? 0.92 : 0.0001, now + 2.5);
+  }
+
   playHeartbeatPulse(intensity = 0.55) {
     if (!this.ctx || !this.enabled) return;
     const now = this.ctx.currentTime;
@@ -958,13 +535,11 @@ class DarkAmbientAudio {
       osc.type = "sine";
       osc.frequency.setValueAtTime(idx === 0 ? 64 : 52, t);
       osc.frequency.exponentialRampToValueAtTime(24, t + 0.18);
-
       const g = this.ctx.createGain();
       const peak = (idx === 0 ? 0.48 : 0.34) * intensity;
       g.gain.setValueAtTime(0.001, t);
       g.gain.linearRampToValueAtTime(peak, t + 0.02);
       g.gain.exponentialRampToValueAtTime(0.0005, t + 0.21);
-
       osc.connect(g);
       g.connect(this.dryGain);
       osc.start(t);
@@ -976,24 +551,19 @@ class DarkAmbientAudio {
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     this.heartbeatTimer = setInterval(() => {
       if (document.hidden || !this.enabled) return;
-      const room = ROOMS[currentRoomIndex];
-      // Чем глубже в доме или если тень рядом — сердце бьётся громче
       const baseIntensity = entityState.visible ? 1.0 : (0.35 + currentRoomIndex * 0.11);
       this.playHeartbeatPulse(baseIntensity);
     }, 1450);
   }
 
-  // 2. Далёкий приглушённый вскрик / судорожный вздох в коридорах
   playDistantShriek() {
     if (!this.ctx || !this.enabled) return;
     const now = this.ctx.currentTime;
     const dur = 1.1 + Math.random() * 0.6;
     const panner = this.ctx.createStereoPanner();
     panner.pan.value = (Math.random() * 1.6) - 0.8;
-
     const src = this.ctx.createBufferSource();
     src.buffer = this.ambientBuffer;
-
     const f1 = this.ctx.createBiquadFilter();
     f1.type = "bandpass";
     const startF = 720 + Math.random() * 380;
@@ -1001,87 +571,204 @@ class DarkAmbientAudio {
     f1.frequency.exponentialRampToValueAtTime(startF * 1.35, now + dur * 0.35);
     f1.frequency.exponentialRampToValueAtTime(340, now + dur);
     f1.Q.value = 14.0;
-
     const env = this.ctx.createGain();
     env.gain.setValueAtTime(0.0008, now);
     env.gain.linearRampToValueAtTime(0.55, now + dur * 0.22);
     env.gain.exponentialRampToValueAtTime(0.0005, now + dur);
-
-    src.connect(f1);
-    f1.connect(env);
-    env.connect(panner);
-    panner.connect(this.convolver);
-    src.start(now);
-    src.stop(now + dur + 0.05);
+    src.connect(f1); f1.connect(env); env.connect(panner); panner.connect(this.convolver);
+    src.start(now); src.stop(now + dur + 0.05);
+    this._trackVoice(dur * 1000 + 100);
   }
 
-  // 3. Скрип старых половиц / дверных петель
+  playWhisper() {
+    if (!this._canPlay()) return;
+    const now = this.ctx.currentTime;
+    const dur = 2.0 + Math.random() * 1.5;
+    const panner = this.ctx.createStereoPanner();
+    panner.pan.value = (Math.random() * 1.6) - 0.8;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.ambientBuffer;
+    src.loop = true;
+    const bp1 = this.ctx.createBiquadFilter();
+    bp1.type = "bandpass"; bp1.frequency.value = 1800 + Math.random() * 400; bp1.Q.value = 6;
+    const bp2 = this.ctx.createBiquadFilter();
+    bp2.type = "bandpass"; bp2.frequency.value = 2600 + Math.random() * 600; bp2.Q.value = 8;
+    const lfo = this.ctx.createOscillator();
+    lfo.frequency.value = 4 + Math.random() * 3;
+    const lfoGain = this.ctx.createGain();
+    lfoGain.gain.value = 0.12;
+    const env = this.ctx.createGain();
+    env.gain.setValueAtTime(0.0001, now);
+    env.gain.linearRampToValueAtTime(0.28, now + 0.35);
+    env.gain.exponentialRampToValueAtTime(0.0005, now + dur);
+    src.connect(bp1); bp1.connect(bp2); bp2.connect(env);
+    env.connect(panner); panner.connect(this.dryGain); panner.connect(this.convolver);
+    lfo.connect(lfoGain); lfoGain.connect(env.gain);
+    src.start(now); src.stop(now + dur + 0.05);
+    lfo.start(now); lfo.stop(now + dur + 0.05);
+    this._trackVoice(dur * 1000 + 200);
+  }
+
+  playBreathing() {
+    if (!this._canPlay()) return;
+    const now = this.ctx.currentTime;
+    const cycles = 3, cycleDur = 3.2, total = cycles * cycleDur;
+    const panner = this.ctx.createStereoPanner();
+    panner.pan.value = (Math.random() * 0.8) - 0.4;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.ambientBuffer; src.loop = true;
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = "lowpass"; lp.frequency.value = 320;
+    const env = this.ctx.createGain();
+    env.gain.setValueAtTime(0.0001, now);
+    for (let i = 0; i < cycles; i++) {
+      const t0 = now + i * cycleDur;
+      env.gain.linearRampToValueAtTime(0.4, t0 + 0.9);
+      env.gain.linearRampToValueAtTime(0.05, t0 + 2.4);
+    }
+    env.gain.linearRampToValueAtTime(0.0001, now + total);
+    src.connect(lp); lp.connect(env); env.connect(panner); panner.connect(this.dryGain);
+    src.start(now); src.stop(now + total + 0.1);
+    this._trackVoice(total * 1000 + 200);
+  }
+
+  playDistantCry() {
+    if (!this._canPlay()) return;
+    const now = this.ctx.currentTime;
+    const dur = 2.5;
+    const panner = this.ctx.createStereoPanner();
+    panner.pan.value = (Math.random() * 1.6) - 0.8;
+    const osc = this.ctx.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(180, now);
+    osc.frequency.exponentialRampToValueAtTime(90, now + dur);
+    const bp1 = this.ctx.createBiquadFilter();
+    bp1.type = "bandpass"; bp1.frequency.value = 700; bp1.Q.value = 5;
+    const bp2 = this.ctx.createBiquadFilter();
+    bp2.type = "bandpass"; bp2.frequency.value = 1150; bp2.Q.value = 6;
+    const env = this.ctx.createGain();
+    env.gain.setValueAtTime(0.0001, now);
+    env.gain.linearRampToValueAtTime(0.35, now + 0.4);
+    env.gain.exponentialRampToValueAtTime(0.0005, now + dur);
+    osc.connect(bp1); bp1.connect(bp2); bp2.connect(env);
+    env.connect(panner); panner.connect(this.convolver);
+    osc.start(now); osc.stop(now + dur);
+    this._trackVoice(dur * 1000 + 100);
+  }
+
+  playDrip() {
+    if (!this._canPlay()) return;
+    const count = 2 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < count; i++) {
+      const t = this.ctx.currentTime + i * (0.7 + Math.random() * 0.8);
+      const panner = this.ctx.createStereoPanner();
+      panner.pan.value = (Math.random() * 1.4) - 0.7;
+      const osc = this.ctx.createOscillator();
+      osc.type = "sine";
+      const base = 900 + Math.random() * 400;
+      osc.frequency.setValueAtTime(base, t);
+      osc.frequency.exponentialRampToValueAtTime(base * 0.55, t + 0.08);
+      const env = this.ctx.createGain();
+      env.gain.setValueAtTime(0.0001, t);
+      env.gain.linearRampToValueAtTime(0.45, t + 0.005);
+      env.gain.exponentialRampToValueAtTime(0.0005, t + 0.12);
+      osc.connect(env); env.connect(panner); panner.connect(this.convolver);
+      osc.start(t); osc.stop(t + 0.15);
+    }
+  }
+
+  playMorse() {
+    if (!this._canPlay()) return;
+    const pattern = [1,0,1,1,0,1,0,1,1,1,0,1];
+    const unit = 0.09;
+    const panner = this.ctx.createStereoPanner();
+    panner.pan.value = (Math.random() * 1.2) - 0.6;
+    let t = this.ctx.currentTime;
+    pattern.forEach(p => {
+      if (p === 1) {
+        const src = this.ctx.createBufferSource();
+        src.buffer = this.crackleBuffer;
+        const bp = this.ctx.createBiquadFilter();
+        bp.type = "bandpass"; bp.frequency.value = 1800; bp.Q.value = 4;
+        const env = this.ctx.createGain();
+        env.gain.setValueAtTime(0.0001, t);
+        env.gain.linearRampToValueAtTime(0.3, t + 0.005);
+        env.gain.exponentialRampToValueAtTime(0.0005, t + unit);
+        src.connect(bp); bp.connect(env); env.connect(panner); panner.connect(this.dryGain);
+        src.start(t); src.stop(t + unit + 0.02);
+      }
+      t += unit * 1.5;
+    });
+  }
+
+  playStepBehind() {
+    if (!this._canPlay()) return;
+    const pan = pointer.normX > 0 ? -0.9 : 0.9;
+    for (let i = 0; i < 4; i++) {
+      const t = this.ctx.currentTime + i * 0.42;
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.ambientBuffer;
+      const lp = this.ctx.createBiquadFilter();
+      lp.type = "lowpass"; lp.frequency.value = 160;
+      const g = this.ctx.createGain();
+      const panner = this.ctx.createStereoPanner();
+      panner.pan.value = pan;
+      g.gain.setValueAtTime(0.7, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+      src.connect(lp); lp.connect(g); g.connect(panner);
+      panner.connect(this.dryGain);
+      src.start(t); src.stop(t + 0.24);
+    }
+    this._trackVoice(2000);
+  }
+
   playWoodCreak() {
-    if (!this.ctx || !this.enabled) return;
+    if (!this._canPlay()) return;
     const now = this.ctx.currentTime;
     const dur = 0.8 + Math.random() * 0.9;
     const panner = this.ctx.createStereoPanner();
     panner.pan.value = (Math.random() * 1.5) - 0.75;
-
     const osc = this.ctx.createOscillator();
     osc.type = "sawtooth";
     const base = 180 + Math.random() * 140;
     osc.frequency.setValueAtTime(base, now);
     osc.frequency.linearRampToValueAtTime(base * 1.45, now + dur * 0.4);
     osc.frequency.linearRampToValueAtTime(base * 0.82, now + dur);
-
     const bp = this.ctx.createBiquadFilter();
-    bp.type = "bandpass";
-    bp.frequency.value = base * 2.1;
-    bp.Q.value = 9.0;
-
+    bp.type = "bandpass"; bp.frequency.value = base * 2.1; bp.Q.value = 9.0;
     const env = this.ctx.createGain();
     env.gain.setValueAtTime(0.001, now);
     env.gain.linearRampToValueAtTime(0.14, now + 0.12);
     env.gain.exponentialRampToValueAtTime(0.0005, now + dur);
-
-    osc.connect(bp);
-    bp.connect(env);
-    env.connect(panner);
-    panner.connect(this.dryGain);
-    panner.connect(this.convolver);
-    osc.start(now);
-    osc.stop(now + dur + 0.03);
+    osc.connect(bp); bp.connect(env); env.connect(panner);
+    panner.connect(this.dryGain); panner.connect(this.convolver);
+    osc.start(now); osc.stop(now + dur + 0.03);
+    this._trackVoice(dur * 1000 + 100);
   }
 
-  // 4. Царапанье когтями по штукатурке / дереву
   playWallScratching() {
-    if (!this.ctx || !this.enabled) return;
+    if (!this._canPlay()) return;
     const strokes = 3 + Math.floor(Math.random() * 3);
     const pan = (Math.random() * 1.6) - 0.8;
-
     for (let i = 0; i < strokes; i++) {
       const t = this.ctx.currentTime + i * (0.18 + Math.random() * 0.14);
       const dur = 0.14 + Math.random() * 0.08;
       const panner = this.ctx.createStereoPanner();
       panner.pan.value = pan;
-
       const src = this.ctx.createBufferSource();
       src.buffer = this.crackleBuffer;
-
       const bp = this.ctx.createBiquadFilter();
       bp.type = "bandpass";
       bp.frequency.setValueAtTime(2400 + Math.random() * 900, t);
       bp.frequency.exponentialRampToValueAtTime(1100, t + dur);
       bp.Q.value = 8.0;
-
       const env = this.ctx.createGain();
       env.gain.setValueAtTime(0.001, t);
-      env.gain.linearRampToValueAtTime(0.45, t + 0.02);
+      env.gain.linearRampToValueAtTime(0.4, t + 0.02);
       env.gain.exponentialRampToValueAtTime(0.0005, t + dur);
-
-      src.connect(bp);
-      bp.connect(env);
-      env.connect(panner);
-      panner.connect(this.dryGain);
-      panner.connect(this.convolver);
-      src.start(t);
-      src.stop(t + dur + 0.02);
+      src.connect(bp); bp.connect(env); env.connect(panner);
+      panner.connect(this.dryGain); panner.connect(this.convolver);
+      src.start(t); src.stop(t + dur + 0.02);
     }
   }
 
@@ -1091,24 +778,19 @@ class DarkAmbientAudio {
     const src = this.ctx.createBufferSource();
     src.buffer = this.crackleBuffer;
     const bp = this.ctx.createBiquadFilter();
-    bp.type = "bandpass";
-    bp.frequency.value = 1900;
-    bp.Q.value = 18;
+    bp.type = "bandpass"; bp.frequency.value = 1900; bp.Q.value = 18;
     const g = this.ctx.createGain();
     g.gain.setValueAtTime(0.001, now);
     g.gain.linearRampToValueAtTime(0.18, now + 0.004);
     g.gain.exponentialRampToValueAtTime(0.0005, now + 0.04);
-    src.connect(bp);
-    bp.connect(g);
-    g.connect(this.dryGain);
-    src.start(now);
-    src.stop(now + 0.045);
+    src.connect(bp); bp.connect(g); g.connect(this.dryGain);
+    src.start(now); src.stop(now + 0.045);
   }
 
-  playSteelChains() {
-    if (!this.ctx || !this.enabled) return;
+  playSteelChains(panOverride = null) {
+    if (!this._canPlay()) return;
     const count = 8 + Math.floor(Math.random() * 6);
-    const pan = (Math.random() * 1.6) - 0.8;
+    const pan = panOverride !== null ? panOverride : (Math.random() * 1.6) - 0.8;
     for (let i = 0; i < count; i++) {
       const t = this.ctx.currentTime + i * (0.045 + Math.random() * 0.07);
       const panner = this.ctx.createStereoPanner();
@@ -1117,29 +799,23 @@ class DarkAmbientAudio {
       hit.buffer = this.crackleBuffer;
       const env = this.ctx.createGain();
       env.gain.setValueAtTime(0.001, t);
-      env.gain.linearRampToValueAtTime(0.65, t + 0.003);
+      env.gain.linearRampToValueAtTime(0.6, t + 0.003);
       env.gain.exponentialRampToValueAtTime(0.0005, t + 0.05);
       [1450, 2320, 3780, 5120].forEach((freq, idx) => {
         const bp = this.ctx.createBiquadFilter();
-        bp.type = "bandpass";
-        bp.frequency.value = freq + Math.random() * 150;
+        bp.type = "bandpass"; bp.frequency.value = freq + Math.random() * 150;
         bp.Q.value = 55 + idx * 15;
         const g = this.ctx.createGain();
         g.gain.value = 1.4 / (idx + 1);
-        hit.connect(env);
-        env.connect(bp);
-        bp.connect(g);
-        g.connect(panner);
+        hit.connect(env); env.connect(bp); bp.connect(g); g.connect(panner);
       });
-      panner.connect(this.dryGain);
-      panner.connect(this.convolver);
-      hit.start(t);
-      hit.stop(t + 0.32);
+      panner.connect(this.dryGain); panner.connect(this.convolver);
+      hit.start(t); hit.stop(t + 0.32);
     }
   }
 
   playSubterraneanRumble() {
-    if (!this.ctx || !this.enabled) return;
+    if (!this._canPlay()) return;
     const now = this.ctx.currentTime;
     const dur = 3.2 + Math.random() * 1.5;
     const panner = this.ctx.createStereoPanner();
@@ -1155,25 +831,26 @@ class DarkAmbientAudio {
     lp.Q.value = 6.0;
     const env = this.ctx.createGain();
     env.gain.setValueAtTime(0.0001, now);
-    env.gain.linearRampToValueAtTime(0.95, now + 0.8);
+    env.gain.linearRampToValueAtTime(0.9, now + 0.8);
     env.gain.exponentialRampToValueAtTime(0.0001, now + dur);
-    src.connect(lp);
-    lp.connect(env);
-    env.connect(panner);
-    panner.connect(this.convolver);
-    src.start(now);
-    src.stop(now + dur);
+    src.connect(lp); lp.connect(env); env.connect(panner); panner.connect(this.convolver);
+    src.start(now); src.stop(now + dur);
+    this._trackVoice(dur * 1000 + 200);
   }
 
   playPanicBurst() {
     if (!this.ctx || !this.enabled) return;
+    this.duckForPanic();
     this.playHeartbeatPulse(1.0);
     setTimeout(() => this.playHeartbeatPulse(1.0), 480);
     setTimeout(() => {
-      if (Math.random() < 0.65) this.playScream();
-      else this.playWallScratching();
+      const r = Math.random();
+      if (r < 0.4) this.playDistantCry();
+      else if (r < 0.7) this.playWallScratching();
+      else this.playWhisper();
     }, 170);
     setTimeout(() => this.playWoodCreak(), 620);
+    setTimeout(() => this.playStepBehind(), 1200);
   }
 
   playFootsteps() {
@@ -1189,23 +866,38 @@ class DarkAmbientAudio {
       const g = this.ctx.createGain();
       g.gain.setValueAtTime(0.8, t);
       g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
-      src.connect(lp);
-      lp.connect(g);
-      g.connect(this.dryGain);
-      g.connect(this.convolver);
-      src.start(t);
-      src.stop(t + 0.24);
+      src.connect(lp); lp.connect(g);
+      g.connect(this.dryGain); g.connect(this.convolver);
+      src.start(t); src.stop(t + 0.24);
     }
   }
 
   triggerRandomAmbient() {
-    if (!this.ctx || !this.enabled) return;
-    const r = Math.random();
-    if (r < 0.22) this.playSteelChains();
-    else if (r < 0.44) this.playWallScratching();
-    else if (r < 0.66) this.playWoodCreak();
-    else if (r < 0.84) this.playDistantShriek();
-    else this.playSubterraneanRumble();
+    if (!this._canPlay()) return;
+    const sets = {
+      0: ['shriek', 'creak', 'scratch', 'whisper'],
+      1: ['chains', 'shriek', 'creak', 'whisper', 'step'],
+      2: ['creak', 'scratch', 'cry', 'rumble'],
+      3: ['drip', 'whisper', 'creak', 'scratch'],
+      4: ['morse', 'rumble', 'shriek', 'chains'],
+      5: ['whisper', 'cry', 'scratch', 'rumble', 'breathing']
+    };
+    const pool = sets[currentRoomIndex] || sets[0];
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    const fn = {
+      shriek: () => this.playDistantShriek(),
+      creak: () => this.playWoodCreak(),
+      scratch: () => this.playWallScratching(),
+      chains: () => this.playSteelChains(),
+      rumble: () => this.playSubterraneanRumble(),
+      whisper: () => this.playWhisper(),
+      cry: () => this.playDistantCry(),
+      drip: () => this.playDrip(),
+      morse: () => this.playMorse(),
+      step: () => this.playStepBehind(),
+      breathing: () => this.playBreathing()
+    }[pick];
+    if (fn) fn();
   }
 
   startEnvironmentalScheduler() {
@@ -1225,13 +917,12 @@ class DarkAmbientAudio {
 const audioEngine = new DarkAmbientAudio();
 
 /* ============================================================
-   УПРАВЛЕНИЕ РОЛИКОМ tape.mp4 И ПЛАВНЫМ ВОЗВРАТОМ К КОМНАТЕ
+   ВИДЕО tape.mp4
 ============================================================ */
 const glCanvas = document.getElementById("gl-canvas");
 const fxCanvas = document.getElementById("fx-canvas");
 const fxCtx = fxCanvas.getContext("2d");
 const tapeVideo = document.getElementById("tape-video");
-
 let tapeAudioSourceNode = null;
 
 function connectTapeVideoToAudio() {
@@ -1242,7 +933,6 @@ function connectTapeVideoToAudio() {
   } catch (e) {}
 }
 
-// Когда ролик tape.mp4 заканчивается — плавно возвращаемся к обычной комнате
 if (tapeVideo) {
   tapeVideo.addEventListener("ended", () => {
     const room0 = ROOMS[0];
@@ -1256,7 +946,6 @@ function syncTapeVideo() {
   if (!tapeVideo) return;
   const room = ROOMS[currentRoomIndex];
   const shouldPlay = room.id === 0 && room.tapePlaying && !room.tapeFinished;
-
   if (shouldPlay) {
     tapeVideo.classList.add("playing");
     tapeVideo.muted = !audioEngine.enabled;
@@ -1267,9 +956,7 @@ function syncTapeVideo() {
     }
   } else {
     tapeVideo.classList.remove("playing");
-    if (!tapeVideo.paused) {
-      tapeVideo.pause();
-    }
+    if (!tapeVideo.paused) tapeVideo.pause();
   }
 }
 
@@ -1299,6 +986,32 @@ scene.add(roomMesh);
 
 const proceduralTextureCache = {};
 
+/* Подсказки для фиксированных комнат — на случай, если JPG не загружены */
+function drawFallbackHint(g, room) {
+  if (room.isProceduralRoom) return;
+  const hints = {
+    0: { text: "F = 442 Hz", x: 0.14, y: 0.36, size: 32, rot: -0.05, sub: "несущая частота плёнки" },
+    1: { text: "I · IV · VII · IX", x: 0.68, y: 0.34, size: 26, rot: 0.04, sub: "порядок дисков" },
+    2: { text: "Л: 6 кг  =  П: 6 кг", x: 0.48, y: 0.60, size: 26, rot: -0.03, sub: "уравновесить чаши" },
+    3: { text: "A = 3  ·  B = 1", x: 0.50, y: 0.42, size: 28, rot: 0.02, sub: "пропорция дозатора" },
+    4: { text: "R · R · R · L · L", x: 0.82, y: 0.42, size: 24, rot: 0.06, sub: "обороты штурвала" }
+  };
+  const h = hints[room.id];
+  if (!h) return;
+  g.save();
+  g.translate(h.x * 1280, h.y * 720);
+  g.rotate(h.rot);
+  g.font = `bold ${h.size}px 'Courier New', monospace`;
+  g.fillStyle = "rgba(10, 8, 7, 0.85)";
+  g.fillText(h.text, 2, 2);
+  g.fillStyle = "rgba(210, 195, 170, 0.55)";
+  g.fillText(h.text, 0, 0);
+  g.font = `italic 13px 'Courier New', monospace`;
+  g.fillStyle = "rgba(160, 148, 130, 0.45)";
+  g.fillText(h.sub, 0, h.size * 0.9);
+  g.restore();
+}
+
 function createProceduralTexture(room) {
   const c = document.createElement("canvas");
   c.width = 1280; c.height = 720;
@@ -1324,7 +1037,7 @@ function createProceduralTexture(room) {
   g.fillRect(px - 110, py - 150, 220, 300);
 
   if (room.id === 0) {
-    const tx = 1280 * 0.415; const ty = 720 * 0.42;
+    const tx = 1280 * 0.415, ty = 720 * 0.42;
     g.fillStyle = "#161310";
     g.fillRect(tx - 95, ty + 35, 190, 16);
     g.fillRect(tx - 75, ty + 51, 14, 140);
@@ -1336,6 +1049,20 @@ function createProceduralTexture(room) {
     g.strokeRect(tx - 68, ty - 95, 136, 130);
   }
 
+  // Грязь и подтёки
+  for (let i = 0; i < 50; i++) {
+    const mx = Math.random() * 1280, my = Math.random() * 720, mr = 30 + Math.random() * 100;
+    const mg = g.createRadialGradient(mx, my, 4, mx, my, mr);
+    mg.addColorStop(0, i % 3 === 0 ? "rgba(65, 22, 14, 0.32)" : "rgba(10, 14, 10, 0.5)");
+    mg.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = mg;
+    g.beginPath();
+    g.arc(mx, my, mr, 0, Math.PI * 2);
+    g.fill();
+  }
+
+  drawFallbackHint(g, room);
+
   const tex = new THREE.CanvasTexture(c);
   tex.minFilter = THREE.LinearFilter;
   tex.magFilter = THREE.LinearFilter;
@@ -1344,28 +1071,136 @@ function createProceduralTexture(room) {
   return tex;
 }
 
-function build3DShadowEntity() {
-  const group = new THREE.Group();
-  const shadowMat = new THREE.MeshStandardMaterial({ color: 0x020302, roughness: 0.98, transparent: true, opacity: 0.0 });
-  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.32, 1.45, 16), shadowMat);
-  group.add(torso);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.21, 16, 16), shadowMat);
-  head.scale.set(0.88, 1.18, 0.92); head.position.set(0.06, 0.92, 0.08); head.rotation.z = -0.22;
-  group.add(head);
-  const armGeo = new THREE.CylinderGeometry(0.065, 0.045, 1.35, 10);
-  const leftArm = new THREE.Mesh(armGeo, shadowMat); leftArm.position.set(-0.32, -0.12, 0.05); leftArm.rotation.z = 0.12; group.add(leftArm);
-  const rightArm = new THREE.Mesh(armGeo, shadowMat); rightArm.position.set(0.32, -0.14, 0.05); rightArm.rotation.z = -0.10; group.add(rightArm);
-  const eyeMat = new THREE.MeshBasicMaterial({ color: 0xd9e0d4, transparent: true, opacity: 0.0 });
-  const eyeGeo = new THREE.SphereGeometry(0.018, 8, 8);
-  const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-0.01, 0.94, 0.26); group.add(eyeL);
-  const eyeR = new THREE.Mesh(eyeGeo, eyeMat); eyeR.position.set(0.11, 0.92, 0.25); group.add(eyeR);
-  group.userData = { shadowMat, eyeMat };
-  return group;
+function generateRandomHorrorRoom(roomObj) {
+  const arch = PROCEDURAL_ARCHETYPES[Math.floor(Math.random() * PROCEDURAL_ARCHETYPES.length)];
+  const d1 = Math.floor(Math.random() * 10);
+  const d2 = Math.floor(Math.random() * 10);
+  const d3 = Math.floor(Math.random() * 10);
+  roomObj.targetPin = [d1, d2, d3];
+  roomObj.solved = false;
+  // solvedOnce НЕ сбрасываем — финальный прогресс сохраняется
+  roomObj.title = arch.name;
+  roomObj.desc = arch.desc;
+
+  const portalX = 0.68 + Math.random() * 0.18;
+  const portalY = 0.44 + Math.random() * 0.10;
+  const artX = 0.22 + Math.random() * 0.24;
+  const artY = 0.48 + Math.random() * 0.14;
+  roomObj.portal = { x: portalX, y: portalY, label: "Выход на поверхность (В начало)" };
+  roomObj.artifact = { x: artX, y: artY, label: "Ржавый релейный шкаф" };
+  roomObj.shadowSpots = [
+    { x: Math.min(0.88, portalX - 0.04), y: portalY + 0.04, scale: 1.04 },
+    { x: 0.16 + Math.random() * 0.65, y: 0.54, scale: 0.90 }
+  ];
+
+  const c = document.createElement("canvas");
+  c.width = 1600; c.height = 900;
+  const g = c.getContext("2d");
+
+  const bg = g.createRadialGradient(800, 380, 60, 800, 450, 980);
+  bg.addColorStop(0, arch.bgTop);
+  bg.addColorStop(0.65, arch.bgBot);
+  bg.addColorStop(1, "#010201");
+  g.fillStyle = bg;
+  g.fillRect(0, 0, 1600, 900);
+
+  const px = portalX * 1600, py = portalY * 900;
+  const pw = 230 + Math.random() * 60;
+  const ph = 340 + Math.random() * 60;
+
+  g.strokeStyle = "rgba(130, 145, 125, 0.16)";
+  g.lineWidth = 2;
+  g.beginPath();
+  g.moveTo(0, 0); g.lineTo(px - pw * 0.5, py - ph * 0.5);
+  g.moveTo(1600, 0); g.lineTo(px + pw * 0.5, py - ph * 0.5);
+  g.moveTo(0, 900); g.lineTo(px - pw * 0.5, py + ph * 0.5);
+  g.moveTo(1600, 900); g.lineTo(px + pw * 0.5, py + ph * 0.5);
+  g.stroke();
+
+  const ribs = 4 + Math.floor(Math.random() * 5);
+  for (let i = 1; i <= ribs; i++) {
+    const t = i / (ribs + 1);
+    const xL = (px - pw * 0.5) * t;
+    const xR = 1600 - (1600 - (px + pw * 0.5)) * t;
+    const yT = (py - ph * 0.5) * t;
+    const yB = 900 - (900 - (py + ph * 0.5)) * t;
+    g.strokeStyle = "rgba(95, 110, 95, 0.14)";
+    g.lineWidth = 3;
+    g.strokeRect(xL, yT, xR - xL, yB - yT);
+  }
+
+  g.fillStyle = "#010201";
+  g.fillRect(px - pw * 0.5, py - ph * 0.5, pw, ph);
+  g.strokeStyle = arch.rust;
+  g.lineWidth = 4;
+  g.strokeRect(px - pw * 0.5, py - ph * 0.5, pw, ph);
+
+  for (let i = 0; i < 65; i++) {
+    const mx = Math.random() * 1600, my = Math.random() * 900, mr = 25 + Math.random() * 110;
+    const mg = g.createRadialGradient(mx, my, 4, mx, my, mr);
+    mg.addColorStop(0, i % 3 === 0 ? "rgba(65, 22, 14, 0.34)" : "rgba(10, 14, 10, 0.52)");
+    mg.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = mg;
+    g.beginPath();
+    g.arc(mx, my, mr, 0, Math.PI * 2);
+    g.fill();
+  }
+
+  const cables = 3 + Math.floor(Math.random() * 4);
+  for (let i = 0; i < cables; i++) {
+    const cx = 180 + Math.random() * 1240;
+    const len = 140 + Math.random() * 340;
+    g.strokeStyle = "rgba(25, 28, 25, 0.85)";
+    g.lineWidth = 2 + Math.random() * 3;
+    g.beginPath();
+    g.moveTo(cx, 0);
+    g.quadraticCurveTo(cx + (Math.random() - 0.5) * 80, len * 0.5, cx + (Math.random() - 0.5) * 40, len);
+    g.stroke();
+  }
+
+  const ax = artX * 1600, ay = artY * 900;
+  g.fillStyle = "#171412";
+  g.fillRect(ax - 75, ay - 95, 150, 190);
+  g.strokeStyle = "#4d3c30";
+  g.lineWidth = 3;
+  g.strokeRect(ax - 75, ay - 95, 150, 190);
+
+  const clueSpots = [
+    { x: 0.16, y: 0.34 }, { x: 0.52, y: 0.30 }, { x: 0.56, y: 0.72 }, { x: 0.22, y: 0.76 }
+  ];
+  const chosen = clueSpots[Math.floor(Math.random() * clueSpots.length)];
+  const codeText = `${d1} - ${d2} - ${d3}`;
+
+  g.save();
+  g.translate(chosen.x * 1600, chosen.y * 900);
+  g.rotate((Math.random() - 0.5) * 0.18);
+  g.font = "bold 34px 'Courier New', monospace";
+  g.fillStyle = "rgba(12, 10, 9, 0.82)";
+  g.fillText(codeText, 3, 3);
+  g.fillStyle = "rgba(205, 190, 165, 0.58)";
+  g.fillText(codeText, 0, 0);
+  g.strokeStyle = "rgba(200, 185, 160, 0.32)";
+  g.lineWidth = 1.4;
+  g.beginPath();
+  g.moveTo(-18, -32); g.lineTo(145, -26);
+  g.moveTo(-12, 16); g.lineTo(138, 20);
+  g.stroke();
+  g.restore();
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  tex.needsUpdate = true;
+
+  if (roomTextures[5]) roomTextures[5].dispose();
+  roomTextures[5] = tex;
+  roomImageDims[5] = { w: 1600, h: 900 };
 }
 
-const shadowEntity = build3DShadowEntity();
-scene.add(shadowEntity);
-
+/* ============================================================
+   СОСТОЯНИЕ
+============================================================ */
 let currentRoomIndex = 0;
 let freeMode = false;
 let flashlightOn = true;
@@ -1373,6 +1208,7 @@ let flashlightOn = true;
 const roomTextures = {};
 const roomUploadedFlags = {};
 const roomImageDims = {};
+const roomTickFlags = {};
 
 const pointer = {
   x: window.innerWidth * 0.5, y: window.innerHeight * 0.5,
@@ -1400,7 +1236,9 @@ function saveProgress() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       solved: ROOMS.map(r => r.solved),
-      currentRoom: currentRoomIndex
+      solvedOnce: ROOMS.map(r => Boolean(r.solvedOnce)),
+      currentRoom: currentRoomIndex,
+      freeMode, flashlightOn
     }));
   } catch (e) {}
 }
@@ -1410,12 +1248,11 @@ function loadProgress() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
     const data = JSON.parse(raw);
-    if (Array.isArray(data.solved)) {
-      data.solved.forEach((s, i) => { if (ROOMS[i]) ROOMS[i].solved = Boolean(s); });
-    }
-    if (typeof data.currentRoom === "number" && data.currentRoom >= 0 && data.currentRoom < ROOMS.length) {
-      currentRoomIndex = data.currentRoom;
-    }
+    if (Array.isArray(data.solved)) data.solved.forEach((s, i) => { if (ROOMS[i]) ROOMS[i].solved = Boolean(s); });
+    if (Array.isArray(data.solvedOnce)) data.solvedOnce.forEach((s, i) => { if (ROOMS[i]) ROOMS[i].solvedOnce = Boolean(s); });
+    if (typeof data.currentRoom === "number" && data.currentRoom >= 0 && data.currentRoom < ROOMS.length) currentRoomIndex = data.currentRoom;
+    if (typeof data.freeMode === "boolean") freeMode = data.freeMode;
+    if (typeof data.flashlightOn === "boolean") flashlightOn = data.flashlightOn;
   } catch (e) {}
 }
 
@@ -1474,15 +1311,12 @@ function fitImageSourceToGPU(img) {
   const w = img.naturalWidth || img.width;
   const h = img.naturalHeight || img.height;
   if (!w || !h) return null;
-  if (w <= MAX_TEXTURE_DIM && h <= MAX_TEXTURE_DIM) {
-    return { source: img, width: w, height: h };
-  }
+  if (w <= MAX_TEXTURE_DIM && h <= MAX_TEXTURE_DIM) return { source: img, width: w, height: h };
   const scale = Math.min(MAX_TEXTURE_DIM / w, MAX_TEXTURE_DIM / h);
   const nw = Math.max(1, Math.round(w * scale));
   const nh = Math.max(1, Math.round(h * scale));
   const c = document.createElement("canvas");
-  c.width = nw;
-  c.height = nh;
+  c.width = nw; c.height = nh;
   c.getContext("2d").drawImage(img, 0, 0, nw, nh);
   return { source: c, width: nw, height: nh };
 }
@@ -1508,15 +1342,11 @@ function createTextureFromImageSource(img, roomIdx) {
 
 function applyRoomTexture(idx) {
   const room = ROOMS[idx];
-  if (room.isProceduralRoom && !roomTextures[idx]) {
-    generateRandomHorrorRoom(room);
-  }
+  if (room.isProceduralRoom && !roomTextures[idx]) generateRandomHorrorRoom(room);
   if (roomTextures[idx]) {
     roomPlaneMat.map = roomTextures[idx];
   } else {
-    if (!proceduralTextureCache[idx]) {
-      proceduralTextureCache[idx] = createProceduralTexture(room);
-    }
+    if (!proceduralTextureCache[idx]) proceduralTextureCache[idx] = createProceduralTexture(room);
     roomPlaneMat.map = proceduralTextureCache[idx];
   }
   roomPlaneMat.needsUpdate = true;
@@ -1527,9 +1357,7 @@ function tryAutoLoadImages() {
     if (room.isProceduralRoom) return;
     const img = new Image();
     img.onload = () => createTextureFromImageSource(img, idx);
-    img.onerror = () => {
-      if (idx === currentRoomIndex) applyRoomTexture(idx);
-    };
+    img.onerror = () => { if (idx === currentRoomIndex) applyRoomTexture(idx); };
     img.src = room.fileName;
   });
 }
@@ -1574,14 +1402,38 @@ function loadSingleFileAsTexture(file, roomIdx) {
 }
 
 function handleBulkFiles(fileList) {
-  const files = Array.from(fileList)
-    .filter(f => /^image\/(jpeg|png|webp)$/.test(f.type) && f.size <= MAX_UPLOAD_SIZE);
+  const files = Array.from(fileList).filter(f => /^image\/(jpeg|png|webp)$/.test(f.type) && f.size <= MAX_UPLOAD_SIZE);
   if (!files.length) {
     setPhotosFeedback("Нет подходящих файлов (допустимы JPEG/PNG/WebP до 25 МБ).");
     return;
   }
   files.forEach((file, idx) => { if (idx < 5) loadSingleFileAsTexture(file, idx); });
 }
+
+/* ============================================================
+   СУЩНОСТЬ ИЗ ТЕНИ
+============================================================ */
+function build3DShadowEntity() {
+  const group = new THREE.Group();
+  const shadowMat = new THREE.MeshStandardMaterial({ color: 0x020302, roughness: 0.98, transparent: true, opacity: 0.0 });
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.32, 1.45, 16), shadowMat);
+  group.add(torso);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.21, 16, 16), shadowMat);
+  head.scale.set(0.88, 1.18, 0.92); head.position.set(0.06, 0.92, 0.08); head.rotation.z = -0.22;
+  group.add(head);
+  const armGeo = new THREE.CylinderGeometry(0.065, 0.045, 1.35, 10);
+  const leftArm = new THREE.Mesh(armGeo, shadowMat); leftArm.position.set(-0.32, -0.12, 0.05); leftArm.rotation.z = 0.12; group.add(leftArm);
+  const rightArm = new THREE.Mesh(armGeo, shadowMat); rightArm.position.set(0.32, -0.14, 0.05); rightArm.rotation.z = -0.10; group.add(rightArm);
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0xd9e0d4, transparent: true, opacity: 0.0 });
+  const eyeGeo = new THREE.SphereGeometry(0.018, 8, 8);
+  const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-0.01, 0.94, 0.26); group.add(eyeL);
+  const eyeR = new THREE.Mesh(eyeGeo, eyeMat); eyeR.position.set(0.11, 0.92, 0.25); group.add(eyeR);
+  group.userData = { shadowMat, eyeMat };
+  return group;
+}
+
+const shadowEntity = build3DShadowEntity();
+scene.add(shadowEntity);
 
 const dustParticles = Array.from({ length: 80 }, () => ({
   x: Math.random(), y: Math.random(), z: 0.3 + Math.random() * 0.9,
@@ -1602,13 +1454,8 @@ function updateWorldPlaneLayout() {
   const viewAspect = viewW / viewH;
 
   let planeW, planeH;
-  if (viewAspect > imgAspect) {
-    planeW = viewW * 1.08;
-    planeH = planeW / imgAspect;
-  } else {
-    planeH = viewH * 1.08;
-    planeW = planeH * imgAspect;
-  }
+  if (viewAspect > imgAspect) { planeW = viewW * 1.08; planeH = planeW / imgAspect; }
+  else { planeH = viewH * 1.08; planeW = planeH * imgAspect; }
   roomMesh.scale.set(planeW / 16, planeH / 9, 1);
 
   layout.planeW = planeW; layout.planeH = planeH;
@@ -1633,6 +1480,9 @@ function animate(time) {
       const p = elapsed / panicState.duration;
       panicState.intensity = p < 0.14 ? p / 0.14 : (p > 0.72 ? (1 - p) / 0.28 : 1);
     }
+  } else if (panicState.dread > 0.001) {
+    // Затухание страха: half-life ~2 сек
+    panicState.dread *= Math.pow(0.5, dt / 120);
   }
 
   const w = window.innerWidth;
@@ -1673,10 +1523,7 @@ function animate(time) {
       if (transition.progress >= 1) {
         currentRoomIndex = transition.targetRoom;
         entityState.visible = false;
-        // При каждом входе в сектор 06 генерируем новую мрачную комнату
-        if (ROOMS[currentRoomIndex].isProceduralRoom) {
-          generateRandomHorrorRoom(ROOMS[currentRoomIndex]);
-        }
+        if (ROOMS[currentRoomIndex].isProceduralRoom) generateRandomHorrorRoom(ROOMS[currentRoomIndex]);
         applyRoomTexture(currentRoomIndex);
         updateRoomHUD();
         syncTapeVideo();
@@ -1718,7 +1565,9 @@ function animate(time) {
       entityState.evading = true;
       entityState.targetOpacity = 0;
       if (audioEngine.enabled) {
-        audioEngine.playSteelChains();
+        // Пространственный лязг в сторону сущности
+        const panDirection = (ex - lightWorldX) / planeW;
+        audioEngine.playSteelChains(Math.max(-0.9, Math.min(0.9, panDirection * 2)));
         audioEngine.playHeartbeatPulse(1.0);
       }
     }
@@ -1745,8 +1594,32 @@ function animate(time) {
     shadowEntity.visible = false;
   }
 
+  // Реактивный тик при наведении на артефакт / портал
+  updateDiscoveryTicks(w, h);
+
   renderer.render(scene, camera);
   render2DOverlay(w, h, room, blackFade, time, dt);
+}
+
+function updateDiscoveryTicks(w, h) {
+  if (transition.active) return;
+  const room = ROOMS[currentRoomIndex];
+  const t = getOverlayTransform(w, h);
+  if (!roomTickFlags[currentRoomIndex]) roomTickFlags[currentRoomIndex] = {};
+  const flags = roomTickFlags[currentRoomIndex];
+
+  const artX = t.offsetX + room.artifact.x * t.scaleX;
+  const artY = t.offsetY + room.artifact.y * t.scaleY;
+  if (!flags.artifact && Math.hypot(pointer.x - artX, pointer.y - artY) < 100) {
+    flags.artifact = true;
+    audioEngine.playTick();
+  }
+  const portX = t.offsetX + room.portal.x * t.scaleX;
+  const portY = t.offsetY + room.portal.y * t.scaleY;
+  if (!flags.portal && Math.hypot(pointer.x - portX, pointer.y - portY) < 100) {
+    flags.portal = true;
+    audioEngine.playTick();
+  }
 }
 
 function render2DOverlay(w, h, room, blackFade, time, dt) {
@@ -1764,14 +1637,11 @@ function render2DOverlay(w, h, room, blackFade, time, dt) {
     const py = p.y * h - pointer.normY * 14 * p.z;
     const dist = Math.hypot(px - pointer.x, py - pointer.y);
     const boost = (flashlightOn && dist < 240) ? (1 - dist / 240) * 0.7 : 0;
-
     fxCtx.fillStyle = `rgba(195, 208, 188, ${Math.min(0.92, 0.12 + boost)})`;
     fxCtx.beginPath();
     fxCtx.arc(px, py, p.size * p.z, 0, Math.PI * 2);
     fxCtx.fill();
   });
-
-  // Скрытые 2D-текстовые подсказки отключены — все ключи нанесены непосредственно на изображения уровней
 
   drawMarker2D(offsetX + room.artifact.x * scaleX, offsetY + room.artifact.y * scaleY,
     room.artifact.label, room.solved ? "#528c63" : "#bd7d3b", time);
@@ -1830,6 +1700,9 @@ function drawMarker2D(x, y, label, color, time) {
   fxCtx.restore();
 }
 
+/* ============================================================
+   HUD
+============================================================ */
 const depthNav = document.getElementById("depth-nav");
 
 function buildDepthNav() {
@@ -1845,6 +1718,13 @@ function buildDepthNav() {
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); attemptRoomTransition(idx); }
     });
     depthNav.appendChild(node);
+  });
+}
+
+function refreshDepthNavState() {
+  depthNav.querySelectorAll(".depth-node").forEach((node, idx) => {
+    node.classList.toggle("active", idx === currentRoomIndex);
+    node.classList.toggle("solved", ROOMS[idx].solved);
   });
 }
 
@@ -1868,7 +1748,7 @@ function updateRoomHUD() {
     badge.textContent = "ПРОХОД ЗАБЛОКИРОВАН";
     badge.className = "status-badge";
   }
-  buildDepthNav();
+  refreshDepthNavState();
 }
 
 function attemptRoomTransition(targetIdx) {
@@ -1887,40 +1767,87 @@ function attemptRoomTransition(targetIdx) {
   transition.phase = "in";
   transition.progress = 0;
   transition.targetRoom = targetIdx;
-  transition.focusX = currentRoom.portal.x;
-  transition.focusY = currentRoom.portal.y;
+  if (targetIdx < currentRoomIndex) {
+    const targetRoom = ROOMS[targetIdx];
+    transition.focusX = targetRoom.portal.x;
+    transition.focusY = targetRoom.portal.y;
+  } else {
+    transition.focusX = currentRoom.portal.x;
+    transition.focusY = currentRoom.portal.y;
+  }
 }
 
+/* ============================================================
+   МОДАЛКИ (фокус-трап, закрытие по фону)
+============================================================ */
+let focusedBeforeModal = null;
+
+function openModalEl(modalEl) {
+  focusedBeforeModal = document.activeElement;
+  modalEl.classList.add("open");
+  setTimeout(() => {
+    const first = modalEl.querySelector('button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])');
+    if (first) first.focus();
+  }, 60);
+}
+
+function closeModalEl(modalEl) {
+  modalEl.classList.remove("open");
+  if (focusedBeforeModal && focusedBeforeModal.focus) {
+    try { focusedBeforeModal.focus(); } catch (e) {}
+  }
+  focusedBeforeModal = null;
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Tab") return;
+  const openModal = document.querySelector(".modal-backdrop.open");
+  if (!openModal) return;
+  const focusable = openModal.querySelectorAll('button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])');
+  if (focusable.length === 0) return;
+  const first = focusable[0], last = focusable[focusable.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
+
+document.querySelectorAll(".modal-backdrop").forEach(m => {
+  m.addEventListener("click", (e) => {
+    if (e.target === m) closeModalEl(m);
+  });
+});
+
+/* ============================================================
+   ВВОД
+============================================================ */
 glCanvas.addEventListener("pointerdown", (e) => {
   pointer.targetX = e.clientX;
   pointer.targetY = e.clientY;
 });
 
 window.addEventListener("pointermove", (e) => {
+  if (document.querySelector(".modal-backdrop.open")) return;
   pointer.targetX = e.clientX;
   pointer.targetY = e.clientY;
 }, { passive: true });
 
 glCanvas.addEventListener("click", (e) => {
   if (transition.active) return;
+  if (document.querySelector(".modal-backdrop.open")) return;
 
   pointer.x = pointer.targetX = e.clientX;
   pointer.y = pointer.targetY = e.clientY;
   pointer.normX = (e.clientX / window.innerWidth - 0.5) * 2;
   pointer.normY = (e.clientY / window.innerHeight - 0.5) * 2;
 
-  const w = window.innerWidth;
-  const h = window.innerHeight;
+  const w = window.innerWidth, h = window.innerHeight;
   const room = ROOMS[currentRoomIndex];
   updateWorldPlaneLayout();
   const t = getOverlayTransform(w, h);
 
   const artX = t.offsetX + room.artifact.x * t.scaleX;
   const artY = t.offsetY + room.artifact.y * t.scaleY;
-  if (Math.hypot(e.clientX - artX, e.clientY - artY) < 90) {
-    openPuzzleModal();
-    return;
-  }
+  if (Math.hypot(e.clientX - artX, e.clientY - artY) < 90) { openPuzzleModal(); return; }
+
   const portX = t.offsetX + room.portal.x * t.scaleX;
   const portY = t.offsetY + room.portal.y * t.scaleY;
   if (Math.hypot(e.clientX - portX, e.clientY - portY) < 90) {
@@ -1929,13 +1856,9 @@ glCanvas.addEventListener("click", (e) => {
   }
 
   const now = performance.now();
-  if (!transition.active && !document.querySelector(".modal-backdrop.open")) {
-    panicState.dread = Math.min(1.0, panicState.dread + 0.14);
-    const effectiveChance = PANIC_CHANCE_PER_CLICK + panicState.dread * 0.12;
-    if (Math.random() < effectiveChance) {
-      triggerPanicEpisode(now);
-    }
-  }
+  panicState.dread = Math.min(1.0, panicState.dread + 0.14);
+  const effectiveChance = PANIC_CHANCE_PER_CLICK + panicState.dread * 0.12;
+  if (Math.random() < effectiveChance) triggerPanicEpisode(now);
 });
 
 let lastWheelTime = 0;
@@ -1954,14 +1877,13 @@ window.addEventListener("wheel", (e) => {
 
 window.addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
-  if (k === "f" || k === "а") {
-    document.getElementById("btn-toggle-flashlight").click();
-  }
-  if (e.key === "Escape") {
-    document.querySelectorAll(".modal-backdrop.open").forEach(m => m.classList.remove("open"));
-  }
+  if (k === "f" || k === "а") document.getElementById("btn-toggle-flashlight").click();
+  if (e.key === "Escape") document.querySelectorAll(".modal-backdrop.open").forEach(m => closeModalEl(m));
 });
 
+/* ============================================================
+   ПАНИКА
+============================================================ */
 function triggerPanicEpisode(now = performance.now()) {
   if (panicState.active) return;
   if (now - panicState.lastTriggeredAt < PANIC_COOLDOWN_MS) return;
@@ -1976,9 +1898,7 @@ function triggerPanicEpisode(now = performance.now()) {
   panicState.intensity = 1.0;
   panicState.dread = 0;
 
-  if (audioEngine.enabled) {
-    audioEngine.playPanicBurst();
-  }
+  if (audioEngine.enabled) audioEngine.playPanicBurst();
   spawnShadowEntity(true);
 }
 
@@ -1998,13 +1918,16 @@ function spawnShadowEntity(force = false) {
   if (audioEngine.enabled) audioEngine.playSubterraneanRumble();
 }
 
-setInterval(() => {
+const entitySpawnTimer = setInterval(() => {
   if (document.hidden) return;
   if (document.getElementById("intro-screen").classList.contains("hidden") && !transition.active) {
     if (Math.random() < 0.65) spawnShadowEntity(false);
   }
 }, 5500);
 
+/* ============================================================
+   ЗАГАДКИ
+============================================================ */
 function openPuzzleModal() {
   const room = ROOMS[currentRoomIndex];
   const modal = document.getElementById("puzzle-modal");
@@ -2038,11 +1961,8 @@ function openPuzzleModal() {
       replayBtn.addEventListener("click", () => {
         room.tapePlaying = true;
         room.tapeFinished = false;
-        modal.classList.remove("open");
-        if (tapeVideo) {
-          tapeVideo.currentTime = 0;
-          syncTapeVideo();
-        }
+        closeModalEl(modal);
+        if (tapeVideo) { tapeVideo.currentTime = 0; syncTapeVideo(); }
       });
     }
 
@@ -2052,14 +1972,11 @@ function openPuzzleModal() {
         room.tapeFinished = false;
         solveCurrentRoom("Катушки запущены.");
         setTimeout(() => {
-          modal.classList.remove("open");
-          if (tapeVideo) {
-            tapeVideo.currentTime = 0;
-            syncTapeVideo();
-          }
+          closeModalEl(modal);
+          if (tapeVideo) { tapeVideo.currentTime = 0; syncTapeVideo(); }
         }, 400);
       } else {
-        audioEngine.playSubterraneanRumble();
+        audioEngine.playWallScratching();
         feedback.textContent = "Неверная частота. Осмотрите стену слева.";
       }
     });
@@ -2077,12 +1994,11 @@ function openPuzzleModal() {
       wrap.appendChild(b);
     });
     const cb = document.createElement("button");
-    cb.className = "btn btn-primary";
-    cb.style.width = "100%";
+    cb.className = "btn btn-primary"; cb.style.width = "100%";
     cb.textContent = "ПРОВЕРНУТЬ ЗАСОВ";
     cb.addEventListener("click", () => {
       if (st.join("-") === room.targetCode.join("-")) solveCurrentRoom("Кольца совпали. Цепи упали.");
-      else { audioEngine.playSubterraneanRumble(); feedback.textContent = "Замок заклинило. Осмотрите царапины на правой стене."; }
+      else { audioEngine.playWallScratching(); feedback.textContent = "Замок заклинило. Осмотрите царапины на правой стене."; }
     });
     container.appendChild(wrap);
     container.appendChild(cb);
@@ -2113,7 +2029,7 @@ function openPuzzleModal() {
       });
       container.querySelector("#btn-w").addEventListener("click", () => {
         if (l === 6 && r === 6) solveCurrentRoom("Весы в равновесии. Люк открыт.");
-        else { audioEngine.playSubterraneanRumble(); feedback.textContent = "Перекос. Сверьтесь с отметкой на простыне."; }
+        else { audioEngine.playWallScratching(); feedback.textContent = "Перекос. Сверьтесь с отметкой на простыне."; }
       });
     };
     renderW();
@@ -2124,14 +2040,17 @@ function openPuzzleModal() {
       container.innerHTML = `
         <div class="puzzle-row"><span>КОЛБА А: <strong>${dA}</strong></span><button class="hud-btn" id="ba">+1</button></div>
         <div class="puzzle-row"><span>КОЛБА B: <strong>${dB}</strong></span><button class="hud-btn" id="bb">+1</button></div>
-        <div style="display:flex; gap:8px; margin-top:12px;"><button class="btn" id="br" style="flex:1;">СБРОС</button><button class="btn btn-primary" id="bi" style="flex:2;">ПОДАТЬ</button></div>
+        <div style="display:flex; gap:8px; margin-top:12px;">
+          <button class="btn" id="br" style="flex:1;">СБРОС</button>
+          <button class="btn btn-primary" id="bi" style="flex:2;">ПОДАТЬ</button>
+        </div>
       `;
       container.querySelector("#ba").addEventListener("click", () => { dA = (dA + 1) % 7; audioEngine.playTick(); renderD(); });
       container.querySelector("#bb").addEventListener("click", () => { dB = (dB + 1) % 7; audioEngine.playTick(); renderD(); });
       container.querySelector("#br").addEventListener("click", () => { dA = 0; dB = 0; audioEngine.playTick(); renderD(); });
       container.querySelector("#bi").addEventListener("click", () => {
         if (dA === room.targetA && dB === room.targetB) solveCurrentRoom("Давление стабильно. Шлюз открыт.");
-        else { audioEngine.playSubterraneanRumble(); feedback.textContent = "Неверная доза. Осмотрите кафель за столом."; }
+        else { audioEngine.playWallScratching(); feedback.textContent = "Неверная доза. Осмотрите кафель за столом."; }
       });
     };
     renderD();
@@ -2140,14 +2059,18 @@ function openPuzzleModal() {
     const renderV = () => {
       container.innerHTML = `
         <div class="puzzle-row"><span>ОБОРОТЫ:</span><strong style="color:var(--amber-glow);">${seq.join(" → ") || "НЕТ"}</strong></div>
-        <div style="display:flex; gap:8px; margin-bottom:12px;"><button class="btn" id="vr" style="flex:1;">↻ ВПРАВО (R)</button><button class="btn" id="vl" style="flex:1;">↺ ВЛЕВО (L)</button><button class="hud-btn" id="vrs">СБРОС</button></div>
+        <div style="display:flex; gap:8px; margin-bottom:12px;">
+          <button class="btn" id="vr" style="flex:1;">↻ ВПРАВО (R)</button>
+          <button class="btn" id="vl" style="flex:1;">↺ ВЛЕВО (L)</button>
+          <button class="hud-btn" id="vrs">СБРОС</button>
+        </div>
         <input type="text" id="b-msg" maxlength="80" placeholder="Сообщение в эфир..." style="width:100%; padding:9px; background:#050705; border:1px solid var(--mold-green); color:var(--bone-white); font-family:inherit; margin-bottom:8px;">
         <button class="btn btn-primary" id="bs" style="width:100%;">ОТПРАВИТЬ СИГНАЛ</button>
       `;
       const chk = () => {
         if (seq.join(",") === room.targetSequence.join(",")) solveCurrentRoom("Гермошлюз разгерметизирован.");
         else if (seq.length >= room.targetSequence.length) {
-          audioEngine.playSubterraneanRumble();
+          audioEngine.playWallScratching();
           feedback.textContent = "Клапан сорвался. Осмотрите металл у штурвала.";
           seq = [];
           setTimeout(renderV, 500);
@@ -2179,35 +2102,31 @@ function openPuzzleModal() {
       wrap.appendChild(btn);
     });
     const submitBtn = document.createElement("button");
-    submitBtn.className = "btn btn-primary";
-    submitBtn.style.width = "100%";
+    submitBtn.className = "btn btn-primary"; submitBtn.style.width = "100%";
     submitBtn.textContent = "СНЯТЬ БЛОКИРОВКУ";
     submitBtn.addEventListener("click", () => {
-      if (curPin.join("-") === room.targetPin.join("-")) {
-        solveCurrentRoom("Релейный замок аномалии открыт.");
-      } else {
-        audioEngine.playWallScratching();
-        feedback.textContent = "Неверный шифр. Проведите фонарём по стенам камеры.";
-      }
+      if (curPin.join("-") === room.targetPin.join("-")) solveCurrentRoom("Релейный замок аномалии открыт.");
+      else { audioEngine.playWallScratching(); feedback.textContent = "Неверный шифр. Проведите фонарём по стенам камеры."; }
     });
     container.appendChild(wrap);
     container.appendChild(submitBtn);
   }
 
-  modal.classList.add("open");
+  openModalEl(modal);
 }
 
 function solveCurrentRoom(msg) {
   const room = ROOMS[currentRoomIndex];
-  const wasSolved = room.solved;
+  const alreadySolvedOnce = Boolean(room.solvedOnce);
   room.solved = true;
+  room.solvedOnce = true;
   audioEngine.playSteelChains();
   document.getElementById("modal-feedback").textContent = msg;
   updateRoomHUD();
   saveProgress();
 
-  if (!wasSolved && ROOMS.every(r => r.solved)) {
-    setTimeout(() => document.getElementById("final-modal").classList.add("open"), 1400);
+  if (!alreadySolvedOnce && ROOMS.every(r => r.solvedOnce)) {
+    setTimeout(() => openModalEl(document.getElementById("final-modal")), 1400);
   }
 }
 
@@ -2221,7 +2140,7 @@ function renderPhotoSlotsModal() {
     row.innerHTML = `
       <div><strong>0${idx + 1}. ${room.title}</strong><br><span style="color:#828e7f;">${room.fileName}</span></div>
       <div style="display:flex; align-items:center; gap:8px;">
-        <span class="photo-slot-status ${isLoaded ? "loaded" : ""}">${isLoaded ? "ЗАГРУЖЕНО" : "ПРОЦЕДУРНО"}</span>
+        <span class="photo-slot-status ${isLoaded ? "loaded" : ""}">${isLoaded ? "ЗАГРУЖЕНО" : "НЕ ЗАГРУЖЕНО"}</span>
         <label class="hud-btn" style="cursor:pointer;">ВЫБРАТЬ<input type="file" accept="image/jpeg,image/png,image/webp" style="display:none"></label>
       </div>
     `;
@@ -2232,6 +2151,9 @@ function renderPhotoSlotsModal() {
   });
 }
 
+/* ============================================================
+   ИНИЦИАЛИЗАЦИЯ UI
+============================================================ */
 document.getElementById("btn-enter-house").addEventListener("click", () => {
   document.getElementById("intro-screen").classList.add("hidden");
   audioEngine.init();
@@ -2257,15 +2179,15 @@ document.getElementById("btn-regen-room").addEventListener("click", () => {
 document.getElementById("btn-intro-upload").addEventListener("click", () => {
   setPhotosFeedback("");
   renderPhotoSlotsModal();
-  document.getElementById("photos-modal").classList.add("open");
+  openModalEl(document.getElementById("photos-modal"));
 });
 document.getElementById("btn-open-photos").addEventListener("click", () => {
   setPhotosFeedback("");
   renderPhotoSlotsModal();
-  document.getElementById("photos-modal").classList.add("open");
+  openModalEl(document.getElementById("photos-modal"));
 });
 document.getElementById("btn-close-photos").addEventListener("click", () =>
-  document.getElementById("photos-modal").classList.remove("open"));
+  closeModalEl(document.getElementById("photos-modal")));
 document.getElementById("btn-select-bulk").addEventListener("click", () =>
   document.getElementById("bulk-file-input").click());
 document.getElementById("bulk-file-input").addEventListener("change", (e) => {
@@ -2274,13 +2196,14 @@ document.getElementById("bulk-file-input").addEventListener("change", (e) => {
 
 document.getElementById("btn-open-puzzle").addEventListener("click", openPuzzleModal);
 document.getElementById("btn-close-puzzle").addEventListener("click", () =>
-  document.getElementById("puzzle-modal").classList.remove("open"));
+  closeModalEl(document.getElementById("puzzle-modal")));
 
 document.getElementById("btn-toggle-flashlight").addEventListener("click", (e) => {
   flashlightOn = !flashlightOn;
   e.target.textContent = `ФОНАРЬ [F]: ${flashlightOn ? "ВКЛ" : "ВЫКЛ"}`;
   e.target.classList.toggle("active", flashlightOn);
   e.target.setAttribute("aria-pressed", String(flashlightOn));
+  saveProgress();
 });
 
 document.getElementById("btn-toggle-freemode").addEventListener("click", (e) => {
@@ -2289,6 +2212,7 @@ document.getElementById("btn-toggle-freemode").addEventListener("click", (e) => 
   e.target.classList.toggle("active", freeMode);
   e.target.setAttribute("aria-pressed", String(freeMode));
   updateRoomHUD();
+  saveProgress();
 });
 
 document.getElementById("btn-toggle-sound").addEventListener("click", (e) => {
@@ -2305,10 +2229,11 @@ document.getElementById("btn-next-room").addEventListener("click", () =>
   attemptRoomTransition((currentRoomIndex + 1) % ROOMS.length));
 
 document.getElementById("btn-close-final").addEventListener("click", () =>
-  document.getElementById("final-modal").classList.remove("open"));
+  closeModalEl(document.getElementById("final-modal")));
+
 document.getElementById("btn-reset-progress").addEventListener("click", () => {
   resetProgress();
-  ROOMS.forEach(r => { r.solved = false; r.tapePlaying = false; r.tapeFinished = false; });
+  ROOMS.forEach(r => { r.solved = false; r.solvedOnce = false; r.tapePlaying = false; r.tapeFinished = false; });
   currentRoomIndex = 0;
   freeMode = false;
   const fBtn = document.getElementById("btn-toggle-freemode");
@@ -2320,7 +2245,7 @@ document.getElementById("btn-reset-progress").addEventListener("click", () => {
     tapeVideo.currentTime = 0;
     tapeVideo.classList.remove("playing");
   }
-  document.getElementById("final-modal").classList.remove("open");
+  closeModalEl(document.getElementById("final-modal"));
   applyRoomTexture(0);
   updateRoomHUD();
   saveProgress();
@@ -2332,7 +2257,7 @@ window.addEventListener("drop", (e) => {
   if (e.dataTransfer && e.dataTransfer.files.length) {
     setPhotosFeedback("");
     renderPhotoSlotsModal();
-    document.getElementById("photos-modal").classList.add("open");
+    openModalEl(document.getElementById("photos-modal"));
     handleBulkFiles(e.dataTransfer.files);
   }
 });
@@ -2345,9 +2270,11 @@ document.addEventListener("visibilitychange", () => {
     syncTapeVideo();
   }
 });
+
 window.addEventListener("pagehide", () => {
   saveProgress();
   audioEngine.destroy();
+  if (entitySpawnTimer) clearInterval(entitySpawnTimer);
 });
 
 glCanvas.addEventListener("webglcontextlost", (e) => {
@@ -2358,12 +2285,28 @@ glCanvas.addEventListener("webglcontextrestored", () => {
   document.getElementById("fatal-overlay").classList.remove("visible");
 });
 
+/* ============================================================
+   ЗАПУСК
+============================================================ */
 loadProgress();
 tryAutoLoadImages();
 applyRoomTexture(currentRoomIndex);
+buildDepthNav();
 updateRoomHUD();
 renderPhotoSlotsModal();
 ensureFlashlightSprite();
+
+// Восстановление визуального состояния кнопок после загрузки прогресса
+const fBtn = document.getElementById("btn-toggle-flashlight");
+fBtn.textContent = `ФОНАРЬ [F]: ${flashlightOn ? "ВКЛ" : "ВЫКЛ"}`;
+fBtn.classList.toggle("active", flashlightOn);
+fBtn.setAttribute("aria-pressed", String(flashlightOn));
+
+const fmBtn = document.getElementById("btn-toggle-freemode");
+fmBtn.textContent = `РЕЖИМ: ${freeMode ? "СВОБОДНЫЙ" : "КВЕСТ"}`;
+fmBtn.classList.toggle("active", freeMode);
+fmBtn.setAttribute("aria-pressed", String(freeMode));
+
 requestAnimationFrame(animate);
 syncTapeVideo();
 </script>
