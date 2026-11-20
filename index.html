@@ -17,146 +17,316 @@
     --border-dim: rgba(120, 138, 115, 0.22);
   }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 
   body, html {
-    width: 100%; height: 100%; overflow: hidden;
-    background-color: var(--bg-dark); color: var(--bone-white);
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--bg-dark);
+    color: var(--bone-white);
     font-family: 'Courier New', Courier, monospace;
     cursor: crosshair;
   }
 
   canvas, button, .hud-btn, .btn, .depth-node, .code-slot-btn, label {
-    user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
 
-  #gl-canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: block; z-index: 1; touch-action: none; }
-  #tape-video { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 1; opacity: 0; pointer-events: none; transition: opacity 0.65s ease; }
-  #tape-video.playing { opacity: 1; }
-  #fx-canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: block; z-index: 2; pointer-events: none; }
+  #gl-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: block;
+    z-index: 1;
+    touch-action: none;
+  }
+
+  #tape-video {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover;
+    z-index: 1;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.65s ease;
+  }
+
+  #tape-video.playing {
+    opacity: 1;
+  }
+
+  #fx-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: block;
+    z-index: 2;
+    pointer-events: none;
+  }
 
   .vignette-overlay {
-    position: fixed; inset: 0; pointer-events: none; z-index: 3;
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
     background:
       radial-gradient(circle at 50% 50%, transparent 40%, rgba(1, 2, 1, 0.88) 78%, rgba(0, 0, 0, 0.995) 100%),
       repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 1px, transparent 1px, transparent 3px);
   }
 
   #intro-screen {
-    position: fixed; inset: 0; z-index: 50;
+    position: fixed;
+    inset: 0;
+    z-index: 50;
     background: radial-gradient(circle at center, #0a0d0a 0%, #010201 100%);
-    display: flex; flex-direction: column; justify-content: center; align-items: center;
-    padding: 24px; text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 24px;
+    text-align: center;
     transition: opacity 0.8s ease, visibility 0.8s ease;
   }
-  #intro-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+  #intro-screen.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
 
   .intro-box {
-    max-width: 640px; border: 1px solid var(--border-dim);
-    background: rgba(7, 9, 7, 0.96); padding: 36px 32px;
+    max-width: 640px;
+    border: 1px solid var(--border-dim);
+    background: rgba(7, 9, 7, 0.96);
+    padding: 36px 32px;
     box-shadow: 0 25px 90px rgba(0,0,0,0.99);
   }
-  .intro-tag { font-size: 10px; letter-spacing: 3.5px; color: var(--rust-red); text-transform: uppercase; margin-bottom: 10px; }
-  .intro-title { font-size: 28px; letter-spacing: 6px; font-weight: bold; color: var(--bone-white); margin-bottom: 14px; }
-  .intro-desc { font-size: 13px; line-height: 1.68; color: #929c8e; margin-bottom: 24px; }
-  .intro-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+
+  .intro-tag {
+    font-size: 10px;
+    letter-spacing: 3.5px;
+    color: var(--rust-red);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .intro-title {
+    font-size: 28px;
+    letter-spacing: 6px;
+    font-weight: bold;
+    color: var(--bone-white);
+    margin-bottom: 14px;
+  }
+
+  .intro-desc {
+    font-size: 13px;
+    line-height: 1.68;
+    color: #929c8e;
+    margin-bottom: 24px;
+  }
+
+  .intro-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+  }
 
   .btn {
-    background: rgba(18, 22, 18, 0.94); color: var(--bone-white);
-    border: 1px solid var(--mold-green); padding: 11px 18px;
-    font-family: inherit; font-size: 12px; letter-spacing: 2px;
-    text-transform: uppercase; cursor: pointer; transition: all 0.2s ease;
+    background: rgba(18, 22, 18, 0.94);
+    color: var(--bone-white);
+    border: 1px solid var(--mold-green);
+    padding: 11px 18px;
+    font-family: inherit;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s ease;
   }
+
   .btn:hover { background: var(--mold-green); color: #020302; }
 
-  .btn:focus-visible, .hud-btn:focus-visible, .depth-node:focus-visible {
-    outline: 2px solid var(--amber-glow); outline-offset: 2px;
+  .btn:focus-visible,
+  .hud-btn:focus-visible,
+  .depth-node:focus-visible {
+    outline: 2px solid var(--amber-glow);
+    outline-offset: 2px;
   }
 
-  .btn-primary { border-color: var(--rust-red); background: rgba(143, 50, 34, 0.28); }
-  .btn-primary:hover { background: var(--rust-red); color: #fff; box-shadow: 0 0 22px rgba(143, 50, 34, 0.7); }
+  .btn-primary {
+    border-color: var(--rust-red);
+    background: rgba(143, 50, 34, 0.28);
+  }
+
+  .btn-primary:hover {
+    background: var(--rust-red);
+    color: #fff;
+    box-shadow: 0 0 22px rgba(143, 50, 34, 0.7);
+  }
 
   .top-hud {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 10;
-    display: flex; justify-content: space-between; align-items: center;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     padding: 14px 22px;
     background: linear-gradient(180deg, rgba(2,3,2,0.96) 0%, rgba(2,3,2,0) 100%);
     pointer-events: none;
   }
+
   .top-hud > * { pointer-events: auto; }
+
   .brand-title { font-size: 15px; letter-spacing: 4px; font-weight: bold; }
   .room-indicator { font-size: 11px; letter-spacing: 2px; color: var(--amber-glow); margin-top: 3px; }
+
   .hud-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 
   .hud-btn {
-    background: rgba(8, 10, 8, 0.9); border: 1px solid var(--border-dim);
-    color: #a8b3a4; padding: 7px 11px; font-family: inherit;
-    font-size: 11px; letter-spacing: 1.3px; cursor: pointer; transition: all 0.2s ease;
+    background: rgba(8, 10, 8, 0.9);
+    border: 1px solid var(--border-dim);
+    color: #a8b3a4;
+    padding: 7px 11px;
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 1.3px;
+    cursor: pointer;
+    transition: all 0.2s ease;
   }
+
   .hud-btn:hover, .hud-btn.active {
-    border-color: var(--amber-glow); color: var(--bone-white);
+    border-color: var(--amber-glow);
+    color: var(--bone-white);
     background: rgba(30, 24, 18, 0.92);
   }
 
   .depth-nav {
-    position: fixed; right: 20px; top: 50%; transform: translateY(-50%);
-    z-index: 10; display: flex; flex-direction: column; gap: 14px;
-    background: rgba(5, 7, 5, 0.85); border: 1px solid var(--border-dim);
+    position: fixed;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    background: rgba(5, 7, 5, 0.85);
+    border: 1px solid var(--border-dim);
     padding: 14px 10px;
   }
+
   .depth-node {
-    display: flex; align-items: center; justify-content: flex-end;
-    gap: 8px; cursor: pointer; opacity: 0.55; transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    cursor: pointer;
+    opacity: 0.55;
+    transition: all 0.2s ease;
   }
+
   .depth-node:hover, .depth-node.active { opacity: 1; }
+
   .depth-label {
-    font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; display: none;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    display: none;
   }
-  .depth-node:hover .depth-label, .depth-node.active .depth-label { display: inline-block; }
+
+  .depth-node:hover .depth-label,
+  .depth-node.active .depth-label { display: inline-block; }
+
   .depth-dot { width: 10px; height: 10px; border: 1px solid var(--mold-green); }
+
   .depth-node.active .depth-dot {
-    background: var(--amber-glow); border-color: var(--amber-glow);
+    background: var(--amber-glow);
+    border-color: var(--amber-glow);
     box-shadow: 0 0 10px var(--amber-glow);
   }
-  .depth-node.solved .depth-dot { border-color: #528c63; background: rgba(82, 140, 99, 0.5); }
-  .depth-node.procedural .depth-dot { border-color: #8f3222; border-style: dashed; }
+
+  .depth-node.solved .depth-dot {
+    border-color: #528c63;
+    background: rgba(82, 140, 99, 0.5);
+  }
+
+  .depth-node.procedural .depth-dot {
+    border-color: #8f3222;
+    border-style: dashed;
+  }
 
   .bottom-hud {
-    position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
-    display: flex; justify-content: space-between; align-items: flex-end;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
     padding: 16px 22px;
     background: linear-gradient(0deg, rgba(2,3,2,0.98) 0%, rgba(2,3,2,0) 100%);
     pointer-events: none;
   }
+
   .bottom-hud > * { pointer-events: auto; }
 
   .room-dossier {
-    max-width: 560px; background: var(--panel-bg);
+    max-width: 560px;
+    background: var(--panel-bg);
     border-left: 3px solid var(--rust-red);
     border-top: 1px solid var(--border-dim);
     border-right: 1px solid var(--border-dim);
     border-bottom: 1px solid var(--border-dim);
     padding: 13px 16px;
   }
+
   .dossier-header {
-    display: flex; justify-content: space-between; font-size: 10px;
-    letter-spacing: 2px; color: var(--amber-glow); margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--amber-glow);
+    margin-bottom: 5px;
   }
+
   .dossier-title { font-size: 15px; letter-spacing: 2px; margin-bottom: 5px; }
   .dossier-text { font-size: 12px; line-height: 1.48; color: #9da69a; margin-bottom: 9px; }
 
   .puzzle-status-bar {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 10px; padding-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 8px;
     border-top: 1px dashed rgba(120, 138, 115, 0.25);
   }
+
   .status-badge {
-    padding: 3px 8px; font-size: 10px; letter-spacing: 1.5px;
-    border: 1px solid var(--rust-red); color: #e67c6a;
+    padding: 3px 8px;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    border: 1px solid var(--rust-red);
+    color: #e67c6a;
     background: rgba(143, 50, 34, 0.2);
   }
+
   .status-badge.unlocked {
-    border-color: #528c63; color: #8ce0a4;
+    border-color: #528c63;
+    color: #8ce0a4;
     background: rgba(45, 95, 60, 0.25);
   }
 
@@ -164,25 +334,46 @@
   .nav-buttons { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 
   .modal-backdrop {
-    position: fixed; inset: 0; z-index: 30;
-    background: rgba(1, 2, 1, 0.86); backdrop-filter: blur(4px);
-    display: flex; justify-content: center; align-items: center;
-    padding: 20px; opacity: 0; visibility: hidden;
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    background: rgba(1, 2, 1, 0.86);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    opacity: 0;
+    visibility: hidden;
     transition: opacity 0.22s ease, visibility 0.22s ease;
   }
+
   .modal-backdrop.open { opacity: 1; visibility: visible; }
+
   .modal-card {
-    width: 100%; max-width: 540px; background: #080a08;
+    width: 100%;
+    max-width: 540px;
+    background: #080a08;
     border: 1px solid var(--mold-green);
     box-shadow: 0 20px 60px rgba(0,0,0,0.98);
-    padding: 24px; position: relative;
+    padding: 24px;
+    position: relative;
   }
+
   .modal-close {
-    position: absolute; top: 14px; right: 16px;
-    background: none; border: none; color: #828e7f;
-    font-family: inherit; font-size: 16px; cursor: pointer;
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    background: none;
+    border: none;
+    color: #828e7f;
+    font-family: inherit;
+    font-size: 16px;
+    cursor: pointer;
   }
+
   .modal-close:hover { color: var(--bone-white); }
+
   .modal-tag { font-size: 10px; letter-spacing: 2.5px; color: var(--rust-red); margin-bottom: 6px; }
   .modal-title { font-size: 18px; letter-spacing: 2px; margin-bottom: 10px; }
   .modal-body { font-size: 12px; line-height: 1.6; color: #9da69a; margin-bottom: 16px; }
@@ -190,8 +381,10 @@
   .puzzle-interactive {
     background: rgba(12, 16, 12, 0.94);
     border: 1px solid var(--border-dim);
-    padding: 16px; margin-bottom: 14px;
+    padding: 16px;
+    margin-bottom: 14px;
   }
+
   .puzzle-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
   .puzzle-feedback { font-size: 11px; min-height: 18px; letter-spacing: 1px; color: var(--amber-glow); }
 
@@ -199,9 +392,8 @@
 
   .code-slots { display: flex; gap: 10px; justify-content: center; margin: 12px 0; }
   .code-slot-btn {
-    width: 64px; height: 48px; background: #0f130f;
-    border: 1px solid var(--mold-green); color: var(--bone-white);
-    font-family: inherit; font-size: 18px; font-weight: bold; cursor: pointer;
+    width: 64px; height: 48px; background: #0f130f; border: 1px solid var(--mold-green);
+    color: var(--bone-white); font-family: inherit; font-size: 18px; font-weight: bold; cursor: pointer;
   }
 
   .scale-pan-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 10px 0; }
@@ -213,12 +405,20 @@
   .photo-slot-status.loaded { color: #7cd492; }
 
   #fatal-overlay {
-    position: fixed; inset: 0; z-index: 9999;
-    background: rgba(1,2,1,0.97); color: var(--bone-white);
-    display: none; align-items: center; justify-content: center;
-    padding: 24px; text-align: center;
-    font-size: 14px; letter-spacing: 1.5px;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(1,2,1,0.97);
+    color: var(--bone-white);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    text-align: center;
+    font-size: 14px;
+    letter-spacing: 1.5px;
   }
+
   #fatal-overlay.visible { display: flex; }
 
   @media (max-width: 768px) {
@@ -358,6 +558,7 @@ const ENTITY_EVADE_LERP = 0.14;
 
 /* ============================================================
    КОНФИГУРАЦИЯ КОМНАТ (5 ОСНОВНЫХ + 1 ПРОЦЕДУРНАЯ АНОМАЛИЯ)
+   Подсказки нанесены на сами текстуры изображений — 2D-оверлей текста отключён.
 ============================================================ */
 const ROOMS = [
   {
@@ -465,26 +666,6 @@ const PROCEDURAL_ARCHETYPES = [
     name: "Шахта старого грузового подъёмника",
     desc: "Ржавые тросы уходят в непроглядную черноту наверху. На сыром бетоне видны следы чьих-то ногтей.",
     bgTop: "#121316", bgBot: "#030405", accent: "#2d313b", rust: "#6e261b"
-  },
-  {
-    name: "Пыточная с ржавыми кандалами",
-    desc: "В центре камеры — стальное кресло с обрывками ремней. Стены испещрены царапинами и бурыми разводами.",
-    bgTop: "#1c1210", bgBot: "#060303", accent: "#42241e", rust: "#8f2418"
-  },
-  {
-    name: "Крипта с разбитыми саркофагами",
-    desc: "Каменные плиты расколоты изнутри. С потолка капает густая тёмная жидкость, а в углах блестят чьи-то глаза.",
-    bgTop: "#191813", bgBot: "#050403", accent: "#3a352b", rust: "#7a2c1d"
-  },
-  {
-    name: "Заброшенная котельная с силуэтами",
-    desc: "Ржавые трубы теряются во тьме. На стенах — обугленные пятна в форме ладоней и взрослого силуэта.",
-    bgTop: "#141210", bgBot: "#030202", accent: "#382820", rust: "#6e1c12"
-  },
-  {
-    name: "Мясной подвал с крюками и сточной канавой",
-    desc: "Пол покрыт слоем тёмной влаги. С потолка свисают ржавые крюки, на которых висят бесформенные тряпки.",
-    bgTop: "#15100e", bgBot: "#040201", accent: "#3d2218", rust: "#8f1e14"
   }
 ];
 
@@ -498,6 +679,7 @@ function generateRandomHorrorRoom(roomObj) {
   roomObj.title = arch.name;
   roomObj.desc = arch.desc;
 
+  // Случайные координаты портала и механизма
   const portalX = 0.68 + Math.random() * 0.18;
   const portalY = 0.44 + Math.random() * 0.10;
   const artX = 0.22 + Math.random() * 0.24;
@@ -509,286 +691,115 @@ function generateRandomHorrorRoom(roomObj) {
     { x: 0.16 + Math.random() * 0.65, y: 0.54, scale: 0.90 }
   ];
 
-  const W = 1920, H = 1080;
   const c = document.createElement("canvas");
-  c.width = W;
-  c.height = H;
+  c.width = 1600;
+  c.height = 900;
   const g = c.getContext("2d");
 
-  // === ФОН ===
-  const bg = g.createRadialGradient(W * 0.5, H * 0.42, 80, W * 0.5, H * 0.5, 1400);
+  // 1. Гнетущий градиент пространства
+  const bg = g.createRadialGradient(800, 380, 60, 800, 450, 980);
   bg.addColorStop(0, arch.bgTop);
-  bg.addColorStop(0.55, arch.bgBot);
-  bg.addColorStop(1, "#000000");
+  bg.addColorStop(0.65, arch.bgBot);
+  bg.addColorStop(1, "#010201");
   g.fillStyle = bg;
-  g.fillRect(0, 0, W, H);
+  g.fillRect(0, 0, 1600, 900);
 
-  // === ПЕРСПЕКТИВА ===
-  const px = portalX * W;
-  const py = portalY * H;
-  const pw = 240 + Math.random() * 80;
-  const ph = 380 + Math.random() * 100;
+  // 2. Перспектива коридора / камеры
+  const px = portalX * 1600;
+  const py = portalY * 900;
+  const pw = 230 + Math.random() * 60;
+  const ph = 340 + Math.random() * 60;
 
-  g.strokeStyle = "rgba(130, 145, 125, 0.18)";
+  g.strokeStyle = "rgba(130, 145, 125, 0.16)";
   g.lineWidth = 2;
   g.beginPath();
-  g.moveTo(0, 0);       g.lineTo(px - pw * 0.5, py - ph * 0.5);
-  g.moveTo(W, 0);       g.lineTo(px + pw * 0.5, py - ph * 0.5);
-  g.moveTo(0, H);       g.lineTo(px - pw * 0.5, py + ph * 0.5);
-  g.moveTo(W, H);       g.lineTo(px + pw * 0.5, py + ph * 0.5);
+  g.moveTo(0, 0); g.lineTo(px - pw * 0.5, py - ph * 0.5);
+  g.moveTo(1600, 0); g.lineTo(px + pw * 0.5, py - ph * 0.5);
+  g.moveTo(0, 900); g.lineTo(px - pw * 0.5, py + ph * 0.5);
+  g.moveTo(1600, 900); g.lineTo(px + pw * 0.5, py + ph * 0.5);
   g.stroke();
 
-  g.strokeStyle = "rgba(100, 115, 100, 0.12)";
-  g.beginPath();
-  g.moveTo(0, H * 0.68); g.lineTo(px - pw * 0.5, py + ph * 0.5);
-  g.moveTo(W, H * 0.68); g.lineTo(px + pw * 0.5, py + ph * 0.5);
-  g.stroke();
-
+  // Вертикальные ребра / колонны / трубы
   const ribs = 4 + Math.floor(Math.random() * 5);
   for (let i = 1; i <= ribs; i++) {
     const t = i / (ribs + 1);
     const xL = (px - pw * 0.5) * t;
-    const xR = W - (W - (px + pw * 0.5)) * t;
+    const xR = 1600 - (1600 - (px + pw * 0.5)) * t;
     const yT = (py - ph * 0.5) * t;
-    const yB = H - (H - (py + ph * 0.5)) * t;
-    g.strokeStyle = "rgba(95, 110, 95, 0.11)";
-    g.lineWidth = 2.5;
+    const yB = 900 - (900 - (py + ph * 0.5)) * t;
+    g.strokeStyle = "rgba(95, 110, 95, 0.14)";
+    g.lineWidth = 3;
     g.strokeRect(xL, yT, xR - xL, yB - yT);
   }
 
-  // === КРОВАВЫЕ ПЯТНА ===
-  const bloodCount = 10 + Math.floor(Math.random() * 15);
-  for (let i = 0; i < bloodCount; i++) {
-    const bx = Math.random() * W;
-    const by = Math.random() * H;
-    const br = 30 + Math.random() * 160;
-    const alpha = 0.35 + Math.random() * 0.45;
-    const bg2 = g.createRadialGradient(bx, by, 4, bx, by, br);
-    bg2.addColorStop(0, `rgba(85, 6, 4, ${alpha})`);
-    bg2.addColorStop(0.4, `rgba(55, 3, 2, ${alpha * 0.75})`);
-    bg2.addColorStop(1, "rgba(0,0,0,0)");
-    g.fillStyle = bg2;
-    g.beginPath(); g.arc(bx, by, br, 0, Math.PI * 2); g.fill();
-
-    const drips = 2 + Math.floor(Math.random() * 4);
-    for (let d = 0; d < drips; d++) {
-      const dx = bx + (Math.random() - 0.5) * br * 1.4;
-      const dl = 20 + Math.random() * 110;
-      g.strokeStyle = `rgba(70, 5, 4, ${alpha * 0.85})`;
-      g.lineWidth = 1.5 + Math.random() * 4;
-      g.beginPath();
-      g.moveTo(dx, by);
-      g.lineTo(dx + (Math.random() - 0.5) * 12, by + dl);
-      g.stroke();
-    }
-  }
-
-  // === НАДПИСИ КРОВЬЮ ===
-  const writings = ["БЕГИ", "ОНО ЗДЕСЬ", "НЕ ОТКРЫВАЙ", "ПОМОГИТЕ", "СМОТРИ",
-                    "НЕ ОБОРАЧИВАЙСЯ", "МЫ ВСЕ УМРЁМ", "ТИШЕ", "6 6 6",
-                    "ПОЗАДИ ТЕБЯ", "ОТКРОЙ", "ОНО ГОЛОДНОЕ"];
-  if (Math.random() < 0.75) {
-    const text = writings[Math.floor(Math.random() * writings.length)];
-    const wx = (0.08 + Math.random() * 0.72) * W;
-    const wy = (0.12 + Math.random() * 0.50) * H;
-    g.save();
-    g.translate(wx, wy);
-    g.rotate((Math.random() - 0.5) * 0.28);
-    const fs = 55 + Math.random() * 75;
-    g.font = `bold ${fs}px 'Courier New', monospace`;
-    g.fillStyle = "rgba(125, 12, 10, 0.78)";
-    g.fillText(text, 0, 0);
-    for (let i = 0; i < 10; i++) {
-      const dx = Math.random() * text.length * fs * 0.6;
-      g.strokeStyle = "rgba(105, 9, 7, 0.55)";
-      g.lineWidth = 1 + Math.random() * 3;
-      g.beginPath();
-      g.moveTo(dx, fs * 0.15);
-      g.lineTo(dx + (Math.random() - 0.5) * 6, fs * 0.15 + 15 + Math.random() * 70);
-      g.stroke();
-    }
-    g.restore();
-  }
-
-  // === ЦЕПИ С ПОТОЛКА ===
-  const chains = 2 + Math.floor(Math.random() * 5);
-  for (let i = 0; i < chains; i++) {
-    const cx = 80 + Math.random() * (W - 160);
-    const len = 130 + Math.random() * 480;
-    g.strokeStyle = "rgba(45, 38, 30, 0.85)";
-    g.lineWidth = 3.5;
-    g.beginPath();
-    g.moveTo(cx, 0);
-    g.quadraticCurveTo(cx + (Math.random() - 0.5) * 40, len * 0.5, cx + (Math.random() - 0.5) * 20, len);
-    g.stroke();
-    const links = Math.floor(len / 14);
-    for (let j = 0; j < links; j++) {
-      g.strokeStyle = "rgba(65, 55, 42, 0.55)";
-      g.lineWidth = 1.2;
-      g.beginPath();
-      g.ellipse(cx + (Math.random() - 0.5) * 5, j * 14, 3.5, 6, 0, 0, Math.PI * 2);
-      g.stroke();
-    }
-  }
-
-  // === ЖУТКИЙ СИЛУЭТ ===
-  if (Math.random() < 0.55) {
-    const sx = (0.12 + Math.random() * 0.75) * W;
-    const sy = (0.42 + Math.random() * 0.35) * H;
-    const sh = 200 + Math.random() * 240;
-    g.save();
-    g.globalAlpha = 0.55 + Math.random() * 0.35;
-    g.fillStyle = "#000000";
-    g.beginPath();
-    g.ellipse(sx, sy - sh * 0.85, sh * 0.11, sh * 0.14, 0, 0, Math.PI * 2);
-    g.fill();
-    g.beginPath();
-    g.moveTo(sx - sh * 0.15, sy - sh * 0.7);
-    g.quadraticCurveTo(sx - sh * 0.22, sy - sh * 0.35, sx - sh * 0.2, sy);
-    g.lineTo(sx + sh * 0.2, sy);
-    g.quadraticCurveTo(sx + sh * 0.22, sy - sh * 0.35, sx + sh * 0.15, sy - sh * 0.7);
-    g.closePath();
-    g.fill();
-    if (Math.random() < 0.6) {
-      g.strokeStyle = "rgba(0,0,0,0.9)";
-      g.lineWidth = sh * 0.05;
-      g.beginPath();
-      g.moveTo(sx - sh * 0.13, sy - sh * 0.6);
-      g.quadraticCurveTo(sx - sh * 0.28, sy - sh * 0.3, sx - sh * 0.22, sy - sh * 0.05);
-      g.stroke();
-      g.beginPath();
-      g.moveTo(sx + sh * 0.13, sy - sh * 0.6);
-      g.quadraticCurveTo(sx + sh * 0.28, sy - sh * 0.3, sx + sh * 0.22, sy - sh * 0.05);
-      g.stroke();
-    }
-    g.restore();
-  }
-
-  // === ЧЕРЕПА НА ПОЛУ ===
-  if (Math.random() < 0.6) {
-    const skullCount = 1 + Math.floor(Math.random() * 4);
-    for (let i = 0; i < skullCount; i++) {
-      const sx = Math.random() * W;
-      const sy = H * 0.6 + Math.random() * H * 0.32;
-      const sr = 14 + Math.random() * 26;
-      g.fillStyle = "rgba(195, 185, 158, 0.72)";
-      g.beginPath(); g.arc(sx, sy, sr, 0, Math.PI * 2); g.fill();
-      g.fillStyle = "rgba(8, 6, 4, 0.95)";
-      g.beginPath();
-      g.arc(sx - sr * 0.35, sy - sr * 0.15, sr * 0.22, 0, Math.PI * 2);
-      g.arc(sx + sr * 0.35, sy - sr * 0.15, sr * 0.22, 0, Math.PI * 2);
-      g.fill();
-      g.beginPath();
-      g.moveTo(sx, sy + sr * 0.1);
-      g.lineTo(sx - sr * 0.1, sy + sr * 0.35);
-      g.lineTo(sx + sr * 0.1, sy + sr * 0.35);
-      g.closePath();
-      g.fill();
-    }
-  }
-
-  // === ПЛЕСЕНЬ / СЫРОСТЬ ===
-  for (let i = 0; i < 90; i++) {
-    const mx = Math.random() * W;
-    const my = Math.random() * H;
-    const mr = 25 + Math.random() * 130;
-    const mg = g.createRadialGradient(mx, my, 4, mx, my, mr);
-    mg.addColorStop(0, i % 3 === 0 ? "rgba(65, 22, 14, 0.32)" : "rgba(10, 14, 10, 0.52)");
-    mg.addColorStop(1, "rgba(0,0,0,0)");
-    g.fillStyle = mg;
-    g.beginPath(); g.arc(mx, my, mr, 0, Math.PI * 2); g.fill();
-  }
-
-  // === ПОДВЕШЕННЫЕ ТРЯПКИ / ТЕЛА ===
-  if (Math.random() < 0.4) {
-    const hx = (0.3 + Math.random() * 0.4) * W;
-    const hy = 180 + Math.random() * 150;
-    g.fillStyle = "rgba(30, 25, 22, 0.7)";
-    g.beginPath();
-    g.ellipse(hx, hy + 120, 40, 160, 0, 0, Math.PI * 2);
-    g.fill();
-    g.strokeStyle = "rgba(50, 40, 30, 0.75)";
-    g.lineWidth = 3;
-    g.beginPath(); g.moveTo(hx, 0); g.lineTo(hx, hy); g.stroke();
-  }
-
-  // === РЕЛЕЙНЫЙ ШКАФ (артефакт) ===
-  const ax = artX * W;
-  const ay = artY * H;
-  g.fillStyle = "#171412";
-  g.fillRect(ax - 90, ay - 115, 180, 230);
-  g.strokeStyle = "#4d3c30";
-  g.lineWidth = 4;
-  g.strokeRect(ax - 90, ay - 115, 180, 230);
-  for (let i = 0; i < 6; i++) {
-    const lx = ax - 60 + (i % 3) * 60;
-    const ly = ay - 90 + Math.floor(i / 3) * 40;
-    const lit = Math.random() < 0.5;
-    g.fillStyle = lit ? "rgba(200, 60, 25, 0.9)" : "rgba(40, 30, 25, 0.85)";
-    g.beginPath(); g.arc(lx, ly, 5, 0, Math.PI * 2); g.fill();
-    if (lit) {
-      const glow = g.createRadialGradient(lx, ly, 1, lx, ly, 18);
-      glow.addColorStop(0, "rgba(220, 80, 30, 0.6)");
-      glow.addColorStop(1, "rgba(0,0,0,0)");
-      g.fillStyle = glow;
-      g.beginPath(); g.arc(lx, ly, 18, 0, Math.PI * 2); g.fill();
-    }
-  }
-
-  // === ПОРТАЛ ===
+  // Тёмный проём выхода
   g.fillStyle = "#010201";
   g.fillRect(px - pw * 0.5, py - ph * 0.5, pw, ph);
   g.strokeStyle = arch.rust;
-  g.lineWidth = 5;
+  g.lineWidth = 4;
   g.strokeRect(px - pw * 0.5, py - ph * 0.5, pw, ph);
-  const doorGlow = g.createRadialGradient(px, py, 10, px, py, 320);
-  doorGlow.addColorStop(0, "rgba(143, 50, 34, 0.22)");
-  doorGlow.addColorStop(1, "rgba(0,0,0,0)");
-  g.fillStyle = doorGlow;
-  g.fillRect(px - 320, py - 320, 640, 640);
 
-  // === ЦАРАПИНЫ С ШИФРОМ ===
-  const clueSpots = [
-    { x: 0.14, y: 0.30 }, { x: 0.55, y: 0.26 }, { x: 0.60, y: 0.72 },
-    { x: 0.20, y: 0.76 }, { x: 0.40, y: 0.18 }, { x: 0.78, y: 0.70 }
-  ];
-  const chosen = clueSpots[Math.floor(Math.random() * clueSpots.length)];
-  const codeText = `${d1} — ${d2} — ${d3}`;
-  g.save();
-  g.translate(chosen.x * W, chosen.y * H);
-  g.rotate((Math.random() - 0.5) * 0.22);
-  g.font = "bold 46px 'Courier New', monospace";
-  g.fillStyle = "rgba(12, 10, 9, 0.85)";
-  g.fillText(codeText, 3, 3);
-  g.fillStyle = "rgba(215, 198, 168, 0.62)";
-  g.fillText(codeText, 0, 0);
-  g.strokeStyle = "rgba(185, 165, 135, 0.34)";
-  g.lineWidth = 1.5;
-  g.beginPath();
-  g.moveTo(-22, -42); g.lineTo(185, -34);
-  g.moveTo(-16, 20);  g.lineTo(180, 24);
-  g.stroke();
-  g.restore();
-
-  // === ГЛАЗА В ТЕМНОТЕ (редко) ===
-  if (Math.random() < 0.28) {
-    const ex = Math.random() * W;
-    const ey = Math.random() * H * 0.7;
-    for (let i = 0; i < 2; i++) {
-      const ee = g.createRadialGradient(ex + i * 32, ey, 2, ex + i * 32, ey, 22);
-      ee.addColorStop(0, "rgba(255, 210, 110, 0.9)");
-      ee.addColorStop(1, "rgba(0,0,0,0)");
-      g.fillStyle = ee;
-      g.beginPath(); g.arc(ex + i * 32, ey, 22, 0, Math.PI * 2); g.fill();
-    }
+  // 3. Пятна сырости, плесени и ржавые подтёки
+  for (let i = 0; i < 65; i++) {
+    const mx = Math.random() * 1600;
+    const my = Math.random() * 900;
+    const mr = 25 + Math.random() * 110;
+    const mg = g.createRadialGradient(mx, my, 4, mx, my, mr);
+    mg.addColorStop(0, i % 3 === 0 ? "rgba(65, 22, 14, 0.34)" : "rgba(10, 14, 10, 0.52)");
+    mg.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = mg;
+    g.beginPath();
+    g.arc(mx, my, mr, 0, Math.PI * 2);
+    g.fill();
   }
 
-  // === ВИНЬЕТКА ===
-  const vg = g.createRadialGradient(W * 0.5, H * 0.5, H * 0.3, W * 0.5, H * 0.5, W * 0.7);
-  vg.addColorStop(0, "rgba(0,0,0,0)");
-  vg.addColorStop(1, "rgba(0,0,0,0.85)");
-  g.fillStyle = vg;
-  g.fillRect(0, 0, W, H);
+  // Свисающие цепи / провода сверху
+  const cables = 3 + Math.floor(Math.random() * 4);
+  for (let i = 0; i < cables; i++) {
+    const cx = 180 + Math.random() * 1240;
+    const len = 140 + Math.random() * 340;
+    g.strokeStyle = "rgba(25, 28, 25, 0.85)";
+    g.lineWidth = 2 + Math.random() * 3;
+    g.beginPath();
+    g.moveTo(cx, 0);
+    g.quadraticCurveTo(cx + (Math.random() - 0.5) * 80, len * 0.5, cx + (Math.random() - 0.5) * 40, len);
+    g.stroke();
+  }
+
+  // Релейный шкаф (механизм)
+  const ax = artX * 1600;
+  const ay = artY * 900;
+  g.fillStyle = "#171412";
+  g.fillRect(ax - 75, ay - 95, 150, 190);
+  g.strokeStyle = "#4d3c30";
+  g.lineWidth = 3;
+  g.strokeRect(ax - 75, ay - 95, 150, 190);
+
+  // 4. Впечатываем случайный 3-значный код прямо в фактуру стены (чтобы игрок нашёл его фонарём!)
+  const clueSpots = [
+    { x: 0.16, y: 0.34 },
+    { x: 0.52, y: 0.30 },
+    { x: 0.56, y: 0.72 },
+    { x: 0.22, y: 0.76 }
+  ];
+  const chosen = clueSpots[Math.floor(Math.random() * clueSpots.length)];
+  const codeText = `${d1} - ${d2} - ${d3}`;
+
+  g.save();
+  g.translate(chosen.x * 1600, chosen.y * 900);
+  g.rotate((Math.random() - 0.5) * 0.18);
+  g.font = "bold 34px 'Courier New', monospace";
+  g.fillStyle = "rgba(12, 10, 9, 0.82)";
+  g.fillText(codeText, 3, 3);
+  g.fillStyle = "rgba(205, 190, 165, 0.58)";
+  g.fillText(codeText, 0, 0);
+  g.strokeStyle = "rgba(200, 185, 160, 0.32)";
+  g.lineWidth = 1.4;
+  g.beginPath();
+  g.moveTo(-18, -32); g.lineTo(145, -26);
+  g.moveTo(-12, 16); g.lineTo(138, 20);
+  g.stroke();
+  g.restore();
 
   const tex = new THREE.CanvasTexture(c);
   tex.minFilter = THREE.LinearFilter;
@@ -798,11 +809,12 @@ function generateRandomHorrorRoom(roomObj) {
 
   if (roomTextures[5]) roomTextures[5].dispose();
   roomTextures[5] = tex;
-  roomImageDims[5] = { w: W, h: H };
+  roomImageDims[5] = { w: 1600, h: 900 };
 }
 
 /* ============================================================
-   АУДИО-ДВИЖОК С ХОРРОР-ЭФФЕКТАМИ
+   АУДИО-ДВИЖОК С ХОРРОР-ЭФФЕКТАМИ В КАЖДОЙ КОМНАТЕ
+   (сердцебиение, вскрики/вздохи, скрипы, царапанье по стенам, цепи, гул)
 ============================================================ */
 class DarkAmbientAudio {
   constructor() {
@@ -826,16 +838,16 @@ class DarkAmbientAudio {
     this.ctx = new AudioCtx();
 
     this.master = this.ctx.createGain();
-    this.master.gain.value = 1.0;
+    this.master.gain.value = 0.92;
     this.master.connect(this.ctx.destination);
 
     this.dryGain = this.ctx.createGain();
-    this.dryGain.gain.value = 0.82;
+    this.dryGain.gain.value = 0.65;
     this.dryGain.connect(this.master);
 
     this.convolver = this.ctx.createConvolver();
     this.wetGain = this.ctx.createGain();
-    this.wetGain.gain.value = 1.0;
+    this.wetGain.gain.value = 0.85;
     this.convolver.connect(this.wetGain);
     this.wetGain.connect(this.master);
 
@@ -910,10 +922,10 @@ class DarkAmbientAudio {
     src1.loop = true;
     const lp1 = this.ctx.createBiquadFilter();
     lp1.type = "lowpass";
-    lp1.frequency.value = 52;
+    lp1.frequency.value = 42;
     lp1.Q.value = 4.0;
     const g1 = this.ctx.createGain();
-    g1.gain.value = 1.35;
+    g1.gain.value = 0.85;
     src1.connect(lp1);
     lp1.connect(g1);
     g1.connect(this.convolver);
@@ -929,13 +941,14 @@ class DarkAmbientAudio {
     this.enabled = !this.enabled;
     if (this.enabled) {
       this.ctx.resume();
-      this.master.gain.setTargetAtTime(1.0, this.ctx.currentTime, 0.2);
+      this.master.gain.setTargetAtTime(0.92, this.ctx.currentTime, 0.2);
     } else {
       this.master.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.2);
     }
     return this.enabled;
   }
 
+  // 1. Глухое сердцебиение (двойной удар тук-тук)
   playHeartbeatPulse(intensity = 0.55) {
     if (!this.ctx || !this.enabled) return;
     const now = this.ctx.currentTime;
@@ -963,11 +976,14 @@ class DarkAmbientAudio {
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     this.heartbeatTimer = setInterval(() => {
       if (document.hidden || !this.enabled) return;
+      const room = ROOMS[currentRoomIndex];
+      // Чем глубже в доме или если тень рядом — сердце бьётся громче
       const baseIntensity = entityState.visible ? 1.0 : (0.35 + currentRoomIndex * 0.11);
       this.playHeartbeatPulse(baseIntensity);
     }, 1450);
   }
 
+  // 2. Далёкий приглушённый вскрик / судорожный вздох в коридорах
   playDistantShriek() {
     if (!this.ctx || !this.enabled) return;
     const now = this.ctx.currentTime;
@@ -999,111 +1015,7 @@ class DarkAmbientAudio {
     src.stop(now + dur + 0.05);
   }
 
-  // Детский плач / всхлипывание в темноте
-  playChildCry() {
-    if (!this.ctx || !this.enabled) return;
-    const now = this.ctx.currentTime;
-    const dur = 1.6 + Math.random() * 1.1;
-    const panner = this.ctx.createStereoPanner();
-    panner.pan.value = (Math.random() * 1.6) - 0.8;
-
-    const osc = this.ctx.createOscillator();
-    osc.type = "sine";
-    const base = 380 + Math.random() * 200;
-    osc.frequency.setValueAtTime(base, now);
-    osc.frequency.linearRampToValueAtTime(base * 1.15, now + dur * 0.3);
-    osc.frequency.linearRampToValueAtTime(base * 0.90, now + dur * 0.6);
-    osc.frequency.linearRampToValueAtTime(base * 1.10, now + dur);
-
-    const vib = this.ctx.createOscillator();
-    vib.frequency.value = 7.5;
-    const vibG = this.ctx.createGain();
-    vibG.gain.value = 14;
-    vib.connect(vibG); vibG.connect(osc.frequency);
-
-    const env = this.ctx.createGain();
-    env.gain.setValueAtTime(0.0001, now);
-    env.gain.linearRampToValueAtTime(0.35, now + 0.15);
-    env.gain.linearRampToValueAtTime(0.16, now + dur * 0.55);
-    env.gain.exponentialRampToValueAtTime(0.0001, now + dur);
-
-    osc.connect(env); env.connect(panner);
-    panner.connect(this.convolver);
-    osc.start(now); vib.start(now);
-    osc.stop(now + dur); vib.stop(now + dur);
-  }
-
-  // Шёпот за спиной
-  playWhisper() {
-    if (!this.ctx || !this.enabled) return;
-    const now = this.ctx.currentTime;
-    const dur = 2.4 + Math.random() * 1.6;
-    const panner = this.ctx.createStereoPanner();
-    panner.pan.value = (Math.random() * 1.8) - 0.9;
-
-    const src = this.ctx.createBufferSource();
-    src.buffer = this.ambientBuffer;
-    src.loop = true;
-
-    const bp = this.ctx.createBiquadFilter();
-    bp.type = "bandpass";
-    bp.frequency.value = 1800 + Math.random() * 800;
-    bp.Q.value = 8.0;
-
-    const env = this.ctx.createGain();
-    env.gain.setValueAtTime(0.0001, now);
-    env.gain.linearRampToValueAtTime(0.32, now + 0.4);
-    env.gain.linearRampToValueAtTime(0.16, now + dur * 0.7);
-    env.gain.exponentialRampToValueAtTime(0.0001, now + dur);
-
-    src.connect(bp); bp.connect(env); env.connect(panner);
-    panner.connect(this.convolver);
-    src.start(now); src.stop(now + dur);
-  }
-
-  // Пронзительный предсмертный вопль
-  playAgonizingScream() {
-    if (!this.ctx || !this.enabled) return;
-    const now = this.ctx.currentTime;
-    const dur = 1.5 + Math.random() * 0.8;
-    const panner = this.ctx.createStereoPanner();
-    panner.pan.value = (Math.random() * 1.4) - 0.7;
-
-    const osc = this.ctx.createOscillator();
-    osc.type = "sawtooth";
-    const base = 600 + Math.random() * 400;
-    osc.frequency.setValueAtTime(base * 0.7, now);
-    osc.frequency.linearRampToValueAtTime(base * 1.6, now + 0.15);
-    osc.frequency.linearRampToValueAtTime(base * 1.4, now + dur * 0.5);
-    osc.frequency.linearRampToValueAtTime(base * 0.6, now + dur);
-
-    const bp = this.ctx.createBiquadFilter();
-    bp.type = "bandpass";
-    bp.frequency.value = 1500 + Math.random() * 1000;
-    bp.Q.value = 6.0;
-
-    const env = this.ctx.createGain();
-    env.gain.setValueAtTime(0.0001, now);
-    env.gain.linearRampToValueAtTime(0.72, now + 0.08);
-    env.gain.linearRampToValueAtTime(0.50, now + dur * 0.4);
-    env.gain.exponentialRampToValueAtTime(0.0001, now + dur);
-
-    osc.connect(bp); bp.connect(env); env.connect(panner);
-    panner.connect(this.dryGain);
-    panner.connect(this.convolver);
-    osc.start(now); osc.stop(now + dur);
-  }
-
-  // Диспетчер криков — собирает нужный набор
-  playScream() {
-    if (!this.ctx || !this.enabled) return;
-    const t = Math.random();
-    if (t < 0.32) this.playDistantShriek();
-    else if (t < 0.52) this.playAgonizingScream();
-    else if (t < 0.72) this.playChildCry();
-    else this.playWhisper();
-  }
-
+  // 3. Скрип старых половиц / дверных петель
   playWoodCreak() {
     if (!this.ctx || !this.enabled) return;
     const now = this.ctx.currentTime;
@@ -1137,6 +1049,7 @@ class DarkAmbientAudio {
     osc.stop(now + dur + 0.03);
   }
 
+  // 4. Царапанье когтями по штукатурке / дереву
   playWallScratching() {
     if (!this.ctx || !this.enabled) return;
     const strokes = 3 + Math.floor(Math.random() * 3);
@@ -1252,6 +1165,17 @@ class DarkAmbientAudio {
     src.stop(now + dur);
   }
 
+  playPanicBurst() {
+    if (!this.ctx || !this.enabled) return;
+    this.playHeartbeatPulse(1.0);
+    setTimeout(() => this.playHeartbeatPulse(1.0), 480);
+    setTimeout(() => {
+      if (Math.random() < 0.65) this.playScream();
+      else this.playWallScratching();
+    }, 170);
+    setTimeout(() => this.playWoodCreak(), 620);
+  }
+
   playFootsteps() {
     if (!this.ctx || !this.enabled) return;
     for (let i = 0; i < 4; i++) {
@@ -1277,21 +1201,19 @@ class DarkAmbientAudio {
   triggerRandomAmbient() {
     if (!this.ctx || !this.enabled) return;
     const r = Math.random();
-    if (r < 0.30)      this.playScream();
-    else if (r < 0.44) this.playSteelChains();
-    else if (r < 0.58) this.playWallScratching();
-    else if (r < 0.70) this.playWoodCreak();
-    else if (r < 0.82) this.playSubterraneanRumble();
-    else               this.playWhisper();
+    if (r < 0.22) this.playSteelChains();
+    else if (r < 0.44) this.playWallScratching();
+    else if (r < 0.66) this.playWoodCreak();
+    else if (r < 0.84) this.playDistantShriek();
+    else this.playSubterraneanRumble();
   }
 
   startEnvironmentalScheduler() {
     if (this.scheduler) clearInterval(this.scheduler);
     this.scheduler = setInterval(() => {
       if (document.hidden) return;
-      if (!this.enabled) return;
-      this.triggerRandomAmbient();
-    }, 3500);
+      if (this.enabled && Math.random() < 0.82) this.triggerRandomAmbient();
+    }, 4800);
   }
 
   destroy() {
@@ -1303,7 +1225,7 @@ class DarkAmbientAudio {
 const audioEngine = new DarkAmbientAudio();
 
 /* ============================================================
-   УПРАВЛЕНИЕ РОЛИКОМ tape.mp4
+   УПРАВЛЕНИЕ РОЛИКОМ tape.mp4 И ПЛАВНЫМ ВОЗВРАТОМ К КОМНАТЕ
 ============================================================ */
 const glCanvas = document.getElementById("gl-canvas");
 const fxCanvas = document.getElementById("fx-canvas");
@@ -1320,6 +1242,7 @@ function connectTapeVideoToAudio() {
   } catch (e) {}
 }
 
+// Когда ролик tape.mp4 заканчивается — плавно возвращаемся к обычной комнате
 if (tapeVideo) {
   tapeVideo.addEventListener("ended", () => {
     const room0 = ROOMS[0];
@@ -1459,6 +1382,19 @@ const pointer = {
 const transition = { active: false, phase: "none", progress: 0, targetRoom: 0, focusX: 0.5, focusY: 0.5 };
 const entityState = { visible: false, opacity: 0, targetOpacity: 0, evading: false, timer: 0, spot: { x: 0.59, y: 0.52, scale: 1.0 } };
 const layout = { planeW: 16, planeH: 9, viewW: 16, viewH: 9 };
+
+const PANIC_CHANCE_PER_CLICK = 0.055;
+const PANIC_COOLDOWN_MS      = 26000;
+const PANIC_DURATION_MS      = 6800;
+
+const panicState = {
+  active: false,
+  startedAt: 0,
+  duration: PANIC_DURATION_MS,
+  lastTriggeredAt: -PANIC_COOLDOWN_MS,
+  intensity: 0,
+  dread: 0
+};
 
 function saveProgress() {
   try {
@@ -1688,6 +1624,17 @@ function animate(time) {
   lastFrameTime = time;
   const dt = dtMs / 16.667;
 
+  if (panicState.active) {
+    const elapsed = time - panicState.startedAt;
+    if (elapsed >= panicState.duration) {
+      panicState.active = false;
+      panicState.intensity = 0;
+    } else {
+      const p = elapsed / panicState.duration;
+      panicState.intensity = p < 0.14 ? p / 0.14 : (p > 0.72 ? (1 - p) / 0.28 : 1);
+    }
+  }
+
   const w = window.innerWidth;
   const h = window.innerHeight;
   const room = ROOMS[currentRoomIndex];
@@ -1704,6 +1651,12 @@ function animate(time) {
   let camZ = 10.0;
   let camX = pointer.normX * 0.32;
   let camY = -pointer.normY * 0.22 + Math.sin(time * 0.0022) * 0.03;
+  if (panicState.active && !REDUCE_MOTION) {
+    const pAmp = panicState.intensity;
+    camX += Math.sin(time * 0.067) * 0.11 * pAmp + (Math.random() - 0.5) * 0.06 * pAmp;
+    camY += Math.cos(time * 0.059) * 0.09 * pAmp + (Math.random() - 0.5) * 0.06 * pAmp;
+    camZ -= Math.sin(time * 0.014) * 0.35 * pAmp;
+  }
   let blackFade = 0;
 
   if (transition.active) {
@@ -1720,6 +1673,7 @@ function animate(time) {
       if (transition.progress >= 1) {
         currentRoomIndex = transition.targetRoom;
         entityState.visible = false;
+        // При каждом входе в сектор 06 генерируем новую мрачную комнату
         if (ROOMS[currentRoomIndex].isProceduralRoom) {
           generateRandomHorrorRoom(ROOMS[currentRoomIndex]);
         }
@@ -1817,6 +1771,8 @@ function render2DOverlay(w, h, room, blackFade, time, dt) {
     fxCtx.fill();
   });
 
+  // Скрытые 2D-текстовые подсказки отключены — все ключи нанесены непосредственно на изображения уровней
+
   drawMarker2D(offsetX + room.artifact.x * scaleX, offsetY + room.artifact.y * scaleY,
     room.artifact.label, room.solved ? "#528c63" : "#bd7d3b", time);
   const canPass = room.solved || freeMode;
@@ -1834,6 +1790,16 @@ function render2DOverlay(w, h, room, blackFade, time, dt) {
     fxCtx.globalCompositeOperation = "source-over";
   } else {
     fxCtx.fillStyle = "rgba(1, 2, 1, 0.91)";
+    fxCtx.fillRect(0, 0, w, h);
+  }
+
+  if (panicState.active) {
+    const pulse = 0.5 + 0.5 * Math.sin(time * 0.019);
+    const alarmAlpha = (REDUCE_MOTION ? 0.12 : 0.28 * pulse) * panicState.intensity;
+    const alarmGrad = fxCtx.createRadialGradient(w * 0.5, h * 0.5, Math.min(w, h) * 0.16, w * 0.5, h * 0.5, Math.max(w, h) * 0.72);
+    alarmGrad.addColorStop(0, "rgba(143, 50, 34, 0)");
+    alarmGrad.addColorStop(1, `rgba(143, 50, 34, ${alarmAlpha.toFixed(3)})`);
+    fxCtx.fillStyle = alarmGrad;
     fxCtx.fillRect(0, 0, w, h);
   }
 
@@ -1959,6 +1925,16 @@ glCanvas.addEventListener("click", (e) => {
   const portY = t.offsetY + room.portal.y * t.scaleY;
   if (Math.hypot(e.clientX - portX, e.clientY - portY) < 90) {
     attemptRoomTransition((currentRoomIndex + 1) % ROOMS.length);
+    return;
+  }
+
+  const now = performance.now();
+  if (!transition.active && !document.querySelector(".modal-backdrop.open")) {
+    panicState.dread = Math.min(1.0, panicState.dread + 0.14);
+    const effectiveChance = PANIC_CHANCE_PER_CLICK + panicState.dread * 0.12;
+    if (Math.random() < effectiveChance) {
+      triggerPanicEpisode(now);
+    }
   }
 });
 
@@ -1985,6 +1961,26 @@ window.addEventListener("keydown", (e) => {
     document.querySelectorAll(".modal-backdrop.open").forEach(m => m.classList.remove("open"));
   }
 });
+
+function triggerPanicEpisode(now = performance.now()) {
+  if (panicState.active) return;
+  if (now - panicState.lastTriggeredAt < PANIC_COOLDOWN_MS) return;
+
+  const room0 = ROOMS[0];
+  const tapeActiveNow = room0.id === 0 && room0.tapePlaying && !room0.tapeFinished && currentRoomIndex === 0;
+  if (tapeActiveNow) return;
+
+  panicState.active = true;
+  panicState.startedAt = now;
+  panicState.lastTriggeredAt = now;
+  panicState.intensity = 1.0;
+  panicState.dread = 0;
+
+  if (audioEngine.enabled) {
+    audioEngine.playPanicBurst();
+  }
+  spawnShadowEntity(true);
+}
 
 function spawnShadowEntity(force = false) {
   const room = ROOMS[currentRoomIndex];
