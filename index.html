@@ -163,9 +163,6 @@
     *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   }
 
-  /* ===================================================================
-     EPISODE 1
-     =================================================================== */
   body.ep1-active #intro-screen,
   body.ep1-active .top-hud,
   body.ep1-active .depth-nav,
@@ -429,7 +426,6 @@
   <div>Контекст WebGL потерян.<br>Пожалуйста, перезагрузите страницу.</div>
 </div>
 
-<!-- ================= EPISODE 1 HTML ================= -->
 <div id="ep1-fade"></div>
 
 <div id="ep1-hud">
@@ -490,7 +486,7 @@
 'use strict';
 
 /* ============================================================
-   КОНСТАНТЫ И КОНФИГУРАЦИЯ
+   КОНСТАНТЫ
 ============================================================ */
 const MAX_UPLOAD_SIZE   = 25 * 1024 * 1024;
 const MAX_TEXTURE_DIM   = 4096;
@@ -1098,7 +1094,7 @@ function syncTapeVideo() {
 }
 
 /* ============================================================
-   THREE.JS СЦЕНА (2.5D)
+   THREE.JS СЦЕНА 2.5D
 ============================================================ */
 const renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, alpha: false });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -1122,7 +1118,7 @@ scene.add(roomMesh);
 const proceduralTextureCache = {};
 
 /* ============================================================
-   СОСТОЯНИЕ
+   СОСТОЯНИЕ 2.5D
 ============================================================ */
 let currentRoomIndex = 0;
 let freeMode = false;
@@ -1149,9 +1145,6 @@ const panicState = {
   lastTriggeredAt: -PANIC_COOLDOWN_MS, intensity: 0, dread: 0
 };
 
-/* ============================================================
-   СОХРАНЕНИЕ
-============================================================ */
 function saveProgress() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -1208,6 +1201,10 @@ function getOverlayTransform(w, h) {
     offsetY: (h - scaleY) * 0.5 - pointer.normY * 11
   };
 }
+
+/* ============================================================
+   ИСПРАВЛЕНИЕ: resizeAll больше не падает при первом вызове
+============================================================ */
 function resizeAll() {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -1219,7 +1216,10 @@ function resizeAll() {
   fxCanvas.style.height = window.innerHeight + "px";
   fxCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ensureFlashlightSprite();
-  Episode1.onResize();
+  // Безопасный вызов — Episode1 может быть ещё не объявлен при первом resize
+  if (window.Episode1 && typeof window.Episode1.onResize === "function") {
+    window.Episode1.onResize();
+  }
 }
 window.addEventListener("resize", resizeAll);
 resizeAll();
@@ -1255,9 +1255,6 @@ function createTextureFromImageSource(img, roomIdx) {
   return true;
 }
 
-/* ============================================================
-   ПОДСКАЗКИ ДЛЯ ФОЛЛБЭК-ТЕКСТУР
-============================================================ */
 function drawFallbackHint(g, room) {
   if (room.isProceduralRoom) return;
   const hints = {
@@ -1325,9 +1322,6 @@ function createProceduralTexture(room) {
   return tex;
 }
 
-/* ============================================================
-   ПРОЦЕДУРНАЯ КОМНАТА 6
-============================================================ */
 function generateRandomHorrorRoom(roomObj) {
   const arch = PROCEDURAL_ARCHETYPES[Math.floor(Math.random() * PROCEDURAL_ARCHETYPES.length)];
   const d1 = Math.floor(Math.random() * 10), d2 = Math.floor(Math.random() * 10), d3 = Math.floor(Math.random() * 10);
@@ -1460,7 +1454,7 @@ function handleBulkFiles(fileList) {
 }
 
 /* ============================================================
-   СУЩНОСТЬ (2.5D)
+   СУЩНОСТЬ 2.5D
 ============================================================ */
 function build3DShadowEntity() {
   const group = new THREE.Group();
@@ -1516,7 +1510,6 @@ function animate(time) {
   lastFrameTime = time;
   const dt = dtMs / 16.667;
 
-  // ПЕРЕХВАТ: ЭПИЗОД 1
   if (window.Episode1 && window.Episode1.isActive()) {
     window.Episode1.tick(dtMs / 1000);
     return;
@@ -1871,7 +1864,7 @@ window.addEventListener("keydown", (e) => {
 });
 
 /* ============================================================
-   ПАНИКА
+   ПАНИКА 2.5D
 ============================================================ */
 function triggerPanicEpisode(now = performance.now()) {
   if (panicState.active) return;
@@ -2125,7 +2118,6 @@ window.Episode1 = (() => {
   let hotInteractable = null;
   let inited = false;
 
-  // ===== Текстуры =====
   function makeConcreteTexture(repeat = 2) {
     const c = document.createElement('canvas');
     c.width = c.height = 512;
@@ -2186,7 +2178,6 @@ window.Episode1 = (() => {
     return wall;
   }
 
-  // ===== Уровень =====
   function buildLevel() {
     const conc = new THREE.MeshStandardMaterial({ map: makeConcreteTexture(3), roughness: 0.95, metalness: 0.05 });
     const floorMat = new THREE.MeshStandardMaterial({ map: makeConcreteTexture(6), roughness: 0.98, metalness: 0.02, color: 0x8a8a80 });
@@ -2195,7 +2186,6 @@ window.Episode1 = (() => {
     const rustMetal = new THREE.MeshStandardMaterial({ map: makeMetalTexture(), roughness: 0.85, metalness: 0.35, color: 0x9a7a60 });
     const WALL_H = 3.0, wallTh = 0.3;
 
-    // Стартовая площадка
     addWallBox(0, -0.1, 5, 7, 0.2, 8, floorMat);
     addWallBox(0, WALL_H + 0.1, 5, 7, 0.2, 8, ceilMat);
     addWallBox(-3.5, WALL_H/2, 5, wallTh, WALL_H, 4, conc);
@@ -2204,14 +2194,12 @@ window.Episode1 = (() => {
     addWallBox(-2.75, WALL_H/2, 3, 1.5, WALL_H, wallTh, conc);
     addWallBox(2.75, WALL_H/2, 3, 1.5, WALL_H, wallTh, conc);
 
-    // Лестница визуально
     for (let i = 0; i < 6; i++) {
       const step = new THREE.Mesh(new THREE.BoxGeometry(3, 0.2, 0.5), conc);
       step.position.set(0, 0.2 + i * 0.35, 7.3 + i * 0.5);
       epScene.add(step);
     }
 
-    // Коридор
     addWallBox(0, -0.1, -19.5, 4, 0.2, 45, floorMat);
     addWallBox(0, WALL_H + 0.1, -19.5, 4, 0.2, 45, ceilMat);
     addWallBox(-2.15, WALL_H/2, -19.5, wallTh, WALL_H, 45, conc);
@@ -2219,7 +2207,6 @@ window.Episode1 = (() => {
     addWallBox(2.15, WALL_H/2, -32, wallTh, WALL_H, 20, conc);
     addWallBox(2.15, 2.8, -20, wallTh, 0.4, 4, conc);
 
-    // Комната
     addWallBox(10, -0.1, -21, 16, 0.2, 18, floorMat);
     addWallBox(10, WALL_H + 0.1, -21, 16, 0.2, 18, ceilMat);
     addWallBox(18.15, WALL_H/2, -21, wallTh, WALL_H, 18, conc);
@@ -2228,7 +2215,6 @@ window.Episode1 = (() => {
     addWallBox(2.15, WALL_H/2, -14.5, wallTh, WALL_H, 5, conc);
     addWallBox(2.15, WALL_H/2, -26, wallTh, WALL_H, 8, conc);
 
-    // Гермозатвор
     const gateGroup = new THREE.Group();
     const gateMesh = new THREE.Mesh(new THREE.BoxGeometry(3.8, 3.0, 0.25), metal);
     gateMesh.position.set(0, 1.5, -42);
@@ -2250,7 +2236,6 @@ window.Episode1 = (() => {
     };
     walls.push(gateDoor.wall);
 
-    // Выходная площадка
     addWallBox(0, -0.1, -47, 6, 0.2, 10, floorMat);
     addWallBox(0, WALL_H + 0.1, -47, 6, 0.2, 10, ceilMat);
     addWallBox(-3.15, WALL_H/2, -47, wallTh, WALL_H, 10, conc);
@@ -2262,7 +2247,6 @@ window.Episode1 = (() => {
       epScene.add(step);
     }
 
-    // Рукоятка
     const handleGroup = new THREE.Group();
     const hb = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8), rustMetal);
     hb.rotation.z = Math.PI / 2; handleGroup.add(hb);
@@ -2287,7 +2271,6 @@ window.Episode1 = (() => {
       }
     });
 
-    // Механизм
     const mechGroup = new THREE.Group();
     const mechBase = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.9, 0.3), metal);
     mechGroup.add(mechBase);
@@ -2331,7 +2314,6 @@ window.Episode1 = (() => {
       }
     });
 
-    // Питание
     const powerGroup = new THREE.Group();
     const powerBox = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.0, 0.25), metal);
     powerGroup.add(powerBox);
@@ -2358,7 +2340,6 @@ window.Episode1 = (() => {
       }
     });
 
-    // Фонарь
     epFlash = new THREE.SpotLight(0xffe9c8, 3.2, 18, Math.PI / 6.5, 0.45, 1.2);
     epFlashTarget = new THREE.Object3D();
     epFlashTarget.position.set(0, 0, -1);
