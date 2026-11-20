@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self' blob: data:; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self' blob: data:; media-src 'self' blob: data:; object-src 'none'; base-uri 'self';">
 <title>ОСОБНЯК // БЕЗМОЛВИЕ</title>
 <style>
   :root {
@@ -58,7 +60,7 @@
     z-index: 1;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.5s ease;
+    transition: opacity 0.65s ease;
   }
 
   #tape-video.playing {
@@ -263,6 +265,11 @@
     background: rgba(82, 140, 99, 0.5);
   }
 
+  .depth-node.procedural .depth-dot {
+    border-color: #8f3222;
+    border-style: dashed;
+  }
+
   .bottom-hud {
     position: fixed;
     bottom: 0; left: 0; right: 0;
@@ -324,7 +331,7 @@
   }
 
   .nav-controls { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
-  .nav-buttons { display: flex; gap: 8px; }
+  .nav-buttons { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 
   .modal-backdrop {
     position: fixed;
@@ -441,7 +448,8 @@
     <h1 class="intro-title">ОСОБНЯК // БЕЗМОЛВИЕ</h1>
     <p class="intro-desc">
       В этих стенах произошло то, о чём не осталось ни одной официальной записи.
-      Используйте луч фонаря, чтобы находить скрытые улики, решайте механические замки комнат и будьте осторожны в темноте.
+      Осматривайте стены, ткани, стекло и металл лучом фонаря — ответы на замки выцарапаны прямо на поверхностях комнат.
+      В глубине дома также скрыта аномальная зона, меняющая облик при каждом входе.
     </p>
     <div class="intro-actions">
       <button class="btn btn-primary" id="btn-enter-house">ВОЙТИ В ДОМ</button>
@@ -453,7 +461,7 @@
 <header class="top-hud">
   <div>
     <div class="brand-title">ОСОБНЯК // БЕЗМОЛВИЕ</div>
-    <div class="room-indicator" id="hud-room-indicator">ЛОКАЦИЯ 01 / 05 — ПРИХОЖАЯ С ДИКТОФОНОМ</div>
+    <div class="room-indicator" id="hud-room-indicator">ЛОКАЦИЯ 01 / 06 — ПРИХОЖАЯ С ДИКТОФОНОМ</div>
   </div>
   <div class="hud-controls">
     <button class="hud-btn" id="btn-open-photos" aria-pressed="false">ФОТО КОМНАТ [0/5]</button>
@@ -477,7 +485,10 @@
     </p>
     <div class="puzzle-status-bar">
       <span class="status-badge" id="puzzle-badge">ПРОХОД ЗАБЛОКИРОВАН</span>
-      <button class="hud-btn" id="btn-open-puzzle">ОСМОТРЕТЬ МЕХАНИЗМ</button>
+      <div style="display:flex; gap:8px;">
+        <button class="hud-btn" id="btn-regen-room" style="display:none;">ПЕРЕСТРОИТЬ КОМНАТУ</button>
+        <button class="hud-btn" id="btn-open-puzzle">ОСМОТРЕТЬ МЕХАНИЗМ</button>
+      </div>
     </div>
   </div>
 
@@ -496,7 +507,7 @@
     <h3 class="modal-title" id="modal-title">Загадка</h3>
     <p class="modal-body" id="modal-desc"></p>
     <div class="puzzle-interactive" id="modal-interactive"></div>
-    <div class="puzzle-feedback" id="modal-feedback">Исследуйте стены лучом фонаря.</div>
+    <div class="puzzle-feedback" id="modal-feedback">Осмотрите поверхности комнаты лучом фонаря.</div>
   </div>
 </div>
 
@@ -517,7 +528,7 @@
   <div class="modal-card">
     <div class="modal-tag">АРХИВ ЗАКРЫТ</div>
     <h3 class="modal-title" id="final-title">Дело № 404-06</h3>
-    <p class="modal-body">Вы прошли все 5 комнат. Дом отпустил вас... на время.</p>
+    <p class="modal-body">Вы прошли все сектора особняка, включая его меняющееся ядро. Дом отпустил вас... на время.</p>
     <div style="display:flex; gap:8px; margin-top:16px;">
       <button class="btn" id="btn-reset-progress">СБРОСИТЬ ПРОГРЕСС</button>
       <button class="btn btn-primary" id="btn-close-final" style="flex:1">ЗАКРЫТЬ</button>
@@ -538,13 +549,17 @@
 const MAX_UPLOAD_SIZE   = 25 * 1024 * 1024;
 const MAX_TEXTURE_DIM   = 4096;
 const REDUCE_MOTION     = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const STORAGE_KEY       = 'osobnyak_progress_v1';
+const STORAGE_KEY       = 'osobnyak_progress_v2';
 const FLASHLIGHT_RATIO  = 0.34;
 const TRANSITION_SPEED  = 0.026;
 const POINTER_LERP      = 0.12;
 const ENTITY_LERP       = 0.035;
 const ENTITY_EVADE_LERP = 0.14;
 
+/* ============================================================
+   КОНФИГУРАЦИЯ КОМНАТ (5 ОСНОВНЫХ + 1 ПРОЦЕДУРНАЯ АНОМАЛИЯ)
+   Подсказки нанесены на сами текстуры изображений — 2D-оверлей текста отключён.
+============================================================ */
 const ROOMS = [
   {
     id: 0, code: "СЕКТОР 01 // ПРИХОЖАЯ", fileName: "1000404062.jpg",
@@ -553,11 +568,10 @@ const ROOMS = [
     portal: { x: 0.62, y: 0.48, label: "Проём в коридор" },
     artifact: { x: 0.41, y: 0.42, label: "Катушечный диктофон" },
     shadowSpots: [{ x: 0.59, y: 0.52, scale: 1.05 }, { x: 0.67, y: 0.55, scale: 0.90 }],
-    clues: [{ x: 0.46, y: 0.78, text: "442 Гц" }, { x: 0.21, y: 0.34, text: "442" }],
     palette: { wall: "#18201b", floor: "#0d110e", light: "#6c8074" },
-    reverbDecay: 3.5, solved: false, tapePlaying: false,
+    reverbDecay: 3.5, solved: false, tapePlaying: false, tapeFinished: false,
     puzzleTitle: "Бобинный диктофон «ЭХО-4»",
-    puzzleDesc: "Настройте частоту на 442 Гц по подсказке на полу, чтобы запустить катушки и воспроизвести запись с плёнки.",
+    puzzleDesc: "Осмотрите сырую штукатурку слева лучом фонаря — на стене нацарапана несущая частота плёнки.",
     puzzleType: "frequency", targetFreq: 442
   },
   {
@@ -567,11 +581,10 @@ const ROOMS = [
     portal: { x: 0.50, y: 0.46, label: "Дальний переход к чердаку" },
     artifact: { x: 0.31, y: 0.44, label: "Узел с кодовым замком" },
     shadowSpots: [{ x: 0.45, y: 0.52, scale: 0.85 }, { x: 0.55, y: 0.50, scale: 0.92 }],
-    clues: [{ x: 0.24, y: 0.38, text: "I · IV" }, { x: 0.83, y: 0.62, text: "VII · IX" }],
     palette: { wall: "#1c221b", floor: "#121510", light: "#7a8c76" },
     reverbDecay: 4.0, solved: false,
     puzzleTitle: "Четырёхдисковый замок смотрителя",
-    puzzleDesc: "Выставьте 4 римских символа, найденных на стенах коридора.",
+    puzzleDesc: "Посветите фонариком на глубокие царапины на правой стене под рамами — там вырезаны 4 римских знака.",
     puzzleType: "roman_code", targetCode: ["I", "IV", "VII", "IX"]
   },
   {
@@ -581,11 +594,10 @@ const ROOMS = [
     portal: { x: 0.50, y: 0.45, label: "Люк в шахту лазарета" },
     artifact: { x: 0.14, y: 0.72, label: "Кованый сундук с противовесами" },
     shadowSpots: [{ x: 0.42, y: 0.48, scale: 0.82 }, { x: 0.73, y: 0.50, scale: 0.95 }],
-    clues: [{ x: 0.63, y: 0.58, text: "Л: 2+4" }, { x: 0.84, y: 0.66, text: "П: 6" }],
     palette: { wall: "#211c16", floor: "#14110d", light: "#9c896e" },
     reverbDecay: 3.2, solved: false,
     puzzleTitle: "Рычажные весы чердачного люка",
-    puzzleDesc: "Уравновесьте чаши весов: 6 кг = 6 кг.",
+    puzzleDesc: "Осветите заляпанную простыню на центральном кресле — на ткани проступает распределение гирь для левой (Л) и правой (П) чаш.",
     puzzleType: "weights"
   },
   {
@@ -595,29 +607,215 @@ const ROOMS = [
     portal: { x: 0.64, y: 0.49, label: "Гермошлюз в подземный бункер" },
     artifact: { x: 0.48, y: 0.54, label: "Хирургический стол и дозатор" },
     shadowSpots: [{ x: 0.26, y: 0.53, scale: 1.02 }, { x: 0.64, y: 0.51, scale: 0.88 }],
-    clues: [{ x: 0.89, y: 0.36, text: "А : 3" }, { x: 0.80, y: 0.84, text: "B : 1" }],
     palette: { wall: "#172420", floor: "#0e1412", light: "#779c8e" },
     reverbDecay: 4.5, solved: false,
     puzzleTitle: "Дозатор инфузионной стойки №9",
-    puzzleDesc: "Установите дозировку в пропорции 3 : 1.",
+    puzzleDesc: "Осмотрите треснувший кафель за операционным столом — там процарапана пропорция для колб А и B.",
     puzzleType: "dosage", targetA: 3, targetB: 1
   },
   {
     id: 4, code: "СЕКТОР 05 // БУНКЕР", fileName: "1000404061.jpg",
     title: "Подземный бункер связи",
     desc: "Массивная ржавая гермодверь, аварийный маяк и полевой телефон.",
-    portal: { x: 0.90, y: 0.52, label: "Коридор эвакуации (В начало)" },
+    portal: { x: 0.90, y: 0.52, label: "Спуск в аномальный сектор" },
     artifact: { x: 0.33, y: 0.56, label: "Полевой телефон и гермовентиль" },
     shadowSpots: [{ x: 0.87, y: 0.54, scale: 0.96 }, { x: 0.76, y: 0.55, scale: 0.85 }],
-    clues: [{ x: 0.24, y: 0.26, text: "R × 3" }, { x: 0.52, y: 0.45, text: "L × 2" }],
     palette: { wall: "#1b1917", floor: "#0f0d0c", light: "#c93b2b" },
     reverbDecay: 5.2, solved: false,
     puzzleTitle: "Штурвал гермошлюза и аварийный передатчик",
-    puzzleDesc: "Проверните маховик: 3 оборота вправо (R), затем 2 оборота влево (L).",
+    puzzleDesc: "На ржавой гермодвери прямо над маховиком выбита последовательность оборотов вправо (R) и влево (L).",
     puzzleType: "valve", targetSequence: ["R", "R", "R", "L", "L"]
+  },
+  {
+    id: 5, code: "СЕКТОР 06 // ПРОЦЕДУРНАЯ АНОМАЛИЯ", fileName: "PROCEDURAL_ENGINE",
+    isProceduralRoom: true,
+    title: "Меняющаяся камера под фундаментом",
+    desc: "Стены этого помещения перестраиваются каждый раз, когда вы переступаете порог. Ищите выцарапанный шифр в луче фонаря.",
+    portal: { x: 0.78, y: 0.50, label: "Выход на поверхность (В начало)" },
+    artifact: { x: 0.35, y: 0.55, label: "Ржавый релейный шкаф" },
+    shadowSpots: [{ x: 0.74, y: 0.53, scale: 1.05 }, { x: 0.22, y: 0.56, scale: 0.92 }],
+    palette: { wall: "#161a18", floor: "#0a0c0b", light: "#8f3222" },
+    reverbDecay: 5.8, solved: false,
+    puzzleTitle: "Релейный замок аномалии",
+    puzzleDesc: "Осмотрите стены и бетонные балки этой камеры фонарём — на них процарапаны 3 цифры актуального шифра.",
+    puzzleType: "procedural_pin",
+    targetPin: [4, 0, 9]
   }
 ];
 
+/* ============================================================
+   ПРОЦЕДУРНЫЙ ГЕНЕРАТОР МРАЧНЫХ КОМНАТ (ДЛЯ СЕКТОРА 06)
+============================================================ */
+const PROCEDURAL_ARCHETYPES = [
+  {
+    name: "Затопленный коллектор под фундаментом",
+    desc: "Чёрная стоячая вода отражает треснувшие бетонные своды и ржавые вентили. Откуда-то снизу доносится глухой стук.",
+    bgTop: "#0e1513", bgBot: "#040605", accent: "#2c3d37", rust: "#5e251a"
+  },
+  {
+    name: "Изолятор с облупленной кафельной кладкой",
+    desc: "Узкая камера без окон. С потолка свисают обрывки проводов и крюки, а по углам расползлась чёрная плесень.",
+    bgTop: "#171915", bgBot: "#050604", accent: "#393e33", rust: "#6b2b1e"
+  },
+  {
+    name: "Архивный склеп с обрушенными стеллажами",
+    desc: "Покосившиеся железные шкафы завалены истлевшими папками и битым стеклом. Воздух тяжёлый и ледяной.",
+    bgTop: "#1a1412", bgBot: "#050403", accent: "#42332d", rust: "#7a2c1d"
+  },
+  {
+    name: "Шахта старого грузового подъёмника",
+    desc: "Ржавые тросы уходят в непроглядную черноту наверху. На сыром бетоне видны следы чьих-то ногтей.",
+    bgTop: "#121316", bgBot: "#030405", accent: "#2d313b", rust: "#6e261b"
+  }
+];
+
+function generateRandomHorrorRoom(roomObj) {
+  const arch = PROCEDURAL_ARCHETYPES[Math.floor(Math.random() * PROCEDURAL_ARCHETYPES.length)];
+  const d1 = Math.floor(Math.random() * 10);
+  const d2 = Math.floor(Math.random() * 10);
+  const d3 = Math.floor(Math.random() * 10);
+  roomObj.targetPin = [d1, d2, d3];
+  roomObj.solved = false;
+  roomObj.title = arch.name;
+  roomObj.desc = arch.desc;
+
+  // Случайные координаты портала и механизма
+  const portalX = 0.68 + Math.random() * 0.18;
+  const portalY = 0.44 + Math.random() * 0.10;
+  const artX = 0.22 + Math.random() * 0.24;
+  const artY = 0.48 + Math.random() * 0.14;
+  roomObj.portal = { x: portalX, y: portalY, label: "Выход на поверхность (В начало)" };
+  roomObj.artifact = { x: artX, y: artY, label: "Ржавый релейный шкаф" };
+  roomObj.shadowSpots = [
+    { x: Math.min(0.88, portalX - 0.04), y: portalY + 0.04, scale: 1.04 },
+    { x: 0.16 + Math.random() * 0.65, y: 0.54, scale: 0.90 }
+  ];
+
+  const c = document.createElement("canvas");
+  c.width = 1600;
+  c.height = 900;
+  const g = c.getContext("2d");
+
+  // 1. Гнетущий градиент пространства
+  const bg = g.createRadialGradient(800, 380, 60, 800, 450, 980);
+  bg.addColorStop(0, arch.bgTop);
+  bg.addColorStop(0.65, arch.bgBot);
+  bg.addColorStop(1, "#010201");
+  g.fillStyle = bg;
+  g.fillRect(0, 0, 1600, 900);
+
+  // 2. Перспектива коридора / камеры
+  const px = portalX * 1600;
+  const py = portalY * 900;
+  const pw = 230 + Math.random() * 60;
+  const ph = 340 + Math.random() * 60;
+
+  g.strokeStyle = "rgba(130, 145, 125, 0.16)";
+  g.lineWidth = 2;
+  g.beginPath();
+  g.moveTo(0, 0); g.lineTo(px - pw * 0.5, py - ph * 0.5);
+  g.moveTo(1600, 0); g.lineTo(px + pw * 0.5, py - ph * 0.5);
+  g.moveTo(0, 900); g.lineTo(px - pw * 0.5, py + ph * 0.5);
+  g.moveTo(1600, 900); g.lineTo(px + pw * 0.5, py + ph * 0.5);
+  g.stroke();
+
+  // Вертикальные ребра / колонны / трубы
+  const ribs = 4 + Math.floor(Math.random() * 5);
+  for (let i = 1; i <= ribs; i++) {
+    const t = i / (ribs + 1);
+    const xL = (px - pw * 0.5) * t;
+    const xR = 1600 - (1600 - (px + pw * 0.5)) * t;
+    const yT = (py - ph * 0.5) * t;
+    const yB = 900 - (900 - (py + ph * 0.5)) * t;
+    g.strokeStyle = "rgba(95, 110, 95, 0.14)";
+    g.lineWidth = 3;
+    g.strokeRect(xL, yT, xR - xL, yB - yT);
+  }
+
+  // Тёмный проём выхода
+  g.fillStyle = "#010201";
+  g.fillRect(px - pw * 0.5, py - ph * 0.5, pw, ph);
+  g.strokeStyle = arch.rust;
+  g.lineWidth = 4;
+  g.strokeRect(px - pw * 0.5, py - ph * 0.5, pw, ph);
+
+  // 3. Пятна сырости, плесени и ржавые подтёки
+  for (let i = 0; i < 65; i++) {
+    const mx = Math.random() * 1600;
+    const my = Math.random() * 900;
+    const mr = 25 + Math.random() * 110;
+    const mg = g.createRadialGradient(mx, my, 4, mx, my, mr);
+    mg.addColorStop(0, i % 3 === 0 ? "rgba(65, 22, 14, 0.34)" : "rgba(10, 14, 10, 0.52)");
+    mg.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = mg;
+    g.beginPath();
+    g.arc(mx, my, mr, 0, Math.PI * 2);
+    g.fill();
+  }
+
+  // Свисающие цепи / провода сверху
+  const cables = 3 + Math.floor(Math.random() * 4);
+  for (let i = 0; i < cables; i++) {
+    const cx = 180 + Math.random() * 1240;
+    const len = 140 + Math.random() * 340;
+    g.strokeStyle = "rgba(25, 28, 25, 0.85)";
+    g.lineWidth = 2 + Math.random() * 3;
+    g.beginPath();
+    g.moveTo(cx, 0);
+    g.quadraticCurveTo(cx + (Math.random() - 0.5) * 80, len * 0.5, cx + (Math.random() - 0.5) * 40, len);
+    g.stroke();
+  }
+
+  // Релейный шкаф (механизм)
+  const ax = artX * 1600;
+  const ay = artY * 900;
+  g.fillStyle = "#171412";
+  g.fillRect(ax - 75, ay - 95, 150, 190);
+  g.strokeStyle = "#4d3c30";
+  g.lineWidth = 3;
+  g.strokeRect(ax - 75, ay - 95, 150, 190);
+
+  // 4. Впечатываем случайный 3-значный код прямо в фактуру стены (чтобы игрок нашёл его фонарём!)
+  const clueSpots = [
+    { x: 0.16, y: 0.34 },
+    { x: 0.52, y: 0.30 },
+    { x: 0.56, y: 0.72 },
+    { x: 0.22, y: 0.76 }
+  ];
+  const chosen = clueSpots[Math.floor(Math.random() * clueSpots.length)];
+  const codeText = `${d1} - ${d2} - ${d3}`;
+
+  g.save();
+  g.translate(chosen.x * 1600, chosen.y * 900);
+  g.rotate((Math.random() - 0.5) * 0.18);
+  g.font = "bold 34px 'Courier New', monospace";
+  g.fillStyle = "rgba(12, 10, 9, 0.82)";
+  g.fillText(codeText, 3, 3);
+  g.fillStyle = "rgba(205, 190, 165, 0.58)";
+  g.fillText(codeText, 0, 0);
+  g.strokeStyle = "rgba(200, 185, 160, 0.32)";
+  g.lineWidth = 1.4;
+  g.beginPath();
+  g.moveTo(-18, -32); g.lineTo(145, -26);
+  g.moveTo(-12, 16); g.lineTo(138, 20);
+  g.stroke();
+  g.restore();
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  tex.needsUpdate = true;
+
+  if (roomTextures[5]) roomTextures[5].dispose();
+  roomTextures[5] = tex;
+  roomImageDims[5] = { w: 1600, h: 900 };
+}
+
+/* ============================================================
+   АУДИО-ДВИЖОК С ХОРРОР-ЭФФЕКТАМИ В КАЖДОЙ КОМНАТЕ
+   (сердцебиение, вскрики/вздохи, скрипы, царапанье по стенам, цепи, гул)
+============================================================ */
 class DarkAmbientAudio {
   constructor() {
     this.ctx = null;
@@ -629,6 +827,7 @@ class DarkAmbientAudio {
     this.ambientBuffer = null;
     this.crackleBuffer = null;
     this.scheduler = null;
+    this.heartbeatTimer = null;
     this._irCache = new Map();
   }
 
@@ -643,7 +842,7 @@ class DarkAmbientAudio {
     this.master.connect(this.ctx.destination);
 
     this.dryGain = this.ctx.createGain();
-    this.dryGain.gain.value = 0.62;
+    this.dryGain.gain.value = 0.65;
     this.dryGain.connect(this.master);
 
     this.convolver = this.ctx.createConvolver();
@@ -659,6 +858,7 @@ class DarkAmbientAudio {
 
     this.enabled = true;
     this.startEnvironmentalScheduler();
+    this.startHeartbeatLoop();
   }
 
   buildDarkNoiseBuffer(sec) {
@@ -746,6 +946,143 @@ class DarkAmbientAudio {
       this.master.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.2);
     }
     return this.enabled;
+  }
+
+  // 1. Глухое сердцебиение (двойной удар тук-тук)
+  playHeartbeatPulse(intensity = 0.55) {
+    if (!this.ctx || !this.enabled) return;
+    const now = this.ctx.currentTime;
+    [0, 0.24].forEach((offset, idx) => {
+      const t = now + offset;
+      const osc = this.ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(idx === 0 ? 64 : 52, t);
+      osc.frequency.exponentialRampToValueAtTime(24, t + 0.18);
+
+      const g = this.ctx.createGain();
+      const peak = (idx === 0 ? 0.48 : 0.34) * intensity;
+      g.gain.setValueAtTime(0.001, t);
+      g.gain.linearRampToValueAtTime(peak, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0005, t + 0.21);
+
+      osc.connect(g);
+      g.connect(this.dryGain);
+      osc.start(t);
+      osc.stop(t + 0.23);
+    });
+  }
+
+  startHeartbeatLoop() {
+    if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+    this.heartbeatTimer = setInterval(() => {
+      if (document.hidden || !this.enabled) return;
+      const room = ROOMS[currentRoomIndex];
+      // Чем глубже в доме или если тень рядом — сердце бьётся громче
+      const baseIntensity = entityState.visible ? 1.0 : (0.35 + currentRoomIndex * 0.11);
+      this.playHeartbeatPulse(baseIntensity);
+    }, 1450);
+  }
+
+  // 2. Далёкий приглушённый вскрик / судорожный вздох в коридорах
+  playDistantShriek() {
+    if (!this.ctx || !this.enabled) return;
+    const now = this.ctx.currentTime;
+    const dur = 1.1 + Math.random() * 0.6;
+    const panner = this.ctx.createStereoPanner();
+    panner.pan.value = (Math.random() * 1.6) - 0.8;
+
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.ambientBuffer;
+
+    const f1 = this.ctx.createBiquadFilter();
+    f1.type = "bandpass";
+    const startF = 720 + Math.random() * 380;
+    f1.frequency.setValueAtTime(startF, now);
+    f1.frequency.exponentialRampToValueAtTime(startF * 1.35, now + dur * 0.35);
+    f1.frequency.exponentialRampToValueAtTime(340, now + dur);
+    f1.Q.value = 14.0;
+
+    const env = this.ctx.createGain();
+    env.gain.setValueAtTime(0.0008, now);
+    env.gain.linearRampToValueAtTime(0.55, now + dur * 0.22);
+    env.gain.exponentialRampToValueAtTime(0.0005, now + dur);
+
+    src.connect(f1);
+    f1.connect(env);
+    env.connect(panner);
+    panner.connect(this.convolver);
+    src.start(now);
+    src.stop(now + dur + 0.05);
+  }
+
+  // 3. Скрип старых половиц / дверных петель
+  playWoodCreak() {
+    if (!this.ctx || !this.enabled) return;
+    const now = this.ctx.currentTime;
+    const dur = 0.8 + Math.random() * 0.9;
+    const panner = this.ctx.createStereoPanner();
+    panner.pan.value = (Math.random() * 1.5) - 0.75;
+
+    const osc = this.ctx.createOscillator();
+    osc.type = "sawtooth";
+    const base = 180 + Math.random() * 140;
+    osc.frequency.setValueAtTime(base, now);
+    osc.frequency.linearRampToValueAtTime(base * 1.45, now + dur * 0.4);
+    osc.frequency.linearRampToValueAtTime(base * 0.82, now + dur);
+
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = base * 2.1;
+    bp.Q.value = 9.0;
+
+    const env = this.ctx.createGain();
+    env.gain.setValueAtTime(0.001, now);
+    env.gain.linearRampToValueAtTime(0.14, now + 0.12);
+    env.gain.exponentialRampToValueAtTime(0.0005, now + dur);
+
+    osc.connect(bp);
+    bp.connect(env);
+    env.connect(panner);
+    panner.connect(this.dryGain);
+    panner.connect(this.convolver);
+    osc.start(now);
+    osc.stop(now + dur + 0.03);
+  }
+
+  // 4. Царапанье когтями по штукатурке / дереву
+  playWallScratching() {
+    if (!this.ctx || !this.enabled) return;
+    const strokes = 3 + Math.floor(Math.random() * 3);
+    const pan = (Math.random() * 1.6) - 0.8;
+
+    for (let i = 0; i < strokes; i++) {
+      const t = this.ctx.currentTime + i * (0.18 + Math.random() * 0.14);
+      const dur = 0.14 + Math.random() * 0.08;
+      const panner = this.ctx.createStereoPanner();
+      panner.pan.value = pan;
+
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.crackleBuffer;
+
+      const bp = this.ctx.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.frequency.setValueAtTime(2400 + Math.random() * 900, t);
+      bp.frequency.exponentialRampToValueAtTime(1100, t + dur);
+      bp.Q.value = 8.0;
+
+      const env = this.ctx.createGain();
+      env.gain.setValueAtTime(0.001, t);
+      env.gain.linearRampToValueAtTime(0.45, t + 0.02);
+      env.gain.exponentialRampToValueAtTime(0.0005, t + dur);
+
+      src.connect(bp);
+      bp.connect(env);
+      env.connect(panner);
+      panner.connect(this.dryGain);
+      panner.connect(this.convolver);
+      src.start(t);
+      src.stop(t + dur + 0.02);
+    }
   }
 
   playTick() {
@@ -852,7 +1189,11 @@ class DarkAmbientAudio {
 
   triggerRandomAmbient() {
     if (!this.ctx || !this.enabled) return;
-    if (Math.random() < 0.5) this.playSteelChains();
+    const r = Math.random();
+    if (r < 0.22) this.playSteelChains();
+    else if (r < 0.44) this.playWallScratching();
+    else if (r < 0.66) this.playWoodCreak();
+    else if (r < 0.84) this.playDistantShriek();
     else this.playSubterraneanRumble();
   }
 
@@ -860,17 +1201,21 @@ class DarkAmbientAudio {
     if (this.scheduler) clearInterval(this.scheduler);
     this.scheduler = setInterval(() => {
       if (document.hidden) return;
-      if (this.enabled && Math.random() < 0.75) this.triggerRandomAmbient();
-    }, 7000);
+      if (this.enabled && Math.random() < 0.82) this.triggerRandomAmbient();
+    }, 4800);
   }
 
   destroy() {
     if (this.scheduler) { clearInterval(this.scheduler); this.scheduler = null; }
+    if (this.heartbeatTimer) { clearInterval(this.heartbeatTimer); this.heartbeatTimer = null; }
   }
 }
 
 const audioEngine = new DarkAmbientAudio();
 
+/* ============================================================
+   УПРАВЛЕНИЕ РОЛИКОМ tape.mp4 И ПЛАВНЫМ ВОЗВРАТОМ К КОМНАТЕ
+============================================================ */
 const glCanvas = document.getElementById("gl-canvas");
 const fxCanvas = document.getElementById("fx-canvas");
 const fxCtx = fxCanvas.getContext("2d");
@@ -886,10 +1231,21 @@ function connectTapeVideoToAudio() {
   } catch (e) {}
 }
 
+// Когда ролик tape.mp4 заканчивается — плавно возвращаемся к обычной комнате
+if (tapeVideo) {
+  tapeVideo.addEventListener("ended", () => {
+    const room0 = ROOMS[0];
+    room0.tapePlaying = false;
+    room0.tapeFinished = true;
+    tapeVideo.classList.remove("playing");
+  });
+}
+
 function syncTapeVideo() {
   if (!tapeVideo) return;
   const room = ROOMS[currentRoomIndex];
-  const shouldPlay = room.id === 0 && (room.solved || room.tapePlaying);
+  const shouldPlay = room.id === 0 && room.tapePlaying && !room.tapeFinished;
+
   if (shouldPlay) {
     tapeVideo.classList.add("playing");
     tapeVideo.muted = !audioEngine.enabled;
@@ -906,6 +1262,9 @@ function syncTapeVideo() {
   }
 }
 
+/* ============================================================
+   THREE.JS СЦЕНА
+============================================================ */
 const renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, alpha: false });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -1001,6 +1360,7 @@ let freeMode = false;
 let flashlightOn = true;
 
 const roomTextures = {};
+const roomUploadedFlags = {};
 const roomImageDims = {};
 
 const pointer = {
@@ -1115,6 +1475,7 @@ function createTextureFromImageSource(img, roomIdx) {
     roomTextures[roomIdx].dispose();
   }
   roomTextures[roomIdx] = tex;
+  roomUploadedFlags[roomIdx] = true;
   roomImageDims[roomIdx] = { w: fitted.width, h: fitted.height };
   if (roomIdx === currentRoomIndex) applyRoomTexture(roomIdx);
   updateLoadedCounter();
@@ -1122,11 +1483,15 @@ function createTextureFromImageSource(img, roomIdx) {
 }
 
 function applyRoomTexture(idx) {
+  const room = ROOMS[idx];
+  if (room.isProceduralRoom && !roomTextures[idx]) {
+    generateRandomHorrorRoom(room);
+  }
   if (roomTextures[idx]) {
     roomPlaneMat.map = roomTextures[idx];
   } else {
     if (!proceduralTextureCache[idx]) {
-      proceduralTextureCache[idx] = createProceduralTexture(ROOMS[idx]);
+      proceduralTextureCache[idx] = createProceduralTexture(room);
     }
     roomPlaneMat.map = proceduralTextureCache[idx];
   }
@@ -1135,6 +1500,7 @@ function applyRoomTexture(idx) {
 
 function tryAutoLoadImages() {
   ROOMS.forEach((room, idx) => {
+    if (room.isProceduralRoom) return;
     const img = new Image();
     img.onload = () => createTextureFromImageSource(img, idx);
     img.onerror = () => {
@@ -1145,7 +1511,7 @@ function tryAutoLoadImages() {
 }
 
 function updateLoadedCounter() {
-  const count = Object.keys(roomTextures).length;
+  const count = Object.keys(roomUploadedFlags).length;
   const btn = document.getElementById("btn-open-photos");
   if (btn) btn.textContent = `ФОТО КОМНАТ [${count}/5]`;
 }
@@ -1192,9 +1558,6 @@ function handleBulkFiles(fileList) {
   }
   files.forEach((file, idx) => { if (idx < 5) loadSingleFileAsTexture(file, idx); });
 }
-
-tryAutoLoadImages();
-applyRoomTexture(0);
 
 const dustParticles = Array.from({ length: 80 }, () => ({
   x: Math.random(), y: Math.random(), z: 0.3 + Math.random() * 0.9,
@@ -1269,6 +1632,10 @@ function animate(time) {
       if (transition.progress >= 1) {
         currentRoomIndex = transition.targetRoom;
         entityState.visible = false;
+        // При каждом входе в сектор 06 генерируем новую мрачную комнату
+        if (ROOMS[currentRoomIndex].isProceduralRoom) {
+          generateRandomHorrorRoom(ROOMS[currentRoomIndex]);
+        }
         applyRoomTexture(currentRoomIndex);
         updateRoomHUD();
         syncTapeVideo();
@@ -1309,7 +1676,10 @@ function animate(time) {
     if (distToSpot < planeW * 0.18 && !entityState.evading) {
       entityState.evading = true;
       entityState.targetOpacity = 0;
-      if (audioEngine.enabled) audioEngine.playSteelChains();
+      if (audioEngine.enabled) {
+        audioEngine.playSteelChains();
+        audioEngine.playHeartbeatPulse(1.0);
+      }
     }
 
     entityState.timer -= dt;
@@ -1360,24 +1730,7 @@ function render2DOverlay(w, h, room, blackFade, time, dt) {
     fxCtx.fill();
   });
 
-  if (flashlightOn) {
-    room.clues.forEach(clue => {
-      const cx = offsetX + clue.x * scaleX;
-      const cy = offsetY + clue.y * scaleY;
-      const dist = Math.hypot(cx - pointer.x, cy - pointer.y);
-      const rad = Math.min(w, h) * 0.24;
-      if (dist < rad) {
-        const alpha = Math.pow(1 - dist / rad, 1.4);
-        fxCtx.save();
-        fxCtx.font = "bold 14px 'Courier New', monospace";
-        fxCtx.fillStyle = `rgba(235, 198, 132, ${alpha * 0.96})`;
-        fxCtx.shadowColor = "rgba(180, 65, 40, 0.95)";
-        fxCtx.shadowBlur = 10;
-        fxCtx.fillText(clue.text, cx - 75, cy);
-        fxCtx.restore();
-      }
-    });
-  }
+  // Скрытые 2D-текстовые подсказки отключены — все ключи нанесены непосредственно на изображения уровней
 
   drawMarker2D(offsetX + room.artifact.x * scaleX, offsetY + room.artifact.y * scaleY,
     room.artifact.label, room.solved ? "#528c63" : "#bd7d3b", time);
@@ -1432,7 +1785,7 @@ function buildDepthNav() {
   depthNav.innerHTML = "";
   ROOMS.forEach((r, idx) => {
     const node = document.createElement("div");
-    node.className = `depth-node ${idx === currentRoomIndex ? "active" : ""} ${r.solved ? "solved" : ""}`;
+    node.className = `depth-node ${idx === currentRoomIndex ? "active" : ""} ${r.solved ? "solved" : ""} ${r.isProceduralRoom ? "procedural" : ""}`;
     node.setAttribute("role", "button");
     node.setAttribute("tabindex", "0");
     node.innerHTML = `<span class="depth-label">0${idx + 1} // ${r.title.split(" ")[0]}</span><span class="depth-dot"></span>`;
@@ -1447,11 +1800,14 @@ function buildDepthNav() {
 function updateRoomHUD() {
   const room = ROOMS[currentRoomIndex];
   document.getElementById("hud-room-indicator").textContent =
-    `ЛОКАЦИЯ 0${currentRoomIndex + 1} / 05 — ${room.title.toUpperCase()}`;
+    `ЛОКАЦИЯ 0${currentRoomIndex + 1} / 0${ROOMS.length} — ${room.title.toUpperCase()}`;
   document.getElementById("dossier-code").textContent = room.code;
-  document.getElementById("dossier-file-hint").textContent = `ФАЙЛ: ${room.fileName}`;
+  document.getElementById("dossier-file-hint").textContent = room.isProceduralRoom ? "ГЕНЕРАТОР: АКТИВЕН" : `ФАЙЛ: ${room.fileName}`;
   document.getElementById("dossier-title").textContent = room.title;
   document.getElementById("dossier-text").textContent = room.desc;
+
+  const regenBtn = document.getElementById("btn-regen-room");
+  if (regenBtn) regenBtn.style.display = room.isProceduralRoom ? "inline-block" : "none";
 
   const badge = document.getElementById("puzzle-badge");
   if (room.solved || freeMode) {
@@ -1580,21 +1936,39 @@ function openPuzzleModal() {
   container.innerHTML = "";
   feedback.textContent = room.solved
     ? "МЕХАНИЗМ УЖЕ РАЗБЛОКИРОВАН."
-    : "Исследуйте стены лучом фонаря.";
+    : "Осмотрите поверхности комнаты лучом фонаря.";
 
   if (room.puzzleType === "frequency") {
     let cur = room.solved ? room.targetFreq : 390;
     container.innerHTML = `
       <div class="puzzle-row"><span>ЧАСТОТА ТОНВАЛА:</span><strong id="freq-rd" style="color:var(--amber-glow); font-size:16px;">${cur} Гц</strong></div>
       <input type="range" id="freq-sl" min="350" max="500" step="1" value="${cur}">
-      <div style="margin-top:12px; display:flex; justify-content:flex-end;"><button class="btn btn-primary" id="btn-chk">ЗАПУСТИТЬ КАТУШКИ</button></div>
+      <div style="margin-top:12px; display:flex; justify-content:space-between; gap:8px;">
+        <button class="btn" id="btn-replay-tape" style="${room.solved ? '' : 'display:none;'}">ПОВТОРИТЬ ПЛЁНКУ</button>
+        <button class="btn btn-primary" id="btn-chk" style="margin-left:auto;">ЗАПУСТИТЬ КАТУШКИ</button>
+      </div>
     `;
     const sl = container.querySelector("#freq-sl");
     const rd = container.querySelector("#freq-rd");
     sl.addEventListener("input", () => { rd.textContent = `${sl.value} Гц`; audioEngine.playTick(); });
+
+    const replayBtn = container.querySelector("#btn-replay-tape");
+    if (replayBtn) {
+      replayBtn.addEventListener("click", () => {
+        room.tapePlaying = true;
+        room.tapeFinished = false;
+        modal.classList.remove("open");
+        if (tapeVideo) {
+          tapeVideo.currentTime = 0;
+          syncTapeVideo();
+        }
+      });
+    }
+
     container.querySelector("#btn-chk").addEventListener("click", () => {
       if (parseInt(sl.value, 10) === room.targetFreq) {
         room.tapePlaying = true;
+        room.tapeFinished = false;
         solveCurrentRoom("Катушки запущены.");
         setTimeout(() => {
           modal.classList.remove("open");
@@ -1605,7 +1979,7 @@ function openPuzzleModal() {
         }, 400);
       } else {
         audioEngine.playSubterraneanRumble();
-        feedback.textContent = "Неверная частота. Лента жужжит и проскальзывает.";
+        feedback.textContent = "Неверная частота. Осмотрите стену слева.";
       }
     });
   } else if (room.puzzleType === "roman_code") {
@@ -1627,7 +2001,7 @@ function openPuzzleModal() {
     cb.textContent = "ПРОВЕРНУТЬ ЗАСОВ";
     cb.addEventListener("click", () => {
       if (st.join("-") === room.targetCode.join("-")) solveCurrentRoom("Кольца совпали. Цепи упали.");
-      else { audioEngine.playSubterraneanRumble(); feedback.textContent = "Замок заклинило."; }
+      else { audioEngine.playSubterraneanRumble(); feedback.textContent = "Замок заклинило. Осмотрите царапины на правой стене."; }
     });
     container.appendChild(wrap);
     container.appendChild(cb);
@@ -1641,7 +2015,7 @@ function openPuzzleModal() {
       const l = weights.filter(x => x.side === "L").reduce((a, b) => a + b.kg, 0);
       const r = weights.filter(x => x.side === "R").reduce((a, b) => a + b.kg, 0);
       container.innerHTML = `
-        <div class="puzzle-row"><span>ЛЕВАЯ: <strong>${l} КГ</strong></span><span>ПРАВАЯ: <strong>${r} КГ</strong></span></div>
+        <div class="puzzle-row"><span>ЛЕВАЯ (Л): <strong>${l} КГ</strong></span><span>ПРАВАЯ (П): <strong>${r} КГ</strong></span></div>
         <div class="scale-pan-group" id="w-grid"></div>
         <button class="btn btn-primary" id="btn-w" style="width:100%; margin-top:8px;">ОСВОБОДИТЬ СТОПОР</button>
       `;
@@ -1658,7 +2032,7 @@ function openPuzzleModal() {
       });
       container.querySelector("#btn-w").addEventListener("click", () => {
         if (l === 6 && r === 6) solveCurrentRoom("Весы в равновесии. Люк открыт.");
-        else { audioEngine.playSubterraneanRumble(); feedback.textContent = `Перекос (${l} против ${r}). Нужен баланс 6=6.`; }
+        else { audioEngine.playSubterraneanRumble(); feedback.textContent = "Перекос. Сверьтесь с отметкой на простыне."; }
       });
     };
     renderW();
@@ -1667,16 +2041,16 @@ function openPuzzleModal() {
     let dB = room.solved ? room.targetB : 0;
     const renderD = () => {
       container.innerHTML = `
-        <div class="puzzle-row"><span>ТИОПЕНТАЛ (А): <strong>${dA} мл</strong></span><button class="hud-btn" id="ba">+1 МЛ</button></div>
-        <div class="puzzle-row"><span>МОРФИН (B): <strong>${dB} мл</strong></span><button class="hud-btn" id="bb">+1 МЛ</button></div>
-        <div style="display:flex; gap:8px; margin-top:12px;"><button class="btn" id="br" style="flex:1;">СЛИТЬ</button><button class="btn btn-primary" id="bi" style="flex:2;">ПОДАТЬ</button></div>
+        <div class="puzzle-row"><span>КОЛБА А: <strong>${dA}</strong></span><button class="hud-btn" id="ba">+1</button></div>
+        <div class="puzzle-row"><span>КОЛБА B: <strong>${dB}</strong></span><button class="hud-btn" id="bb">+1</button></div>
+        <div style="display:flex; gap:8px; margin-top:12px;"><button class="btn" id="br" style="flex:1;">СБРОС</button><button class="btn btn-primary" id="bi" style="flex:2;">ПОДАТЬ</button></div>
       `;
       container.querySelector("#ba").addEventListener("click", () => { dA = (dA + 1) % 7; audioEngine.playTick(); renderD(); });
       container.querySelector("#bb").addEventListener("click", () => { dB = (dB + 1) % 7; audioEngine.playTick(); renderD(); });
       container.querySelector("#br").addEventListener("click", () => { dA = 0; dB = 0; audioEngine.playTick(); renderD(); });
       container.querySelector("#bi").addEventListener("click", () => {
         if (dA === room.targetA && dB === room.targetB) solveCurrentRoom("Давление стабильно. Шлюз открыт.");
-        else { audioEngine.playSubterraneanRumble(); feedback.textContent = `Неверно (${dA}:${dB}). Пропорция 3:1.`; }
+        else { audioEngine.playSubterraneanRumble(); feedback.textContent = "Неверная доза. Осмотрите кафель за столом."; }
       });
     };
     renderD();
@@ -1693,7 +2067,7 @@ function openPuzzleModal() {
         if (seq.join(",") === room.targetSequence.join(",")) solveCurrentRoom("Гермошлюз разгерметизирован.");
         else if (seq.length >= room.targetSequence.length) {
           audioEngine.playSubterraneanRumble();
-          feedback.textContent = "Клапан сорвался (нужно R,R,R,L,L).";
+          feedback.textContent = "Клапан сорвался. Осмотрите металл у штурвала.";
           seq = [];
           setTimeout(renderV, 500);
         }
@@ -1704,10 +2078,39 @@ function openPuzzleModal() {
       container.querySelector("#bs").addEventListener("click", () => {
         const msg = container.querySelector("#b-msg").value.trim();
         audioEngine.playSteelChains();
-        feedback.textContent = msg ? `СИГНАЛ УШЁЛ: «${msg}» // ФИНАЛ.` : "АВАРИЙНЫЙ МАЯК ОТПРАВЛЕН // ФИНАЛ.";
+        feedback.textContent = msg ? `СИГНАЛ УШЁЛ: «${msg}»` : "АВАРИЙНЫЙ МАЯК ОТПРАВЛЕН.";
       });
     };
     renderV();
+  } else if (room.puzzleType === "procedural_pin") {
+    const curPin = room.solved ? [...room.targetPin] : [0, 0, 0];
+    const wrap = document.createElement("div");
+    wrap.className = "code-slots";
+    curPin.forEach((digit, idx) => {
+      const btn = document.createElement("button");
+      btn.className = "code-slot-btn";
+      btn.textContent = String(digit);
+      btn.addEventListener("click", () => {
+        curPin[idx] = (curPin[idx] + 1) % 10;
+        btn.textContent = String(curPin[idx]);
+        audioEngine.playTick();
+      });
+      wrap.appendChild(btn);
+    });
+    const submitBtn = document.createElement("button");
+    submitBtn.className = "btn btn-primary";
+    submitBtn.style.width = "100%";
+    submitBtn.textContent = "СНЯТЬ БЛОКИРОВКУ";
+    submitBtn.addEventListener("click", () => {
+      if (curPin.join("-") === room.targetPin.join("-")) {
+        solveCurrentRoom("Релейный замок аномалии открыт.");
+      } else {
+        audioEngine.playWallScratching();
+        feedback.textContent = "Неверный шифр. Проведите фонарём по стенам камеры.";
+      }
+    });
+    container.appendChild(wrap);
+    container.appendChild(submitBtn);
   }
 
   modal.classList.add("open");
@@ -1731,8 +2134,8 @@ function renderPhotoSlotsModal() {
   const container = document.getElementById("photo-slots-container");
   if (!container) return;
   container.innerHTML = "";
-  ROOMS.forEach((room, idx) => {
-    const isLoaded = Boolean(roomTextures[idx]);
+  ROOMS.filter(r => !r.isProceduralRoom).forEach((room, idx) => {
+    const isLoaded = Boolean(roomUploadedFlags[idx]);
     const row = document.createElement("div"); row.className = "photo-slot";
     row.innerHTML = `
       <div><strong>0${idx + 1}. ${room.title}</strong><br><span style="color:#828e7f;">${room.fileName}</span></div>
@@ -1748,78 +2151,6 @@ function renderPhotoSlotsModal() {
   });
 }
 
-function setPhotosFeedback(text) {
-  const el = document.getElementById("photos-feedback");
-  if (el) el.textContent = text;
-}
-
-function fitImageSourceToGPU(img) {
-  const w = img.naturalWidth || img.width;
-  const h = img.naturalHeight || img.height;
-  if (!w || !h) return null;
-  if (w <= MAX_TEXTURE_DIM && h <= MAX_TEXTURE_DIM) {
-    return { source: img, width: w, height: h };
-  }
-  const scale = Math.min(MAX_TEXTURE_DIM / w, MAX_TEXTURE_DIM / h);
-  const nw = Math.max(1, Math.round(w * scale));
-  const nh = Math.max(1, Math.round(h * scale));
-  const c = document.createElement("canvas");
-  c.width = nw;
-  c.height = nh;
-  c.getContext("2d").drawImage(img, 0, 0, nw, nh);
-  return { source: c, width: nw, height: nh };
-}
-
-function loadSingleFileAsTexture(file, roomIdx) {
-  if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) {
-    setPhotosFeedback("Поддерживаются только изображения JPEG, PNG или WebP.");
-    return;
-  }
-  if (file.size > MAX_UPLOAD_SIZE) {
-    setPhotosFeedback(`Файл «${file.name}» превышает лимит 25 МБ.`);
-    return;
-  }
-  const url = URL.createObjectURL(file);
-  const img = new Image();
-  img.onload = () => {
-    URL.revokeObjectURL(url);
-    const fitted = fitImageSourceToGPU(img);
-    if (!fitted) {
-      setPhotosFeedback(`Не удалось прочитать изображение «${file.name}».`);
-      return;
-    }
-    const tex = new THREE.Texture(fitted.source);
-    tex.minFilter = THREE.LinearFilter;
-    tex.magFilter = THREE.LinearFilter;
-    tex.generateMipmaps = false;
-    tex.needsUpdate = true;
-    if (roomTextures[roomIdx] && roomTextures[roomIdx] !== proceduralTextureCache[roomIdx]) {
-      roomTextures[roomIdx].dispose();
-    }
-    roomTextures[roomIdx] = tex;
-    roomImageDims[roomIdx] = { w: fitted.width, h: fitted.height };
-    if (roomIdx === currentRoomIndex) applyRoomTexture(roomIdx);
-    updateLoadedCounter();
-    renderPhotoSlotsModal();
-    setPhotosFeedback(`Загружено для локации 0${roomIdx + 1}: ${file.name}`);
-  };
-  img.onerror = () => {
-    URL.revokeObjectURL(url);
-    setPhotosFeedback(`Ошибка декодирования файла «${file.name}».`);
-  };
-  img.src = url;
-}
-
-function handleBulkFiles(fileList) {
-  const files = Array.from(fileList)
-    .filter(f => /^image\/(jpeg|png|webp)$/.test(f.type) && f.size <= MAX_UPLOAD_SIZE);
-  if (!files.length) {
-    setPhotosFeedback("Нет подходящих файлов (допустимы JPEG/PNG/WebP до 25 МБ).");
-    return;
-  }
-  files.forEach((file, idx) => { if (idx < 5) loadSingleFileAsTexture(file, idx); });
-}
-
 document.getElementById("btn-enter-house").addEventListener("click", () => {
   document.getElementById("intro-screen").classList.add("hidden");
   audioEngine.init();
@@ -1829,7 +2160,17 @@ document.getElementById("btn-enter-house").addEventListener("click", () => {
   sBtn.setAttribute("aria-pressed", "true");
   if (tapeVideo) tapeVideo.muted = false;
   syncTapeVideo();
-  setTimeout(() => { spawnShadowEntity(true); audioEngine.playSteelChains(); }, 800);
+  setTimeout(() => { spawnShadowEntity(true); audioEngine.playWallScratching(); }, 800);
+});
+
+document.getElementById("btn-regen-room").addEventListener("click", () => {
+  const room = ROOMS[currentRoomIndex];
+  if (!room.isProceduralRoom) return;
+  audioEngine.playSubterraneanRumble();
+  audioEngine.playWallScratching();
+  generateRandomHorrorRoom(room);
+  applyRoomTexture(currentRoomIndex);
+  updateRoomHUD();
 });
 
 document.getElementById("btn-intro-upload").addEventListener("click", () => {
@@ -1886,7 +2227,7 @@ document.getElementById("btn-close-final").addEventListener("click", () =>
   document.getElementById("final-modal").classList.remove("open"));
 document.getElementById("btn-reset-progress").addEventListener("click", () => {
   resetProgress();
-  ROOMS.forEach(r => { r.solved = false; r.tapePlaying = false; });
+  ROOMS.forEach(r => { r.solved = false; r.tapePlaying = false; r.tapeFinished = false; });
   currentRoomIndex = 0;
   freeMode = false;
   const fBtn = document.getElementById("btn-toggle-freemode");
