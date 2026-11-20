@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self' blob: data:; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self' blob: data:; media-src 'self' blob: data:; object-src 'none'; base-uri 'self';">
 <title>ОСОБНЯК // БЕЗМОЛВИЕ</title>
 <style>
   :root {
@@ -19,7 +21,6 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    user-select: none;
   }
 
   body, html {
@@ -32,6 +33,12 @@
     cursor: crosshair;
   }
 
+  canvas, button, .hud-btn, .btn, .depth-node, .code-slot-btn, label {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   #gl-canvas, #fx-canvas {
     position: fixed;
     top: 0;
@@ -41,7 +48,10 @@
     display: block;
   }
 
-  #gl-canvas { z-index: 1; }
+  #gl-canvas {
+    z-index: 1;
+    touch-action: none;
+  }
   #fx-canvas { z-index: 2; pointer-events: none; }
 
   .vignette-overlay {
@@ -54,7 +64,6 @@
       repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 1px, transparent 1px, transparent 3px);
   }
 
-  /* Стартовый экран */
   #intro-screen {
     position: fixed;
     inset: 0;
@@ -68,12 +77,7 @@
     text-align: center;
     transition: opacity 0.8s ease, visibility 0.8s ease;
   }
-
-  #intro-screen.hidden {
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-  }
+  #intro-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
 
   .intro-box {
     max-width: 640px;
@@ -90,7 +94,6 @@
     text-transform: uppercase;
     margin-bottom: 10px;
   }
-
   .intro-title {
     font-size: 28px;
     letter-spacing: 6px;
@@ -98,14 +101,12 @@
     color: var(--bone-white);
     margin-bottom: 14px;
   }
-
   .intro-desc {
     font-size: 13px;
     line-height: 1.68;
     color: #929c8e;
     margin-bottom: 24px;
   }
-
   .intro-actions {
     display: flex;
     flex-wrap: wrap;
@@ -125,26 +126,26 @@
     cursor: pointer;
     transition: all 0.2s ease;
   }
-
   .btn:hover { background: var(--mold-green); color: #020302; }
-
+  .btn:focus-visible,
+  .hud-btn:focus-visible,
+  .depth-node:focus-visible {
+    outline: 2px solid var(--amber-glow);
+    outline-offset: 2px;
+  }
   .btn-primary {
     border-color: var(--rust-red);
     background: rgba(143, 50, 34, 0.28);
   }
-
   .btn-primary:hover {
     background: var(--rust-red);
     color: #fff;
     box-shadow: 0 0 22px rgba(143, 50, 34, 0.7);
   }
 
-  /* Верхний HUD */
   .top-hud {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
+    top: 0; left: 0; right: 0;
     z-index: 10;
     display: flex;
     justify-content: space-between;
@@ -153,7 +154,6 @@
     background: linear-gradient(180deg, rgba(2,3,2,0.96) 0%, rgba(2,3,2,0) 100%);
     pointer-events: none;
   }
-
   .top-hud > * { pointer-events: auto; }
 
   .brand-title { font-size: 15px; letter-spacing: 4px; font-weight: bold; }
@@ -172,14 +172,12 @@
     cursor: pointer;
     transition: all 0.2s ease;
   }
-
   .hud-btn:hover, .hud-btn.active {
     border-color: var(--amber-glow);
     color: var(--bone-white);
     background: rgba(30, 24, 18, 0.92);
   }
 
-  /* Правая шкала глубины */
   .depth-nav {
     position: fixed;
     right: 20px;
@@ -193,7 +191,6 @@
     border: 1px solid var(--border-dim);
     padding: 14px 10px;
   }
-
   .depth-node {
     display: flex;
     align-items: center;
@@ -203,38 +200,29 @@
     opacity: 0.55;
     transition: all 0.2s ease;
   }
-
   .depth-node:hover, .depth-node.active { opacity: 1; }
-
   .depth-label {
     font-size: 10px;
     letter-spacing: 1.5px;
     text-transform: uppercase;
     display: none;
   }
-
   .depth-node:hover .depth-label,
   .depth-node.active .depth-label { display: inline-block; }
-
   .depth-dot { width: 10px; height: 10px; border: 1px solid var(--mold-green); }
-
   .depth-node.active .depth-dot {
     background: var(--amber-glow);
     border-color: var(--amber-glow);
     box-shadow: 0 0 10px var(--amber-glow);
   }
-
   .depth-node.solved .depth-dot {
     border-color: #528c63;
     background: rgba(82, 140, 99, 0.5);
   }
 
-  /* Нижний HUD */
   .bottom-hud {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: 0; left: 0; right: 0;
     z-index: 10;
     display: flex;
     justify-content: space-between;
@@ -243,7 +231,6 @@
     background: linear-gradient(0deg, rgba(2,3,2,0.98) 0%, rgba(2,3,2,0) 100%);
     pointer-events: none;
   }
-
   .bottom-hud > * { pointer-events: auto; }
 
   .room-dossier {
@@ -255,7 +242,6 @@
     border-bottom: 1px solid var(--border-dim);
     padding: 13px 16px;
   }
-
   .dossier-header {
     display: flex;
     justify-content: space-between;
@@ -264,7 +250,6 @@
     color: var(--amber-glow);
     margin-bottom: 5px;
   }
-
   .dossier-title { font-size: 15px; letter-spacing: 2px; margin-bottom: 5px; }
   .dossier-text { font-size: 12px; line-height: 1.48; color: #9da69a; margin-bottom: 9px; }
 
@@ -276,7 +261,6 @@
     padding-top: 8px;
     border-top: 1px dashed rgba(120, 138, 115, 0.25);
   }
-
   .status-badge {
     padding: 3px 8px;
     font-size: 10px;
@@ -285,7 +269,6 @@
     color: #e67c6a;
     background: rgba(143, 50, 34, 0.2);
   }
-
   .status-badge.unlocked {
     border-color: #528c63;
     color: #8ce0a4;
@@ -316,7 +299,6 @@
     pointer-events: none;
     transition: opacity 0.4s ease;
   }
-
   #whisper-subtitle.visible { opacity: 1; }
 
   .modal-backdrop {
@@ -333,7 +315,6 @@
     visibility: hidden;
     transition: opacity 0.22s ease, visibility 0.22s ease;
   }
-
   .modal-backdrop.open { opacity: 1; visibility: visible; }
 
   .modal-card {
@@ -345,7 +326,6 @@
     padding: 24px;
     position: relative;
   }
-
   .modal-close {
     position: absolute;
     top: 14px;
@@ -357,7 +337,7 @@
     font-size: 16px;
     cursor: pointer;
   }
-
+  .modal-close:hover { color: var(--bone-white); }
   .modal-tag { font-size: 10px; letter-spacing: 2.5px; color: var(--rust-red); margin-bottom: 6px; }
   .modal-title { font-size: 18px; letter-spacing: 2px; margin-bottom: 10px; }
   .modal-body { font-size: 12px; line-height: 1.6; color: #9da69a; margin-bottom: 16px; }
@@ -368,7 +348,6 @@
     padding: 16px;
     margin-bottom: 14px;
   }
-
   .puzzle-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
   .puzzle-feedback { font-size: 11px; min-height: 18px; letter-spacing: 1px; color: var(--amber-glow); }
 
@@ -388,27 +367,44 @@
   .photo-slot-status { color: var(--amber-glow); font-size: 10px; }
   .photo-slot-status.loaded { color: #7cd492; }
 
+  #fatal-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(1,2,1,0.97);
+    color: var(--bone-white);
+    display: none;
+    align-items: center; justify-content: center;
+    padding: 24px; text-align: center;
+    font-size: 14px; letter-spacing: 1.5px;
+  }
+  #fatal-overlay.visible { display: flex; }
+
   @media (max-width: 768px) {
     .bottom-hud { flex-direction: column; align-items: stretch; gap: 10px; }
     .nav-controls { align-items: stretch; }
     .depth-nav { right: 8px; padding: 8px 6px; }
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 </style>
 </head>
 <body>
 
-<canvas id="gl-canvas"></canvas>
-<canvas id="fx-canvas"></canvas>
-<div class="vignette-overlay"></div>
-<div id="whisper-subtitle"></div>
+<canvas id="gl-canvas" aria-label="Сцена комнаты"></canvas>
+<canvas id="fx-canvas" aria-hidden="true"></canvas>
+<div class="vignette-overlay" aria-hidden="true"></div>
+<div id="whisper-subtitle" role="status" aria-live="polite"></div>
 
-<!-- Стартовый экран -->
 <div id="intro-screen">
   <div class="intro-box">
     <div class="intro-tag">АРХИВНОЕ ДЕЛО № 404-06</div>
     <h1 class="intro-title">ОСОБНЯК // БЕЗМОЛВИЕ</h1>
     <p class="intro-desc">
-      В этих стенах произошло то, о чём не осталось ни одной официальной записи. 
+      В этих стенах произошло то, о чём не осталось ни одной официальной записи.
       Светите фонарём по стенам и поверхностям — на них выцарапаны скрытые подсказки к замкам каждой комнаты.
     </p>
     <div class="intro-actions">
@@ -418,21 +414,20 @@
   </div>
 </div>
 
-<!-- Верхний HUD -->
 <header class="top-hud">
   <div>
     <div class="brand-title">ОСОБНЯК // БЕЗМОЛВИЕ</div>
     <div class="room-indicator" id="hud-room-indicator">ЛОКАЦИЯ 01 / 05 — ПРИХОЖАЯ С ДИКТОФОНОМ</div>
   </div>
   <div class="hud-controls">
-    <button class="hud-btn" id="btn-open-photos">ФОТО КОМНАТ [0/5]</button>
-    <button class="hud-btn active" id="btn-toggle-flashlight">ФОНАРЬ [F]: ВКЛ</button>
-    <button class="hud-btn" id="btn-toggle-freemode">РЕЖИМ: КВЕСТ</button>
-    <button class="hud-btn" id="btn-toggle-sound">ЗВУК: ВЫКЛ</button>
+    <button class="hud-btn" id="btn-open-photos" aria-pressed="false">ФОТО КОМНАТ [0/5]</button>
+    <button class="hud-btn active" id="btn-toggle-flashlight" aria-pressed="true">ФОНАРЬ [F]: ВКЛ</button>
+    <button class="hud-btn" id="btn-toggle-freemode" aria-pressed="false">РЕЖИМ: КВЕСТ</button>
+    <button class="hud-btn" id="btn-toggle-sound" aria-pressed="false">ЗВУК: ВЫКЛ</button>
   </div>
 </header>
 
-<nav class="depth-nav" id="depth-nav"></nav>
+<nav class="depth-nav" id="depth-nav" aria-label="Навигация по комнатам"></nav>
 
 <footer class="bottom-hud">
   <div class="room-dossier">
@@ -458,9 +453,9 @@
   </div>
 </footer>
 
-<div class="modal-backdrop" id="puzzle-modal">
+<div class="modal-backdrop" id="puzzle-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
   <div class="modal-card">
-    <button class="modal-close" id="btn-close-puzzle">✕</button>
+    <button class="modal-close" id="btn-close-puzzle" aria-label="Закрыть">✕</button>
     <div class="modal-tag" id="modal-tag">МЕХАНИЗМ КОМНАТЫ</div>
     <h3 class="modal-title" id="modal-title">Загадка</h3>
     <p class="modal-body" id="modal-desc"></p>
@@ -469,26 +464,54 @@
   </div>
 </div>
 
-<div class="modal-backdrop" id="photos-modal">
+<div class="modal-backdrop" id="photos-modal" role="dialog" aria-modal="true" aria-labelledby="photos-title">
   <div class="modal-card">
-    <button class="modal-close" id="btn-close-photos">✕</button>
+    <button class="modal-close" id="btn-close-photos" aria-label="Закрыть">✕</button>
     <div class="modal-tag">ТЕКСТУРЫ ЛОКАЦИЙ</div>
-    <h3 class="modal-title">Загрузка рендеров комнат</h3>
-    <p class="modal-body">Выберите файлы <code>1000404061.jpg</code> — <code>1000404065.jpg</code> или перетащите их в окно.</p>
-    <input type="file" id="bulk-file-input" multiple accept="image/*" style="display:none">
+    <h3 class="modal-title" id="photos-title">Загрузка рендеров комнат</h3>
+    <p class="modal-body">Выберите файлы <code>1000404061.jpg</code> — <code>1000404065.jpg</code> или перетащите их в окно. До 25 МБ на файл.</p>
+    <input type="file" id="bulk-file-input" multiple accept="image/jpeg,image/png,image/webp" style="display:none">
     <button class="btn btn-primary" id="btn-select-bulk" style="width:100%; margin-bottom:10px;">ВЫБРАТЬ ВСЕ 5 ФАЙЛОВ</button>
     <div class="photo-grid" id="photo-slots-container"></div>
+    <div class="puzzle-feedback" id="photos-feedback"></div>
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<div class="modal-backdrop" id="final-modal" role="dialog" aria-modal="true" aria-labelledby="final-title">
+  <div class="modal-card">
+    <div class="modal-tag">АРХИВ ЗАКРЫТ</div>
+    <h3 class="modal-title" id="final-title">Дело № 404-06</h3>
+    <p class="modal-body">Вы прошли все 5 комнат. Дом отпустил вас... на время.</p>
+    <div style="display:flex; gap:8px; margin-top:16px;">
+      <button class="btn" id="btn-reset-progress">СБРОСИТЬ ПРОГРЕСС</button>
+      <button class="btn btn-primary" id="btn-close-final" style="flex:1">ЗАКРЫТЬ</button>
+    </div>
+  </div>
+</div>
+
+<div id="fatal-overlay" role="alert">
+  <div>Контекст WebGL потерян.<br>Пожалуйста, перезагрузите страницу.</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
 <script>
+'use strict';
+
+const MAX_UPLOAD_SIZE   = 25 * 1024 * 1024;
+const MAX_TEXTURE_DIM   = 4096;
+const REDUCE_MOTION     = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const STORAGE_KEY       = 'osobnyak_progress_v1';
+const FLASHLIGHT_RATIO  = 0.34;
+const TRANSITION_SPEED  = 0.026;
+const POINTER_LERP      = 0.12;
+const ENTITY_LERP       = 0.035;
+const ENTITY_EVADE_LERP = 0.14;
+
 const ROOMS = [
   {
-    id: 0,
-    code: "СЕКТОР 01 // ПРИХОЖАЯ",
-    fileName: "1000404062.jpg",
+    id: 0, code: "СЕКТОР 01 // ПРИХОЖАЯ", fileName: "1000404062.jpg",
     title: "Прихожая с катушечным диктофоном",
     desc: "Сырые обои отслаиваются от гнилой штукатурки. В центре на покосившемся столе стоит ржавый бобинный диктофон. Справа — тёмный проём.",
     portal: { x: 0.62, y: 0.48, label: "Проём в коридор" },
@@ -497,118 +520,69 @@ const ROOMS = [
       { x: 0.388, y: 0.342, radius: 0.036, speedMul: 1.0 },
       { x: 0.443, y: 0.348, radius: 0.034, speedMul: 1.06 }
     ],
-    shadowSpots: [
-      { x: 0.59, y: 0.52, scale: 1.05 },
-      { x: 0.67, y: 0.55, scale: 0.90 }
-    ],
-    clues: [
-      { x: 0.46, y: 0.78, text: "442 Гц" },
-      { x: 0.21, y: 0.34, text: "442" }
-    ],
+    shadowSpots: [{ x: 0.59, y: 0.52, scale: 1.05 }, { x: 0.67, y: 0.55, scale: 0.90 }],
+    clues: [{ x: 0.46, y: 0.78, text: "442 Гц" }, { x: 0.21, y: 0.34, text: "442" }],
     palette: { wall: "#18201b", floor: "#0d110e", light: "#6c8074" },
-    reverbDecay: 3.5,
-    solved: false,
-    tapePlaying: false,
+    reverbDecay: 3.5, solved: false, tapePlaying: false,
     puzzleTitle: "Бобинный диктофон «ЭХО-4»",
     puzzleDesc: "Осмотрите ленту и стены прихожей лучом фонаря — там процарапана несущая частота плёнки.",
-    puzzleType: "frequency",
-    targetFreq: 442
+    puzzleType: "frequency", targetFreq: 442
   },
   {
-    id: 1,
-    code: "СЕКТОР 02 // ГАЛЕРЕЯ",
-    fileName: "1000404063.jpg",
+    id: 1, code: "СЕКТОР 02 // ГАЛЕРЕЯ", fileName: "1000404063.jpg",
     title: "Коридор с пустыми рамами и верёвками",
     desc: "Вытянутая анфилада с облезлыми стенами, пустыми рамами и тяжёлыми цепями.",
     portal: { x: 0.50, y: 0.46, label: "Дальний переход к чердаку" },
     artifact: { x: 0.31, y: 0.44, label: "Узел с кодовым замком" },
-    shadowSpots: [
-      { x: 0.45, y: 0.52, scale: 0.85 },
-      { x: 0.55, y: 0.50, scale: 0.92 }
-    ],
-    clues: [
-      { x: 0.24, y: 0.38, text: "I · IV" },
-      { x: 0.83, y: 0.62, text: "VII · IX" }
-    ],
+    shadowSpots: [{ x: 0.45, y: 0.52, scale: 0.85 }, { x: 0.55, y: 0.50, scale: 0.92 }],
+    clues: [{ x: 0.24, y: 0.38, text: "I · IV" }, { x: 0.83, y: 0.62, text: "VII · IX" }],
     palette: { wall: "#1c221b", floor: "#121510", light: "#7a8c76" },
-    reverbDecay: 4.0,
-    solved: false,
+    reverbDecay: 4.0, solved: false,
     puzzleTitle: "Четырёхдисковый замок смотрителя",
     puzzleDesc: "Посветите фонариком на верёвки слева и на царапины справа — знаки нанесены в нужном порядке.",
-    puzzleType: "roman_code",
-    targetCode: ["I", "IV", "VII", "IX"]
+    puzzleType: "roman_code", targetCode: ["I", "IV", "VII", "IX"]
   },
   {
-    id: 2,
-    code: "СЕКТОР 03 // ЧЕРДАК",
-    fileName: "1000404064.jpg",
+    id: 2, code: "СЕКТОР 03 // ЧЕРДАК", fileName: "1000404064.jpg",
     title: "Чердак с заляпанными простынями",
     desc: "Под гниющими стропилами стоят сундуки и мебель под заляпанными простынями.",
     portal: { x: 0.50, y: 0.45, label: "Люк в шахту лазарета" },
     artifact: { x: 0.14, y: 0.72, label: "Кованый сундук с противовесами" },
-    shadowSpots: [
-      { x: 0.42, y: 0.48, scale: 0.82 },
-      { x: 0.73, y: 0.50, scale: 0.95 }
-    ],
-    clues: [
-      { x: 0.63, y: 0.58, text: "Л: 2+4" },
-      { x: 0.84, y: 0.66, text: "П: 6" }
-    ],
+    shadowSpots: [{ x: 0.42, y: 0.48, scale: 0.82 }, { x: 0.73, y: 0.50, scale: 0.95 }],
+    clues: [{ x: 0.63, y: 0.58, text: "Л: 2+4" }, { x: 0.84, y: 0.66, text: "П: 6" }],
     palette: { wall: "#211c16", floor: "#14110d", light: "#9c896e" },
-    reverbDecay: 3.2,
-    solved: false,
+    reverbDecay: 3.2, solved: false,
     puzzleTitle: "Рычажные весы чердачного люка",
     puzzleDesc: "Найдите на ткани простыней отметки о распределении гирь между левой (Л) и правой (П) чашами.",
     puzzleType: "weights"
   },
   {
-    id: 3,
-    code: "СЕКТОР 04 // ЛАЗАРЕТ",
-    fileName: "1000404065.jpg",
+    id: 3, code: "СЕКТОР 04 // ЛАЗАРЕТ", fileName: "1000404065.jpg",
     title: "Заброшенная операционная",
     desc: "Потрескавшийся кафель, ржавые ширмы и операционный стол.",
     portal: { x: 0.64, y: 0.49, label: "Гермошлюз в подземный бункер" },
     artifact: { x: 0.48, y: 0.54, label: "Хирургический стол и дозатор" },
-    shadowSpots: [
-      { x: 0.26, y: 0.53, scale: 1.02 },
-      { x: 0.64, y: 0.51, scale: 0.88 }
-    ],
-    clues: [
-      { x: 0.89, y: 0.36, text: "А : 3" },
-      { x: 0.80, y: 0.84, text: "B : 1" }
-    ],
+    shadowSpots: [{ x: 0.26, y: 0.53, scale: 1.02 }, { x: 0.64, y: 0.51, scale: 0.88 }],
+    clues: [{ x: 0.89, y: 0.36, text: "А : 3" }, { x: 0.80, y: 0.84, text: "B : 1" }],
     palette: { wall: "#172420", floor: "#0e1412", light: "#779c8e" },
-    reverbDecay: 4.5,
-    solved: false,
+    reverbDecay: 4.5, solved: false,
     puzzleTitle: "Дозатор инфузионной стойки №9",
     puzzleDesc: "На оконном стекле справа и у носилок на полу видны две числовые отметки для колб А и B.",
-    puzzleType: "dosage",
-    targetA: 3,
-    targetB: 1
+    puzzleType: "dosage", targetA: 3, targetB: 1
   },
   {
-    id: 4,
-    code: "СЕКТОР 05 // БУНКЕР",
-    fileName: "1000404061.jpg",
+    id: 4, code: "СЕКТОР 05 // БУНКЕР", fileName: "1000404061.jpg",
     title: "Подземный бункер связи",
     desc: "Массивная ржавая гермодверь, аварийный маяк и полевой телефон.",
     portal: { x: 0.90, y: 0.52, label: "Коридор эвакуации (В начало)" },
     artifact: { x: 0.33, y: 0.56, label: "Полевой телефон и гермовентиль" },
-    shadowSpots: [
-      { x: 0.87, y: 0.54, scale: 0.96 },
-      { x: 0.76, y: 0.55, scale: 0.85 }
-    ],
-    clues: [
-      { x: 0.24, y: 0.26, text: "R × 3" },
-      { x: 0.52, y: 0.45, text: "L × 2" }
-    ],
+    shadowSpots: [{ x: 0.87, y: 0.54, scale: 0.96 }, { x: 0.76, y: 0.55, scale: 0.85 }],
+    clues: [{ x: 0.24, y: 0.26, text: "R × 3" }, { x: 0.52, y: 0.45, text: "L × 2" }],
     palette: { wall: "#1b1917", floor: "#0f0d0c", light: "#c93b2b" },
-    reverbDecay: 5.2,
-    solved: false,
+    reverbDecay: 5.2, solved: false,
     puzzleTitle: "Штурвал гермошлюза и аварийный передатчик",
     puzzleDesc: "На кабелях вверху и на металле у маховика отмечено число оборотов вправо (R) и влево (L).",
-    puzzleType: "valve",
-    targetSequence: ["R", "R", "R", "L", "L"]
+    puzzleType: "valve", targetSequence: ["R", "R", "R", "L", "L"]
   }
 ];
 
@@ -623,11 +597,14 @@ class DarkAmbientAudio {
     this.ambientBuffer = null;
     this.crackleBuffer = null;
     this.scheduler = null;
+    this._irCache = new Map();
+    this._tapeTimers = [];
   }
 
   init() {
     if (this.ctx) return;
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
     this.ctx = new AudioCtx();
 
     this.master = this.ctx.createGain();
@@ -688,17 +665,22 @@ class DarkAmbientAudio {
 
   updateCavernReverb(decaySec) {
     if (!this.ctx) return;
-    const sr = this.ctx.sampleRate;
-    const len = Math.floor(sr * decaySec);
-    const imp = this.ctx.createBuffer(2, len, sr);
-    for (let ch = 0; ch < 2; ch++) {
-      const out = imp.getChannelData(ch);
-      for (let i = 0; i < len; i++) {
-        const t = i / sr;
-        const noise = Math.random() * 2 - 1;
-        const env = Math.pow(1 - i / len, 3.2) * Math.exp(-t * (2.1 / decaySec));
-        out[i] = noise * env * 0.55;
+    const key = decaySec.toFixed(2);
+    let imp = this._irCache.get(key);
+    if (!imp) {
+      const sr = this.ctx.sampleRate;
+      const len = Math.floor(sr * decaySec);
+      imp = this.ctx.createBuffer(2, len, sr);
+      for (let ch = 0; ch < 2; ch++) {
+        const out = imp.getChannelData(ch);
+        for (let i = 0; i < len; i++) {
+          const t = i / sr;
+          const noise = Math.random() * 2 - 1;
+          const env = Math.pow(1 - i / len, 3.2) * Math.exp(-t * (2.1 / decaySec));
+          out[i] = noise * env * 0.55;
+        }
       }
+      this._irCache.set(key, imp);
     }
     this.convolver.buffer = imp;
   }
@@ -711,10 +693,8 @@ class DarkAmbientAudio {
     lp1.type = "lowpass";
     lp1.frequency.value = 42;
     lp1.Q.value = 4.0;
-
     const g1 = this.ctx.createGain();
     g1.gain.value = 0.85;
-
     src1.connect(lp1);
     lp1.connect(g1);
     g1.connect(this.convolver);
@@ -737,39 +717,52 @@ class DarkAmbientAudio {
     return this.enabled;
   }
 
+  playTick() {
+    if (!this.ctx || !this.enabled) return;
+    const now = this.ctx.currentTime;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.crackleBuffer;
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = 1900;
+    bp.Q.value = 18;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.001, now);
+    g.gain.linearRampToValueAtTime(0.18, now + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0005, now + 0.04);
+    src.connect(bp);
+    bp.connect(g);
+    g.connect(this.dryGain);
+    src.start(now);
+    src.stop(now + 0.045);
+  }
+
   playSteelChains() {
     if (!this.ctx || !this.enabled) return;
     const count = 8 + Math.floor(Math.random() * 6);
     const pan = (Math.random() * 1.6) - 0.8;
-
     for (let i = 0; i < count; i++) {
       const t = this.ctx.currentTime + i * (0.045 + Math.random() * 0.07);
       const panner = this.ctx.createStereoPanner();
       panner.pan.value = Math.max(-1, Math.min(1, pan + (Math.random() - 0.5) * 0.25));
-
       const hit = this.ctx.createBufferSource();
       hit.buffer = this.crackleBuffer;
-
       const env = this.ctx.createGain();
       env.gain.setValueAtTime(0.001, t);
       env.gain.linearRampToValueAtTime(0.65, t + 0.003);
       env.gain.exponentialRampToValueAtTime(0.0005, t + 0.05);
-
       [1450, 2320, 3780, 5120].forEach((freq, idx) => {
         const bp = this.ctx.createBiquadFilter();
         bp.type = "bandpass";
         bp.frequency.value = freq + Math.random() * 150;
         bp.Q.value = 55 + idx * 15;
-
         const g = this.ctx.createGain();
         g.gain.value = 1.4 / (idx + 1);
-
         hit.connect(env);
         env.connect(bp);
         bp.connect(g);
         g.connect(panner);
       });
-
       panner.connect(this.dryGain);
       panner.connect(this.convolver);
       hit.start(t);
@@ -781,54 +774,67 @@ class DarkAmbientAudio {
     if (!this.ctx || !this.enabled) return;
     const now = this.ctx.currentTime;
     const dur = 3.2 + Math.random() * 1.5;
-
     const panner = this.ctx.createStereoPanner();
     panner.pan.value = (Math.random() * 1.4) - 0.7;
-
     const src = this.ctx.createBufferSource();
     src.buffer = this.ambientBuffer;
     src.loop = true;
-
     const lp = this.ctx.createBiquadFilter();
     lp.type = "lowpass";
     lp.frequency.setValueAtTime(32, now);
     lp.frequency.exponentialRampToValueAtTime(65, now + dur * 0.5);
     lp.frequency.exponentialRampToValueAtTime(28, now + dur);
     lp.Q.value = 6.0;
-
     const env = this.ctx.createGain();
     env.gain.setValueAtTime(0.0001, now);
     env.gain.linearRampToValueAtTime(0.95, now + 0.8);
     env.gain.exponentialRampToValueAtTime(0.0001, now + dur);
-
     src.connect(lp);
     lp.connect(env);
     env.connect(panner);
     panner.connect(this.convolver);
-
     src.start(now);
     src.stop(now + dur);
   }
 
+  clearTapeTimers() {
+    this._tapeTimers.forEach(id => clearTimeout(id));
+    this._tapeTimers = [];
+  }
+
   playStrangeTapeBroadcast(onDone) {
-    if (!this.ctx) this.init();
-    if (!this.enabled) this.toggle();
-
+    this.clearTapeTimers();
     const subEl = document.getElementById("whisper-subtitle");
-    const now = this.ctx.currentTime;
+    const bursts = [
+      { offset: 0.4, dur: 0.9, freqStart: 520, freqEnd: 310, text: "«...442... [помехи плёнки]...»" },
+      { offset: 1.9, dur: 1.2, freqStart: 780, freqEnd: 240, text: "«...не останавливай катушку... [обрыв ленты]...»" },
+      { offset: 3.8, dur: 1.4, freqStart: 410, freqEnd: 690, text: "«...кто-то стоит у проёма... [тишина]...»" }
+    ];
 
+    bursts.forEach((b) => {
+      this._tapeTimers.push(setTimeout(() => {
+        subEl.textContent = b.text;
+        subEl.classList.add("visible");
+      }, b.offset * 1000));
+    });
+
+    this._tapeTimers.push(setTimeout(() => {
+      subEl.classList.remove("visible");
+      if (onDone) onDone();
+    }, 6400));
+
+    if (!this.ctx || !this.enabled) return;
+
+    const now = this.ctx.currentTime;
     const tapeSrc = this.ctx.createBufferSource();
     tapeSrc.buffer = this.crackleBuffer;
     tapeSrc.loop = true;
-
     const tf = this.ctx.createBiquadFilter();
     tf.type = "bandpass";
     tf.frequency.value = 1680;
     tf.Q.value = 1.4;
-
     const tg = this.ctx.createGain();
     tg.gain.setValueAtTime(0.32, now);
-
     tapeSrc.connect(tf);
     tf.connect(tg);
     tg.connect(this.dryGain);
@@ -840,67 +846,48 @@ class DarkAmbientAudio {
     toneOsc.frequency.setValueAtTime(442, now);
     toneOsc.frequency.linearRampToValueAtTime(418, now + 2.2);
     toneOsc.frequency.linearRampToValueAtTime(442, now + 4.5);
-
     const toneFilter = this.ctx.createBiquadFilter();
     toneFilter.type = "bandpass";
     toneFilter.frequency.value = 442;
     toneFilter.Q.value = 12;
-
     const toneGain = this.ctx.createGain();
     toneGain.gain.setValueAtTime(0.001, now);
     toneGain.gain.linearRampToValueAtTime(0.08, now + 0.8);
     toneGain.gain.setValueAtTime(0.08, now + 5.5);
     toneGain.gain.exponentialRampToValueAtTime(0.0001, now + 7.2);
-
     toneOsc.connect(toneFilter);
     toneFilter.connect(toneGain);
     toneGain.connect(this.convolver);
     toneOsc.start(now);
     toneOsc.stop(now + 7.4);
 
-    const bursts = [
-      { offset: 0.4, dur: 0.9, freqStart: 520, freqEnd: 310, text: "«...442... [помехи плёнки]...»" },
-      { offset: 1.9, dur: 1.2, freqStart: 780, freqEnd: 240, text: "«...не останавливай катушку... [обрыв ленты]...»" },
-      { offset: 3.8, dur: 1.4, freqStart: 410, freqEnd: 690, text: "«...кто-то стоит у проёма... [тишина]...»" }
-    ];
-
     bursts.forEach((b) => {
       const t = now + b.offset;
       const nSrc = this.ctx.createBufferSource();
       nSrc.buffer = this.ambientBuffer;
-
       const bp = this.ctx.createBiquadFilter();
       bp.type = "bandpass";
       bp.frequency.setValueAtTime(b.freqStart, t);
       bp.frequency.exponentialRampToValueAtTime(b.freqEnd, t + b.dur);
       bp.Q.value = 5.5;
-
       const env = this.ctx.createGain();
       env.gain.setValueAtTime(0.001, t);
       env.gain.linearRampToValueAtTime(0.68, t + b.dur * 0.25);
       env.gain.exponentialRampToValueAtTime(0.0008, t + b.dur);
-
       nSrc.connect(bp);
       bp.connect(env);
       env.connect(this.dryGain);
       env.connect(this.convolver);
       nSrc.start(t);
       nSrc.stop(t + b.dur + 0.05);
-
-      setTimeout(() => {
-        subEl.textContent = b.text;
-        subEl.classList.add("visible");
-      }, b.offset * 1000);
     });
 
-    setTimeout(() => {
-      subEl.classList.remove("visible");
-      tg.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.5);
-      setTimeout(() => {
-        try { tapeSrc.stop(); } catch (e) {}
-        if (onDone) onDone();
-      }, 550);
-    }, 6400);
+    this._tapeTimers.push(setTimeout(() => {
+      if (this.ctx) {
+        tg.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.5);
+      }
+      this._tapeTimers.push(setTimeout(() => { try { tapeSrc.stop(); } catch (e) {} }, 550));
+    }, 6400));
   }
 
   playFootsteps() {
@@ -913,11 +900,9 @@ class DarkAmbientAudio {
       lp.type = "lowpass";
       lp.frequency.setValueAtTime(130, t);
       lp.frequency.exponentialRampToValueAtTime(38, t + 0.18);
-
       const g = this.ctx.createGain();
       g.gain.setValueAtTime(0.8, t);
       g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
-
       src.connect(lp);
       lp.connect(g);
       g.connect(this.dryGain);
@@ -928,8 +913,7 @@ class DarkAmbientAudio {
   }
 
   triggerRandomAmbient() {
-    if (!this.ctx) this.init();
-    if (!this.enabled) this.toggle();
+    if (!this.ctx) return;
     if (Math.random() < 0.5) this.playSteelChains();
     else this.playSubterraneanRumble();
   }
@@ -937,10 +921,14 @@ class DarkAmbientAudio {
   startEnvironmentalScheduler() {
     if (this.scheduler) clearInterval(this.scheduler);
     this.scheduler = setInterval(() => {
-      if (this.enabled && Math.random() < 0.75) {
-        this.triggerRandomAmbient();
-      }
+      if (document.hidden) return;
+      if (this.enabled && Math.random() < 0.75) this.triggerRandomAmbient();
     }, 7000);
+  }
+
+  destroy() {
+    if (this.scheduler) { clearInterval(this.scheduler); this.scheduler = null; }
+    this.clearTapeTimers();
   }
 }
 
@@ -975,7 +963,6 @@ function buildProceduralSpoolTexture() {
   const c = document.createElement("canvas");
   c.width = 512; c.height = 512;
   const g = c.getContext("2d");
-
   const grad = g.createRadialGradient(256, 256, 30, 256, 256, 256);
   grad.addColorStop(0, "#5e574e");
   grad.addColorStop(0.55, "#8c8376");
@@ -983,15 +970,11 @@ function buildProceduralSpoolTexture() {
   grad.addColorStop(1, "#3b352f");
   g.fillStyle = grad;
   g.fillRect(0, 0, 512, 512);
-
   for (let r = 45; r < 250; r += 3) {
     g.strokeStyle = r % 6 === 0 ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)";
     g.lineWidth = 1;
-    g.beginPath();
-    g.arc(256, 256, r, 0, Math.PI * 2);
-    g.stroke();
+    g.beginPath(); g.arc(256, 256, r, 0, Math.PI * 2); g.stroke();
   }
-
   for (let i = 0; i < 90; i++) {
     const ang = Math.random() * Math.PI * 2;
     const dist = 50 + Math.random() * 195;
@@ -1002,11 +985,8 @@ function buildProceduralSpoolTexture() {
     rg.addColorStop(0, "rgba(74, 34, 20, 0.45)");
     rg.addColorStop(1, "rgba(0,0,0,0)");
     g.fillStyle = rg;
-    g.beginPath();
-    g.arc(x, y, rad, 0, Math.PI * 2);
-    g.fill();
+    g.beginPath(); g.arc(x, y, rad, 0, Math.PI * 2); g.fill();
   }
-
   const tex = new THREE.CanvasTexture(c);
   tex.needsUpdate = true;
   return tex;
@@ -1017,7 +997,6 @@ function buildProceduralScratchTexture() {
   c.width = 1280; c.height = 720;
   const g = c.getContext("2d");
   g.clearRect(0, 0, 1280, 720);
-
   g.strokeStyle = "rgba(215, 205, 185, 0.22)";
   for (let i = 0; i < 45; i++) {
     const x = Math.random() * 1280;
@@ -1033,21 +1012,19 @@ function buildProceduralScratchTexture() {
   return tex;
 }
 
-const texLoader = new THREE.TextureLoader();
 const reelSpoolTexture = buildProceduralSpoolTexture();
 const scratchMarksTexture = buildProceduralScratchTexture();
+const proceduralTextureCache = {};
 
 function createProceduralTexture(room) {
   const c = document.createElement("canvas");
   c.width = 1280; c.height = 720;
   const g = c.getContext("2d");
-
   const grad = g.createRadialGradient(640, 320, 40, 640, 360, 780);
   grad.addColorStop(0, room.palette.wall);
   grad.addColorStop(1, "#020302");
   g.fillStyle = grad;
   g.fillRect(0, 0, 1280, 720);
-
   const px = 1280 * room.portal.x;
   const py = 720 * room.portal.y;
   g.strokeStyle = "rgba(120, 138, 115, 0.18)";
@@ -1058,10 +1035,8 @@ function createProceduralTexture(room) {
   g.moveTo(0, 720); g.lineTo(px - 110, py + 150);
   g.moveTo(1280, 720); g.lineTo(px + 110, py + 150);
   g.stroke();
-
   g.fillStyle = "#010201";
   g.fillRect(px - 110, py - 150, 220, 300);
-
   if (room.id === 0) {
     const tx = 1280 * 0.415; const ty = 720 * 0.42;
     g.fillStyle = "#161310";
@@ -1074,7 +1049,6 @@ function createProceduralTexture(room) {
     g.lineWidth = 3;
     g.strokeRect(tx - 68, ty - 95, 136, 130);
   }
-
   const tex = new THREE.CanvasTexture(c);
   tex.needsUpdate = true;
   return tex;
@@ -1082,21 +1056,10 @@ function createProceduralTexture(room) {
 
 function build3DReelMesh() {
   const reelGroup = new THREE.Group();
-
   const spoolFaceMat = new THREE.MeshStandardMaterial({
-    map: reelSpoolTexture,
-    color: 0xd6cfc2,
-    metalness: 0.68,
-    roughness: 0.36,
-    side: THREE.DoubleSide
+    map: reelSpoolTexture, color: 0xd6cfc2, metalness: 0.68, roughness: 0.36, side: THREE.DoubleSide
   });
-
-  const tapeMat = new THREE.MeshStandardMaterial({
-    color: 0x120f0d,
-    metalness: 0.25,
-    roughness: 0.65
-  });
-
+  const tapeMat = new THREE.MeshStandardMaterial({ color: 0x120f0d, metalness: 0.25, roughness: 0.65 });
   const tapeRoll = new THREE.Mesh(new THREE.CylinderGeometry(0.76, 0.76, 0.16, 36).rotateX(Math.PI / 2), tapeMat);
   reelGroup.add(tapeRoll);
 
@@ -1105,7 +1068,6 @@ function build3DReelMesh() {
   const centerHole = new THREE.Path();
   centerHole.absarc(0, 0, 0.22, 0, Math.PI * 2, true);
   flangeShape.holes.push(centerHole);
-
   for (let i = 0; i < 3; i++) {
     const a0 = (i * Math.PI * 2) / 3 + 0.18;
     const a1 = ((i + 1) * Math.PI * 2) / 3 - 0.18;
@@ -1115,38 +1077,24 @@ function build3DReelMesh() {
     hole.absarc(0, 0, 0.36, a1, a0, true);
     flangeShape.holes.push(hole);
   }
-
   const flangeGeo = new THREE.ExtrudeGeometry(flangeShape, {
-    depth: 0.025,
-    bevelEnabled: true,
-    bevelSegments: 2,
-    steps: 1,
-    bevelSize: 0.01,
-    bevelThickness: 0.01
+    depth: 0.025, bevelEnabled: true, bevelSegments: 2, steps: 1, bevelSize: 0.01, bevelThickness: 0.01
   });
-
   flangeGeo.computeBoundingBox();
   const bMin = flangeGeo.boundingBox.min;
   const bMax = flangeGeo.boundingBox.max;
   const posAttr = flangeGeo.attributes.position;
   const uvArr = new Float32Array(posAttr.count * 2);
   for (let i = 0; i < posAttr.count; i++) {
-    uvArr[i * 2] = (posAttr.getX(i) - bMin.x) / (bMax.x - bMin.x);
+    uvArr[i * 2]     = (posAttr.getX(i) - bMin.x) / (bMax.x - bMin.x);
     uvArr[i * 2 + 1] = (posAttr.getY(i) - bMin.y) / (bMax.y - bMin.y);
   }
   flangeGeo.setAttribute("uv", new THREE.BufferAttribute(uvArr, 2));
 
-  const f1 = new THREE.Mesh(flangeGeo, spoolFaceMat);
-  f1.position.z = 0.08;
-  reelGroup.add(f1);
-
-  const f2 = new THREE.Mesh(flangeGeo, spoolFaceMat);
-  f2.position.z = -0.105;
-  reelGroup.add(f2);
-
+  const f1 = new THREE.Mesh(flangeGeo, spoolFaceMat); f1.position.z = 0.08;  reelGroup.add(f1);
+  const f2 = new THREE.Mesh(flangeGeo, spoolFaceMat); f2.position.z = -0.105; reelGroup.add(f2);
   const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.26, 0.24, 18).rotateX(Math.PI / 2), spoolFaceMat);
   reelGroup.add(hub);
-
   reelGroup.rotation.y = 0.24;
   reelGroup.rotation.x = -0.04;
   return reelGroup;
@@ -1156,11 +1104,8 @@ const reelMeshes = [build3DReelMesh(), build3DReelMesh()];
 reelMeshes.forEach(m => scene.add(m));
 
 const scratchPlaneMat = new THREE.MeshBasicMaterial({
-  map: scratchMarksTexture,
-  transparent: true,
-  opacity: 0.16,
-  blending: THREE.AdditiveBlending,
-  depthWrite: false
+  map: scratchMarksTexture, transparent: true, opacity: 0.16,
+  blending: THREE.AdditiveBlending, depthWrite: false
 });
 const scratchPlane = new THREE.Mesh(new THREE.PlaneGeometry(16, 9), scratchPlaneMat);
 scratchPlane.position.set(0, 0, 0.06);
@@ -1169,23 +1114,18 @@ scene.add(scratchPlane);
 function build3DShadowEntity() {
   const group = new THREE.Group();
   const shadowMat = new THREE.MeshStandardMaterial({ color: 0x020302, roughness: 0.98, transparent: true, opacity: 0.0 });
-
   const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.32, 1.45, 16), shadowMat);
   group.add(torso);
-
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.21, 16, 16), shadowMat);
   head.scale.set(0.88, 1.18, 0.92); head.position.set(0.06, 0.92, 0.08); head.rotation.z = -0.22;
   group.add(head);
-
   const armGeo = new THREE.CylinderGeometry(0.065, 0.045, 1.35, 10);
   const leftArm = new THREE.Mesh(armGeo, shadowMat); leftArm.position.set(-0.32, -0.12, 0.05); leftArm.rotation.z = 0.12; group.add(leftArm);
   const rightArm = new THREE.Mesh(armGeo, shadowMat); rightArm.position.set(0.32, -0.14, 0.05); rightArm.rotation.z = -0.10; group.add(rightArm);
-
   const eyeMat = new THREE.MeshBasicMaterial({ color: 0xd9e0d4, transparent: true, opacity: 0.0 });
   const eyeGeo = new THREE.SphereGeometry(0.018, 8, 8);
   const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-0.01, 0.94, 0.26); group.add(eyeL);
   const eyeR = new THREE.Mesh(eyeGeo, eyeMat); eyeR.position.set(0.11, 0.92, 0.25); group.add(eyeR);
-
   group.userData = { shadowMat, eyeMat };
   return group;
 }
@@ -1200,31 +1140,211 @@ let flashlightOn = true;
 const roomTextures = {};
 const roomImageDims = {};
 
-const pointer = { x: window.innerWidth * 0.5, y: window.innerHeight * 0.5, targetX: window.innerWidth * 0.5, targetY: window.innerHeight * 0.5, normX: 0, normY: 0 };
+const pointer = {
+  x: window.innerWidth * 0.5, y: window.innerHeight * 0.5,
+  targetX: window.innerWidth * 0.5, targetY: window.innerHeight * 0.5,
+  normX: 0, normY: 0
+};
 const transition = { active: false, phase: "none", progress: 0, targetRoom: 0, focusX: 0.5, focusY: 0.5 };
 const entityState = { visible: false, opacity: 0, targetOpacity: 0, evading: false, timer: 0, spot: { x: 0.59, y: 0.52, scale: 1.0 } };
+const layout = { planeW: 16, planeH: 9, viewW: 16, viewH: 9 };
 
-function spawnShadowEntity(force = false) {
-  const room = ROOMS[currentRoomIndex];
-  if (!room.shadowSpots || room.shadowSpots.length === 0) return;
-  if (entityState.visible && !force) return;
-
-  const spot = room.shadowSpots[Math.floor(Math.random() * room.shadowSpots.length)];
-  entityState.spot = spot;
-  entityState.visible = true;
-  entityState.opacity = 0.05;
-  entityState.targetOpacity = 0.92;
-  entityState.evading = false;
-  entityState.timer = 340;
-
-  if (audioEngine.enabled) audioEngine.playSubterraneanRumble();
+function saveProgress() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      solved: ROOMS.map(r => r.solved),
+      currentRoom: currentRoomIndex
+    }));
+  } catch (e) {}
 }
 
-setInterval(() => {
-  if (document.getElementById("intro-screen").classList.contains("hidden") && !transition.active) {
-    if (Math.random() < 0.65) spawnShadowEntity(false);
+function loadProgress() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (Array.isArray(data.solved)) {
+      data.solved.forEach((s, i) => { if (ROOMS[i]) ROOMS[i].solved = Boolean(s); });
+    }
+    if (typeof data.currentRoom === "number" && data.currentRoom >= 0 && data.currentRoom < ROOMS.length) {
+      currentRoomIndex = data.currentRoom;
+    }
+  } catch (e) {}
+}
+
+function resetProgress() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+}
+
+let flashlightSprite = null;
+let flashlightSpriteRad = 0;
+
+function ensureFlashlightSprite() {
+  const rad = Math.min(window.innerWidth, window.innerHeight) * FLASHLIGHT_RATIO;
+  if (flashlightSprite && Math.abs(rad - flashlightSpriteRad) < 0.5) return;
+  flashlightSpriteRad = rad;
+  const size = Math.ceil(rad * 2);
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  const g = c.getContext("2d");
+  const grad = g.createRadialGradient(rad, rad, rad * 0.08, rad, rad, rad);
+  grad.addColorStop(0, "rgba(0, 0, 0, 1)");
+  grad.addColorStop(0.48, "rgba(0, 0, 0, 0.55)");
+  grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+  g.fillStyle = grad;
+  g.fillRect(0, 0, size, size);
+  flashlightSprite = c;
+}
+
+function getOverlayTransform(w, h) {
+  const scaleX = (layout.planeW / layout.viewW) * w;
+  const scaleY = (layout.planeH / layout.viewH) * h;
+  return {
+    scaleX, scaleY,
+    offsetX: (w - scaleX) * 0.5 - pointer.normX * 16,
+    offsetY: (h - scaleY) * 0.5 - pointer.normY * 11
+  };
+}
+
+function resizeAll() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  fxCanvas.width  = Math.floor(window.innerWidth  * dpr);
+  fxCanvas.height = Math.floor(window.innerHeight * dpr);
+  fxCanvas.style.width  = window.innerWidth  + "px";
+  fxCanvas.style.height = window.innerHeight + "px";
+  fxCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  ensureFlashlightSprite();
+}
+window.addEventListener("resize", resizeAll);
+resizeAll();
+
+function fitImageSourceToGPU(img) {
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  if (!w || !h) return null;
+  if (w <= MAX_TEXTURE_DIM && h <= MAX_TEXTURE_DIM) {
+    return { source: img, width: w, height: h };
   }
-}, 5500);
+  const scale = Math.min(MAX_TEXTURE_DIM / w, MAX_TEXTURE_DIM / h);
+  const nw = Math.max(1, Math.round(w * scale));
+  const nh = Math.max(1, Math.round(h * scale));
+  const c = document.createElement("canvas");
+  c.width = nw;
+  c.height = nh;
+  const g = c.getContext("2d");
+  g.drawImage(img, 0, 0, nw, nh);
+  return { source: c, width: nw, height: nh };
+}
+
+function createTextureFromImageSource(img, roomIdx, fileNameForLog) {
+  const fitted = fitImageSourceToGPU(img);
+  if (!fitted) return false;
+  const tex = new THREE.Texture(fitted.source);
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  tex.needsUpdate = true;
+  if (roomTextures[roomIdx] && roomTextures[roomIdx] !== proceduralTextureCache[roomIdx]) {
+    roomTextures[roomIdx].dispose();
+  }
+  roomTextures[roomIdx] = tex;
+  roomImageDims[roomIdx] = { w: fitted.width, h: fitted.height };
+  if (roomIdx === currentRoomIndex) applyRoomTexture(roomIdx);
+  updateLoadedCounter();
+  return true;
+}
+
+function applyRoomTexture(idx) {
+  if (roomTextures[idx]) {
+    roomPlaneMat.map = roomTextures[idx];
+  } else {
+    if (!proceduralTextureCache[idx]) {
+      proceduralTextureCache[idx] = createProceduralTexture(ROOMS[idx]);
+    }
+    roomPlaneMat.map = proceduralTextureCache[idx];
+  }
+  roomPlaneMat.needsUpdate = true;
+}
+
+function tryAutoLoadImages() {
+  ROOMS.forEach((room, idx) => {
+    const img = new Image();
+    img.referrerPolicy = "no-referrer";
+    img.onload = () => {
+      createTextureFromImageSource(img, idx, room.fileName);
+    };
+    img.onerror = () => {
+      if (idx === currentRoomIndex) applyRoomTexture(idx);
+    };
+    img.src = room.fileName;
+  });
+}
+
+function updateLoadedCounter() {
+  const count = Object.keys(roomTextures).length;
+  const btn = document.getElementById("btn-open-photos");
+  if (btn) btn.textContent = `ФОТО КОМНАТ [${count}/5]`;
+}
+
+function setPhotosFeedback(text) {
+  const el = document.getElementById("photos-feedback");
+  if (el) el.textContent = text;
+}
+
+function loadSingleFileAsTexture(file, roomIdx) {
+  if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) {
+    setPhotosFeedback("Поддерживаются только изображения JPEG, PNG или WebP.");
+    return;
+  }
+  if (file.size > MAX_UPLOAD_SIZE) {
+    setPhotosFeedback(`Файл «${file.name}» превышает лимит 25 МБ.`);
+    return;
+  }
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    const ok = createTextureFromImageSource(img, roomIdx, file.name);
+    if (ok) {
+      setPhotosFeedback(`Загружено для локации 0${roomIdx + 1}: ${file.name}`);
+      renderPhotoSlotsModal();
+    } else {
+      setPhotosFeedback(`Не удалось прочитать изображение «${file.name}».`);
+    }
+  };
+  img.onerror = () => {
+    URL.revokeObjectURL(url);
+    setPhotosFeedback(`Ошибка декодирования файла «${file.name}».`);
+  };
+  img.src = url;
+}
+
+function handleBulkFiles(fileList) {
+  const files = Array.from(fileList)
+    .filter(f => /^image\/(jpeg|png|webp)$/.test(f.type) && f.size <= MAX_UPLOAD_SIZE);
+  if (!files.length) {
+    setPhotosFeedback("Нет подходящих файлов (допустимы JPEG/PNG/WebP до 25 МБ).");
+    return;
+  }
+  files.forEach((file, idx) => { if (idx < 5) loadSingleFileAsTexture(file, idx); });
+}
+
+tryAutoLoadImages();
+applyRoomTexture(0);
+
+const dustParticles = Array.from({ length: 80 }, () => ({
+  x: Math.random(), y: Math.random(), z: 0.3 + Math.random() * 0.9,
+  vx: (Math.random() - 0.5) * 0.00025, vy: -0.00015 - Math.random() * 0.00035,
+  size: 1.0 + Math.random() * 2.3
+}));
+
+let reelRotation = 0;
+let lastFrameTime = performance.now();
 
 function updateWorldPlaneLayout() {
   const dist = camera.position.z;
@@ -1246,70 +1366,32 @@ function updateWorldPlaneLayout() {
   }
   roomMesh.scale.set(planeW / 16, planeH / 9, 1);
   scratchPlane.scale.set(planeW / 16, planeH / 9, 1);
-  return { planeW, planeH, viewW, viewH };
+
+  layout.planeW = planeW; layout.planeH = planeH;
+  layout.viewW = viewW;   layout.viewH = viewH;
+  return layout;
 }
-
-function applyRoomTexture(idx) {
-  if (roomTextures[idx]) {
-    roomPlaneMat.map = roomTextures[idx];
-  } else {
-    roomPlaneMat.map = createProceduralTexture(ROOMS[idx]);
-  }
-  roomPlaneMat.needsUpdate = true;
-}
-
-function tryAutoLoadImages() {
-  ROOMS.forEach((room, idx) => {
-    texLoader.load(room.fileName, (tex) => {
-      roomTextures[idx] = tex;
-      roomImageDims[idx] = { w: tex.image.width, h: tex.image.height };
-      if (idx === currentRoomIndex) applyRoomTexture(idx);
-      updateLoadedCounter();
-    }, undefined, () => {
-      if (idx === currentRoomIndex) applyRoomTexture(idx);
-    });
-  });
-}
-tryAutoLoadImages();
-applyRoomTexture(0);
-
-function updateLoadedCounter() {
-  const count = Object.keys(roomTextures).length;
-  const btn = document.getElementById("btn-open-photos");
-  if (btn) btn.textContent = `ФОТО КОМНАТ [${count}/5]`;
-  renderPhotoSlotsModal();
-}
-
-function resizeAll() {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  fxCanvas.width = window.innerWidth;
-  fxCanvas.height = window.innerHeight;
-}
-window.addEventListener("resize", resizeAll);
-resizeAll();
-
-const dustParticles = Array.from({ length: 80 }, () => ({
-  x: Math.random(), y: Math.random(), z: 0.3 + Math.random() * 0.9,
-  vx: (Math.random() - 0.5) * 0.00025, vy: -0.00015 - Math.random() * 0.00035, size: 1.0 + Math.random() * 2.3
-}));
-
-let reelRotation = 0;
 
 function animate(time) {
   requestAnimationFrame(animate);
+  if (document.hidden) { lastFrameTime = time; return; }
+
+  const dtMs = Math.min(100, time - lastFrameTime);
+  lastFrameTime = time;
+  const dt = dtMs / 16.667;
 
   const w = window.innerWidth;
   const h = window.innerHeight;
   const room = ROOMS[currentRoomIndex];
 
-  pointer.x += (pointer.targetX - pointer.x) * 0.12;
-  pointer.y += (pointer.targetY - pointer.y) * 0.12;
+  const lerpFactor = 1 - Math.pow(1 - POINTER_LERP, dt);
+  pointer.x += (pointer.targetX - pointer.x) * lerpFactor;
+  pointer.y += (pointer.targetY - pointer.y) * lerpFactor;
   pointer.normX = (pointer.x / w - 0.5) * 2;
   pointer.normY = (pointer.y / h - 0.5) * 2;
 
-  const { planeW, planeH, viewW, viewH } = updateWorldPlaneLayout();
+  const L = updateWorldPlaneLayout();
+  const planeW = L.planeW, planeH = L.planeH, viewW = L.viewW, viewH = L.viewH;
 
   let camZ = 10.0;
   let camX = pointer.normX * 0.32;
@@ -1317,7 +1399,7 @@ function animate(time) {
   let blackFade = 0;
 
   if (transition.active) {
-    transition.progress += 0.026;
+    transition.progress += TRANSITION_SPEED * dt;
     if (transition.phase === "in") {
       const ease = transition.progress * transition.progress;
       camZ = 10.0 - ease * 6.4;
@@ -1326,13 +1408,13 @@ function animate(time) {
       camX += targetWorldX * ease * 0.85;
       camY += targetWorldY * ease * 0.85 + Math.sin(transition.progress * Math.PI * 5) * 0.12;
       blackFade = Math.min(1, transition.progress * 1.15);
-
       if (transition.progress >= 1) {
         currentRoomIndex = transition.targetRoom;
         entityState.visible = false;
         applyRoomTexture(currentRoomIndex);
         updateRoomHUD();
         if (audioEngine.ctx) audioEngine.updateCavernReverb(ROOMS[currentRoomIndex].reverbDecay);
+        saveProgress();
         transition.phase = "out";
         transition.progress = 0;
       }
@@ -1361,11 +1443,10 @@ function animate(time) {
   if (room.id === 0 && room.reels) {
     const spinning = room.tapePlaying || room.solved;
     if (spinning) {
-      reelRotation -= 0.065;
+      reelRotation -= 0.065 * dt;
     } else {
       reelRotation = Math.sin(time * 0.003) * 0.04;
     }
-
     room.reels.forEach((rCfg, idx) => {
       const mesh = reelMeshes[idx];
       mesh.visible = true;
@@ -1385,7 +1466,6 @@ function animate(time) {
     const ex = (entityState.spot.x - 0.5) * planeW;
     const ey = (0.5 - entityState.spot.y) * planeH;
     const esc = (entityState.spot.scale || 1.0) * (planeH * 0.16);
-
     shadowEntity.visible = true;
     shadowEntity.scale.set(esc, esc, esc);
 
@@ -1396,11 +1476,12 @@ function animate(time) {
       if (audioEngine.enabled) audioEngine.playSteelChains();
     }
 
-    entityState.timer--;
+    entityState.timer -= dt;
     if (entityState.timer <= 0) entityState.targetOpacity = 0;
 
-    const speed = entityState.evading ? 0.14 : 0.035;
-    entityState.opacity += (entityState.targetOpacity - entityState.opacity) * speed;
+    const speed = entityState.evading ? ENTITY_EVADE_LERP : ENTITY_LERP;
+    const opLerp = 1 - Math.pow(1 - speed, dt);
+    entityState.opacity += (entityState.targetOpacity - entityState.opacity) * opLerp;
 
     const recoilX = entityState.evading ? (ex > 0 ? 0.75 : -0.75) * (1 - entityState.opacity) : Math.sin(time * 0.004) * 0.04;
     const recoilZ = entityState.evading ? -0.3 * (1 - entityState.opacity) : 0.35;
@@ -1418,27 +1499,28 @@ function animate(time) {
   }
 
   renderer.render(scene, camera);
-  render2DOverlay(w, h, room, planeW, planeH, viewW, viewH, blackFade, time);
+  render2DOverlay(w, h, room, planeW, planeH, viewW, viewH, blackFade, time, dt);
 }
 
-function render2DOverlay(w, h, room, planeW, planeH, viewW, viewH, blackFade, time) {
+function render2DOverlay(w, h, room, planeW, planeH, viewW, viewH, blackFade, time, dt) {
   fxCtx.clearRect(0, 0, w, h);
 
-  const scaleX = (planeW / viewW) * w;
-  const scaleY = (planeH / viewH) * h;
-  const offsetX = (w - scaleX) * 0.5 - pointer.normX * 16;
-  const offsetY = (h - scaleY) * 0.5 - pointer.normY * 11;
+  const t = getOverlayTransform(w, h);
+  const scaleX = t.scaleX, scaleY = t.scaleY, offsetX = t.offsetX, offsetY = t.offsetY;
 
   dustParticles.forEach(p => {
-    p.x += p.vx; p.y += p.vy;
-    if (p.y < 0) p.y = 1; if (p.x < 0) p.x = 1; if (p.x > 1) p.x = 0;
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    if (p.y < 0) p.y = 1;
+    if (p.x < 0) p.x = 1;
+    if (p.x > 1) p.x = 0;
     const px = p.x * w - pointer.normX * 20 * p.z;
     const py = p.y * h - pointer.normY * 14 * p.z;
     const dist = Math.hypot(px - pointer.x, py - pointer.y);
     const boost = (flashlightOn && dist < 240) ? (1 - dist / 240) * 0.7 : 0;
-
     fxCtx.fillStyle = `rgba(195, 208, 188, ${Math.min(0.92, 0.12 + boost)})`;
-    fxCtx.beginPath(); fxCtx.arc(px, py, p.size * p.z, 0, Math.PI * 2); fxCtx.fill();
+    fxCtx.beginPath();
+    fxCtx.arc(px, py, p.size * p.z, 0, Math.PI * 2);
+    fxCtx.fill();
   });
 
   if (flashlightOn) {
@@ -1460,19 +1542,21 @@ function render2DOverlay(w, h, room, planeW, planeH, viewW, viewH, blackFade, ti
     });
   }
 
-  drawMarker2D(offsetX + room.artifact.x * scaleX, offsetY + room.artifact.y * scaleY, room.artifact.label, room.solved ? "#528c63" : "#bd7d3b", time);
+  drawMarker2D(offsetX + room.artifact.x * scaleX, offsetY + room.artifact.y * scaleY,
+    room.artifact.label, room.solved ? "#528c63" : "#bd7d3b", time);
   const canPass = room.solved || freeMode;
-  drawMarker2D(offsetX + room.portal.x * scaleX, offsetY + room.portal.y * scaleY, room.portal.label, canPass ? "#528c63" : "#8f3222", time);
+  drawMarker2D(offsetX + room.portal.x * scaleX, offsetY + room.portal.y * scaleY,
+    room.portal.label, canPass ? "#528c63" : "#8f3222", time);
 
-  const flicker = Math.sin(time * 0.041) * Math.sin(time * 0.017) > 0.96 ? 0.72 : 1.0;
   if (flashlightOn) {
-    const rad = Math.min(w, h) * 0.34 * flicker;
-    const grad = fxCtx.createRadialGradient(pointer.x, pointer.y, rad * 0.08, pointer.x, pointer.y, rad);
-    grad.addColorStop(0, "rgba(255, 244, 214, 0.02)");
-    grad.addColorStop(0.48, "rgba(5, 7, 5, 0.42)");
-    grad.addColorStop(1, "rgba(1, 2, 1, 0.94)");
-    fxCtx.fillStyle = grad;
+    const flicker = REDUCE_MOTION ? 1.0 : (Math.sin(time * 0.041) * Math.sin(time * 0.017) > 0.96 ? 0.72 : 1.0);
+    fxCtx.fillStyle = "rgba(1, 2, 1, 0.94)";
     fxCtx.fillRect(0, 0, w, h);
+    if (!flashlightSprite) ensureFlashlightSprite();
+    const s = flashlightSpriteRad * flicker;
+    fxCtx.globalCompositeOperation = "destination-out";
+    fxCtx.drawImage(flashlightSprite, pointer.x - s, pointer.y - s, s * 2, s * 2);
+    fxCtx.globalCompositeOperation = "source-over";
   } else {
     fxCtx.fillStyle = "rgba(1, 2, 1, 0.91)";
     fxCtx.fillRect(0, 0, w, h);
@@ -1485,37 +1569,48 @@ function render2DOverlay(w, h, room, planeW, planeH, viewW, viewH, blackFade, ti
 }
 
 function drawMarker2D(x, y, label, color, time) {
-  const pulse = 1 + Math.sin(time * 0.005) * 0.2;
+  const pulse = REDUCE_MOTION ? 1 : 1 + Math.sin(time * 0.005) * 0.2;
   fxCtx.save();
-  fxCtx.strokeStyle = color; fxCtx.lineWidth = 1.6;
+  fxCtx.strokeStyle = color;
+  fxCtx.lineWidth = 1.6;
   fxCtx.beginPath(); fxCtx.arc(x, y, 14 * pulse, 0, Math.PI * 2); fxCtx.stroke();
-  fxCtx.fillStyle = color; fxCtx.beginPath(); fxCtx.arc(x, y, 4, 0, Math.PI * 2); fxCtx.fill();
+  fxCtx.fillStyle = color;
+  fxCtx.beginPath(); fxCtx.arc(x, y, 4, 0, Math.PI * 2); fxCtx.fill();
 
   fxCtx.font = "11px 'Courier New', monospace";
   const tw = fxCtx.measureText(label).width + 14;
   fxCtx.fillStyle = "rgba(5, 7, 5, 0.88)";
   fxCtx.fillRect(x - tw * 0.5, y + 19, tw, 20);
-  fxCtx.strokeStyle = color; fxCtx.strokeRect(x - tw * 0.5, y + 19, tw, 20);
-  fxCtx.fillStyle = "#ded6cc"; fxCtx.textAlign = "center";
+  fxCtx.strokeStyle = color;
+  fxCtx.strokeRect(x - tw * 0.5, y + 19, tw, 20);
+  fxCtx.fillStyle = "#ded6cc";
+  fxCtx.textAlign = "center";
   fxCtx.fillText(label, x, y + 33);
   fxCtx.restore();
 }
 
+const depthNav = document.getElementById("depth-nav");
+
 function buildDepthNav() {
-  const nav = document.getElementById("depth-nav");
-  nav.innerHTML = "";
+  depthNav.innerHTML = "";
   ROOMS.forEach((r, idx) => {
     const node = document.createElement("div");
     node.className = `depth-node ${idx === currentRoomIndex ? "active" : ""} ${r.solved ? "solved" : ""}`;
+    node.setAttribute("role", "button");
+    node.setAttribute("tabindex", "0");
     node.innerHTML = `<span class="depth-label">0${idx + 1} // ${r.title.split(" ")[0]}</span><span class="depth-dot"></span>`;
     node.addEventListener("click", () => attemptRoomTransition(idx));
-    nav.appendChild(node);
+    node.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); attemptRoomTransition(idx); }
+    });
+    depthNav.appendChild(node);
   });
 }
 
 function updateRoomHUD() {
   const room = ROOMS[currentRoomIndex];
-  document.getElementById("hud-room-indicator").textContent = `ЛОКАЦИЯ 0${currentRoomIndex + 1} / 05 — ${room.title.toUpperCase()}`;
+  document.getElementById("hud-room-indicator").textContent =
+    `ЛОКАЦИЯ 0${currentRoomIndex + 1} / 05 — ${room.title.toUpperCase()}`;
   document.getElementById("dossier-code").textContent = room.code;
   document.getElementById("dossier-file-hint").textContent = `ФАЙЛ: ${room.fileName}`;
   document.getElementById("dossier-title").textContent = room.title;
@@ -1552,55 +1647,89 @@ function attemptRoomTransition(targetIdx) {
   transition.focusY = currentRoom.portal.y;
 }
 
+glCanvas.addEventListener("pointerdown", (e) => {
+  pointer.targetX = e.clientX;
+  pointer.targetY = e.clientY;
+});
+
+window.addEventListener("pointermove", (e) => {
+  pointer.targetX = e.clientX;
+  pointer.targetY = e.clientY;
+}, { passive: true });
+
 glCanvas.addEventListener("click", (e) => {
   if (transition.active) return;
+
+  pointer.x = pointer.targetX = e.clientX;
+  pointer.y = pointer.targetY = e.clientY;
+  pointer.normX = (e.clientX / window.innerWidth - 0.5) * 2;
+  pointer.normY = (e.clientY / window.innerHeight - 0.5) * 2;
+
   const w = window.innerWidth;
   const h = window.innerHeight;
   const room = ROOMS[currentRoomIndex];
+  updateWorldPlaneLayout();
+  const t = getOverlayTransform(w, h);
 
-  const { planeW, planeH, viewW, viewH } = updateWorldPlaneLayout();
-  const scaleX = (planeW / viewW) * w;
-  const scaleY = (planeH / viewH) * h;
-  const offsetX = (w - scaleX) * 0.5;
-  const offsetY = (h - scaleY) * 0.5;
-
-  const artX = offsetX + room.artifact.x * scaleX;
-  const artY = offsetY + room.artifact.y * scaleY;
+  const artX = t.offsetX + room.artifact.x * t.scaleX;
+  const artY = t.offsetY + room.artifact.y * t.scaleY;
   if (Math.hypot(e.clientX - artX, e.clientY - artY) < 90) {
     openPuzzleModal();
     return;
   }
-
-  const portX = offsetX + room.portal.x * scaleX;
-  const portY = offsetY + room.portal.y * scaleY;
+  const portX = t.offsetX + room.portal.x * t.scaleX;
+  const portY = t.offsetY + room.portal.y * t.scaleY;
   if (Math.hypot(e.clientX - portX, e.clientY - portY) < 90) {
     attemptRoomTransition((currentRoomIndex + 1) % ROOMS.length);
   }
 });
-
-window.addEventListener("mousemove", (e) => {
-  pointer.targetX = e.clientX; pointer.targetY = e.clientY;
-});
-window.addEventListener("touchmove", (e) => {
-  if (e.touches.length > 0) {
-    pointer.targetX = e.touches[0].clientX; pointer.targetY = e.touches[0].clientY;
-  }
-}, { passive: true });
 
 let lastWheelTime = 0;
 window.addEventListener("wheel", (e) => {
   const now = performance.now();
   if (now - lastWheelTime < 1100) return;
   if (document.querySelector(".modal-backdrop.open")) return;
-  if (e.deltaY > 25) { lastWheelTime = now; attemptRoomTransition(Math.min(ROOMS.length - 1, currentRoomIndex + 1)); }
-  else if (e.deltaY < -25) { lastWheelTime = now; attemptRoomTransition(Math.max(0, currentRoomIndex - 1)); }
-});
+  if (e.deltaY > 25) {
+    lastWheelTime = now;
+    attemptRoomTransition(Math.min(ROOMS.length - 1, currentRoomIndex + 1));
+  } else if (e.deltaY < -25) {
+    lastWheelTime = now;
+    attemptRoomTransition(Math.max(0, currentRoomIndex - 1));
+  }
+}, { passive: true });
 
 window.addEventListener("keydown", (e) => {
-  if (e.key.toLowerCase() === "f" || e.key.toLowerCase() === "а") {
+  const k = e.key.toLowerCase();
+  if (k === "f" || k === "а") {
     document.getElementById("btn-toggle-flashlight").click();
   }
+  if (e.key === "Escape") {
+    document.querySelectorAll(".modal-backdrop.open").forEach(m => m.classList.remove("open"));
+  }
 });
+
+function spawnShadowEntity(force = false) {
+  const room = ROOMS[currentRoomIndex];
+  if (!room.shadowSpots || room.shadowSpots.length === 0) return;
+  if (entityState.visible && !force) return;
+
+  const spot = room.shadowSpots[Math.floor(Math.random() * room.shadowSpots.length)];
+  entityState.spot = spot;
+  entityState.visible = true;
+  entityState.opacity = 0.05;
+  entityState.targetOpacity = 0.92;
+  entityState.evading = false;
+  entityState.timer = 340;
+
+  if (audioEngine.enabled) audioEngine.playSubterraneanRumble();
+}
+
+setInterval(() => {
+  if (document.hidden) return;
+  if (document.getElementById("intro-screen").classList.contains("hidden") && !transition.active) {
+    if (Math.random() < 0.65) spawnShadowEntity(false);
+  }
+}, 5500);
 
 function openPuzzleModal() {
   const room = ROOMS[currentRoomIndex];
@@ -1612,11 +1741,12 @@ function openPuzzleModal() {
   const container = document.getElementById("modal-interactive");
   const feedback = document.getElementById("modal-feedback");
   container.innerHTML = "";
-
-  feedback.textContent = room.solved ? "МЕХАНИЗМ УЖЕ РАЗБЛОКИРОВАН." : "Осмотрите поверхности комнаты лучом фонаря.";
+  feedback.textContent = room.solved
+    ? "МЕХАНИЗМ УЖЕ РАЗБЛОКИРОВАН."
+    : "Осмотрите поверхности комнаты лучом фонаря.";
 
   if (room.puzzleType === "frequency") {
-    let cur = room.solved ? 442 : 390;
+    let cur = room.solved ? room.targetFreq : 390;
     container.innerHTML = `
       <div class="puzzle-row"><span>ЧАСТОТА ТОНВАЛА:</span><strong id="freq-rd" style="color:var(--amber-glow); font-size:16px;">${cur} Гц</strong></div>
       <input type="range" id="freq-sl" min="350" max="500" step="1" value="${cur}">
@@ -1624,7 +1754,7 @@ function openPuzzleModal() {
     `;
     const sl = container.querySelector("#freq-sl");
     const rd = container.querySelector("#freq-rd");
-    sl.addEventListener("input", () => { rd.textContent = `${sl.value} Гц`; });
+    sl.addEventListener("input", () => { rd.textContent = `${sl.value} Гц`; audioEngine.playTick(); });
     container.querySelector("#btn-chk").addEventListener("click", () => {
       if (parseInt(sl.value, 10) === room.targetFreq) {
         room.tapePlaying = true;
@@ -1632,7 +1762,7 @@ function openPuzzleModal() {
         setTimeout(() => { modal.classList.remove("open"); audioEngine.playStrangeTapeBroadcast(); }, 500);
       } else {
         audioEngine.playSubterraneanRumble();
-        feedback.textContent = "Лента проскальзывает. Сверьтесь с отметкой на полу.";
+        feedback.textContent = "Лента проскальзывает. Посветите на пол у стола и обои слева.";
       }
     });
   } else if (room.puzzleType === "roman_code") {
@@ -1644,21 +1774,29 @@ function openPuzzleModal() {
       b.addEventListener("click", () => {
         st[i] = syms[(syms.indexOf(st[i]) + 1) % syms.length];
         b.textContent = st[i];
-        audioEngine.playSteelChains();
+        audioEngine.playTick();
       });
       wrap.appendChild(b);
     });
-    const cb = document.createElement("button"); cb.className = "btn btn-primary"; cb.style.width = "100%"; cb.textContent = "ПРОВЕРНУТЬ ЗАСОВ";
+    const cb = document.createElement("button");
+    cb.className = "btn btn-primary";
+    cb.style.width = "100%";
+    cb.textContent = "ПРОВЕРНУТЬ ЗАСОВ";
     cb.addEventListener("click", () => {
       if (st.join("-") === room.targetCode.join("-")) solveCurrentRoom("Засов открыт.");
-      else { audioEngine.playSubterraneanRumble(); feedback.textContent = "Знаки не совпадают с отметками на стенах."; }
+      else { audioEngine.playSubterraneanRumble(); feedback.textContent = "Знаки не совпадают. Осмотрите верёвки слева и царапины справа."; }
     });
-    container.appendChild(wrap); container.appendChild(cb);
+    container.appendChild(wrap);
+    container.appendChild(cb);
   } else if (room.puzzleType === "weights") {
-    const weights = [{ kg: 2, side: "L" }, { kg: 4, side: room.solved ? "L" : "R" }, { kg: 6, side: "R" }];
+    const weights = [
+      { kg: 2, side: "L" },
+      { kg: 4, side: room.solved ? "L" : "R" },
+      { kg: 6, side: "R" }
+    ];
     const renderW = () => {
-      const l = weights.filter(w => w.side === "L").reduce((a,b)=>a+b.kg,0);
-      const r = weights.filter(w => w.side === "R").reduce((a,b)=>a+b.kg,0);
+      const l = weights.filter(x => x.side === "L").reduce((a, b) => a + b.kg, 0);
+      const r = weights.filter(x => x.side === "R").reduce((a, b) => a + b.kg, 0);
       container.innerHTML = `
         <div class="puzzle-row"><span>ЛЕВАЯ (Л): <strong>${l} КГ</strong></span><span>ПРАВАЯ (П): <strong>${r} КГ</strong></span></div>
         <div class="scale-pan-group" id="w-grid"></div>
@@ -1667,9 +1805,11 @@ function openPuzzleModal() {
       const grid = container.querySelector("#w-grid");
       weights.forEach(w => {
         const card = document.createElement("div"); card.className = "weight-card";
-        card.innerHTML = `<div style="font-size:14px; font-weight:bold; margin-bottom:6px;">ГИРЯ ${w.kg}КГ</div><button class="hud-btn" style="width:100%">${w.side==="L"?"Л":"П"}</button>`;
+        card.innerHTML = `<div style="font-size:14px; font-weight:bold; margin-bottom:6px;">ГИРЯ ${w.kg}КГ</div><button class="hud-btn" style="width:100%">${w.side === "L" ? "Л" : "П"}</button>`;
         card.querySelector("button").addEventListener("click", () => {
-          w.side = w.side === "L" ? "R" : "L"; audioEngine.playSteelChains(); renderW();
+          w.side = w.side === "L" ? "R" : "L";
+          audioEngine.playSteelChains();
+          renderW();
         });
         grid.appendChild(card);
       });
@@ -1680,18 +1820,22 @@ function openPuzzleModal() {
     };
     renderW();
   } else if (room.puzzleType === "dosage") {
-    let dA = room.solved ? 3 : 0, dB = room.solved ? 1 : 0;
+    let dA = room.solved ? room.targetA : 0;
+    let dB = room.solved ? room.targetB : 0;
     const renderD = () => {
       container.innerHTML = `
         <div class="puzzle-row"><span>КОЛБА А: <strong>${dA}</strong></span><button class="hud-btn" id="ba">+1</button></div>
         <div class="puzzle-row"><span>КОЛБА B: <strong>${dB}</strong></span><button class="hud-btn" id="bb">+1</button></div>
-        <div style="display:flex; gap:8px; margin-top:12px;"><button class="btn" id="br" style="flex:1;">СБРОС</button><button class="btn btn-primary" id="bi" style="flex:2;">ПОДАТЬ</button></div>
+        <div style="display:flex; gap:8px; margin-top:12px;">
+          <button class="btn" id="br" style="flex:1;">СБРОС</button>
+          <button class="btn btn-primary" id="bi" style="flex:2;">ПОДАТЬ</button>
+        </div>
       `;
-      container.querySelector("#ba").addEventListener("click", () => { dA = (dA + 1) % 7; renderD(); });
-      container.querySelector("#bb").addEventListener("click", () => { dB = (dB + 1) % 7; renderD(); });
-      container.querySelector("#br").addEventListener("click", () => { dA = 0; dB = 0; renderD(); });
+      container.querySelector("#ba").addEventListener("click", () => { dA = (dA + 1) % 7; audioEngine.playTick(); renderD(); });
+      container.querySelector("#bb").addEventListener("click", () => { dB = (dB + 1) % 7; audioEngine.playTick(); renderD(); });
+      container.querySelector("#br").addEventListener("click", () => { dA = 0; dB = 0; audioEngine.playTick(); renderD(); });
       container.querySelector("#bi").addEventListener("click", () => {
-        if (dA === 3 && dB === 1) solveCurrentRoom("Клапан шлюза разблокирован.");
+        if (dA === room.targetA && dB === room.targetB) solveCurrentRoom("Клапан шлюза разблокирован.");
         else { audioEngine.playSubterraneanRumble(); feedback.textContent = "Сверьтесь с отметками у окна и носилок."; }
       });
     };
@@ -1701,13 +1845,23 @@ function openPuzzleModal() {
     const renderV = () => {
       container.innerHTML = `
         <div class="puzzle-row"><span>ОБОРОТЫ:</span><strong style="color:var(--amber-glow);">${seq.join(" → ") || "—"}</strong></div>
-        <div style="display:flex; gap:8px; margin-bottom:12px;"><button class="btn" id="vr" style="flex:1;">↻ R</button><button class="btn" id="vl" style="flex:1;">↺ L</button><button class="hud-btn" id="vrs">СБРОС</button></div>
-        <input type="text" id="b-msg" placeholder="Сообщение в эфир..." style="width:100%; padding:9px; background:#050705; border:1px solid var(--mold-green); color:var(--bone-white); font-family:inherit; margin-bottom:8px;">
+        <div style="display:flex; gap:8px; margin-bottom:12px;">
+          <button class="btn" id="vr" style="flex:1;">↻ R</button>
+          <button class="btn" id="vl" style="flex:1;">↺ L</button>
+          <button class="hud-btn" id="vrs">СБРОС</button>
+        </div>
+        <input type="text" id="b-msg" maxlength="80" placeholder="Сообщение в эфир..." style="width:100%; padding:9px; background:#050705; border:1px solid var(--mold-green); color:var(--bone-white); font-family:inherit; margin-bottom:8px;">
         <button class="btn btn-primary" id="bs" style="width:100%;">ОТПРАВИТЬ СИГНАЛ</button>
       `;
       const chk = () => {
-        if (seq.join(",") === "R,R,R,L,L") solveCurrentRoom("Гермошлюз открыт.");
-        else if (seq.length >= 5) { audioEngine.playSubterraneanRumble(); feedback.textContent = "Клапан сорвался. Ищите R и L в комнате."; seq = []; setTimeout(renderV, 500); }
+        if (seq.join(",") === room.targetSequence.join(",")) {
+          solveCurrentRoom("Гермошлюз открыт.");
+        } else if (seq.length >= room.targetSequence.length) {
+          audioEngine.playSubterraneanRumble();
+          feedback.textContent = "Клапан сорвался. Ищите R и L в комнате.";
+          seq = [];
+          setTimeout(renderV, 500);
+        }
       };
       container.querySelector("#vr").addEventListener("click", () => { seq.push("R"); audioEngine.playSteelChains(); renderV(); chk(); });
       container.querySelector("#vl").addEventListener("click", () => { seq.push("L"); audioEngine.playSteelChains(); renderV(); chk(); });
@@ -1726,10 +1880,16 @@ function openPuzzleModal() {
 
 function solveCurrentRoom(msg) {
   const room = ROOMS[currentRoomIndex];
+  const wasSolved = room.solved;
   room.solved = true;
   audioEngine.playSteelChains();
   document.getElementById("modal-feedback").textContent = msg;
   updateRoomHUD();
+  saveProgress();
+
+  if (!wasSolved && ROOMS.every(r => r.solved)) {
+    setTimeout(() => document.getElementById("final-modal").classList.add("open"), 1400);
+  }
 }
 
 function renderPhotoSlotsModal() {
@@ -1739,9 +1899,13 @@ function renderPhotoSlotsModal() {
   ROOMS.forEach((room, idx) => {
     const isLoaded = Boolean(roomTextures[idx]);
     const row = document.createElement("div"); row.className = "photo-slot";
-    row.innerHTML = `<div><strong>0${idx+1}. ${room.title}</strong><br><span style="color:#828e7f;">${room.fileName}</span></div>
-      <div style="display:flex; align-items:center; gap:8px;"><span class="photo-slot-status ${isLoaded?"loaded":""}">${isLoaded?"ЗАГРУЖЕНО":"ПРОЦЕДУРНО"}</span>
-      <label class="hud-btn" style="cursor:pointer;">ВЫБРАТЬ<input type="file" accept="image/*" style="display:none"></label></div>`;
+    row.innerHTML = `
+      <div><strong>0${idx + 1}. ${room.title}</strong><br><span style="color:#828e7f;">${room.fileName}</span></div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span class="photo-slot-status ${isLoaded ? "loaded" : ""}">${isLoaded ? "ЗАГРУЖЕНО" : "ПРОЦЕДУРНО"}</span>
+        <label class="hud-btn" style="cursor:pointer;">ВЫБРАТЬ<input type="file" accept="image/jpeg,image/png,image/webp" style="display:none"></label>
+      </div>
+    `;
     row.querySelector("input").addEventListener("change", (e) => {
       if (e.target.files && e.target.files[0]) loadSingleFileAsTexture(e.target.files[0], idx);
     });
@@ -1749,52 +1913,50 @@ function renderPhotoSlotsModal() {
   });
 }
 
-function loadSingleFileAsTexture(file, roomIdx) {
-  const url = URL.createObjectURL(file);
-  texLoader.load(url, (tex) => {
-    roomTextures[roomIdx] = tex;
-    roomImageDims[roomIdx] = { w: tex.image.width, h: tex.image.height };
-    if (roomIdx === currentRoomIndex) applyRoomTexture(roomIdx);
-    updateLoadedCounter();
-  });
-}
-
-function handleBulkFiles(fileList) {
-  const files = Array.from(fileList).filter(f => f.type.startsWith("image/"));
-  if (!files.length) return;
-  files.forEach((file, idx) => { if (idx < 5) loadSingleFileAsTexture(file, idx); });
-}
-
-window.addEventListener("dragover", (e) => e.preventDefault());
-window.addEventListener("drop", (e) => { e.preventDefault(); if (e.dataTransfer && e.dataTransfer.files.length) handleBulkFiles(e.dataTransfer.files); });
-
 document.getElementById("btn-enter-house").addEventListener("click", () => {
   document.getElementById("intro-screen").classList.add("hidden");
   audioEngine.init();
-  document.getElementById("btn-toggle-sound").textContent = "ЗВУК: ВКЛ";
-  document.getElementById("btn-toggle-sound").classList.add("active");
+  const sBtn = document.getElementById("btn-toggle-sound");
+  sBtn.textContent = "ЗВУК: ВКЛ";
+  sBtn.classList.add("active");
+  sBtn.setAttribute("aria-pressed", "true");
   setTimeout(() => { spawnShadowEntity(true); audioEngine.playSteelChains(); }, 800);
 });
 
-document.getElementById("btn-intro-upload").addEventListener("click", () => document.getElementById("photos-modal").classList.add("open"));
-document.getElementById("btn-open-photos").addEventListener("click", () => { renderPhotoSlotsModal(); document.getElementById("photos-modal").classList.add("open"); });
-document.getElementById("btn-close-photos").addEventListener("click", () => document.getElementById("photos-modal").classList.remove("open"));
-document.getElementById("btn-select-bulk").addEventListener("click", () => document.getElementById("bulk-file-input").click());
-document.getElementById("bulk-file-input").addEventListener("change", (e) => { if (e.target.files) handleBulkFiles(e.target.files); });
+document.getElementById("btn-intro-upload").addEventListener("click", () => {
+  setPhotosFeedback("");
+  renderPhotoSlotsModal();
+  document.getElementById("photos-modal").classList.add("open");
+});
+document.getElementById("btn-open-photos").addEventListener("click", () => {
+  setPhotosFeedback("");
+  renderPhotoSlotsModal();
+  document.getElementById("photos-modal").classList.add("open");
+});
+document.getElementById("btn-close-photos").addEventListener("click", () =>
+  document.getElementById("photos-modal").classList.remove("open"));
+document.getElementById("btn-select-bulk").addEventListener("click", () =>
+  document.getElementById("bulk-file-input").click());
+document.getElementById("bulk-file-input").addEventListener("change", (e) => {
+  if (e.target.files) handleBulkFiles(e.target.files);
+});
 
 document.getElementById("btn-open-puzzle").addEventListener("click", openPuzzleModal);
-document.getElementById("btn-close-puzzle").addEventListener("click", () => document.getElementById("puzzle-modal").classList.remove("open"));
+document.getElementById("btn-close-puzzle").addEventListener("click", () =>
+  document.getElementById("puzzle-modal").classList.remove("open"));
 
 document.getElementById("btn-toggle-flashlight").addEventListener("click", (e) => {
   flashlightOn = !flashlightOn;
   e.target.textContent = `ФОНАРЬ [F]: ${flashlightOn ? "ВКЛ" : "ВЫКЛ"}`;
   e.target.classList.toggle("active", flashlightOn);
+  e.target.setAttribute("aria-pressed", String(flashlightOn));
 });
 
 document.getElementById("btn-toggle-freemode").addEventListener("click", (e) => {
   freeMode = !freeMode;
   e.target.textContent = `РЕЖИМ: ${freeMode ? "СВОБОДНЫЙ" : "КВЕСТ"}`;
   e.target.classList.toggle("active", freeMode);
+  e.target.setAttribute("aria-pressed", String(freeMode));
   updateRoomHUD();
 });
 
@@ -1802,13 +1964,65 @@ document.getElementById("btn-toggle-sound").addEventListener("click", (e) => {
   const on = audioEngine.toggle();
   e.target.textContent = `ЗВУК: ${on ? "ВКЛ" : "ВЫКЛ"}`;
   e.target.classList.toggle("active", on);
+  e.target.setAttribute("aria-pressed", String(on));
 });
 
-document.getElementById("btn-prev-room").addEventListener("click", () => attemptRoomTransition(Math.max(0, currentRoomIndex - 1)));
-document.getElementById("btn-next-room").addEventListener("click", () => attemptRoomTransition((currentRoomIndex + 1) % ROOMS.length));
+document.getElementById("btn-prev-room").addEventListener("click", () =>
+  attemptRoomTransition(Math.max(0, currentRoomIndex - 1)));
+document.getElementById("btn-next-room").addEventListener("click", () =>
+  attemptRoomTransition((currentRoomIndex + 1) % ROOMS.length));
 
+document.getElementById("btn-close-final").addEventListener("click", () =>
+  document.getElementById("final-modal").classList.remove("open"));
+document.getElementById("btn-reset-progress").addEventListener("click", () => {
+  resetProgress();
+  audioEngine.clearTapeTimers();
+  document.getElementById("whisper-subtitle").classList.remove("visible");
+  ROOMS.forEach(r => { r.solved = false; r.tapePlaying = false; });
+  reelRotation = 0;
+  currentRoomIndex = 0;
+  freeMode = false;
+  const fBtn = document.getElementById("btn-toggle-freemode");
+  fBtn.textContent = "РЕЖИМ: КВЕСТ";
+  fBtn.classList.remove("active");
+  fBtn.setAttribute("aria-pressed", "false");
+  document.getElementById("final-modal").classList.remove("open");
+  applyRoomTexture(0);
+  updateRoomHUD();
+  saveProgress();
+});
+
+window.addEventListener("dragover", (e) => e.preventDefault());
+window.addEventListener("drop", (e) => {
+  e.preventDefault();
+  if (e.dataTransfer && e.dataTransfer.files.length) {
+    renderPhotoSlotsModal();
+    document.getElementById("photos-modal").classList.add("open");
+    handleBulkFiles(e.dataTransfer.files);
+  }
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) saveProgress();
+});
+window.addEventListener("pagehide", () => {
+  saveProgress();
+  audioEngine.destroy();
+});
+
+glCanvas.addEventListener("webglcontextlost", (e) => {
+  e.preventDefault();
+  document.getElementById("fatal-overlay").classList.add("visible");
+});
+glCanvas.addEventListener("webglcontextrestored", () => {
+  document.getElementById("fatal-overlay").classList.remove("visible");
+});
+
+loadProgress();
+applyRoomTexture(currentRoomIndex);
 updateRoomHUD();
 renderPhotoSlotsModal();
+ensureFlashlightSprite();
 requestAnimationFrame(animate);
 </script>
 </body>
