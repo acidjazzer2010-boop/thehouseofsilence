@@ -45,7 +45,7 @@
     padding: 24px; text-align: center; transition: opacity 0.8s ease, visibility 0.8s ease;
   }
   #intro-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-  .intro-box { max-width: 640px; border: 1px solid var(--border-dim); background: rgba(7,9,7,0.96); padding: 36px 32px; box-shadow: 0 25px 90px rgba(0,0,0,0.99); }
+  .intro-box { max-width: 660px; border: 1px solid var(--border-dim); background: rgba(7,9,7,0.96); padding: 36px 32px; box-shadow: 0 25px 90px rgba(0,0,0,0.99); }
   .intro-tag { font-size: 10px; letter-spacing: 3.5px; color: var(--rust-red); text-transform: uppercase; margin-bottom: 10px; }
   .intro-title { font-size: 28px; letter-spacing: 6px; font-weight: bold; color: var(--bone-white); margin-bottom: 14px; }
   .intro-desc { font-size: 13px; line-height: 1.68; color: #929c8e; margin-bottom: 24px; }
@@ -77,6 +77,8 @@
     cursor: pointer; transition: all 0.2s ease;
   }
   .hud-btn:hover, .hud-btn.active { border-color: var(--amber-glow); color: var(--bone-white); background: rgba(30,24,18,0.92); }
+  .hud-btn.ep1 { border-color: var(--rust-red); color: #e8a596; }
+  .hud-btn.ep1:hover { background: var(--rust-red); color: #fff; border-color: var(--rust-red); }
   .depth-nav {
     position: fixed; right: 20px; top: 50%; transform: translateY(-50%); z-index: 10;
     display: flex; flex-direction: column; gap: 14px;
@@ -160,11 +162,170 @@
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   }
+
+  /* ===================================================================
+     EPISODE 1
+     =================================================================== */
+  body.ep1-active #intro-screen,
+  body.ep1-active .top-hud,
+  body.ep1-active .depth-nav,
+  body.ep1-active .bottom-hud,
+  body.ep1-active #fx-canvas,
+  body.ep1-active #tape-video,
+  body.ep1-active .vignette-overlay {
+    display: none !important;
+  }
+
+  #ep1-hud {
+    position: fixed; inset: 0; z-index: 40; display: none;
+    pointer-events: none; font-family: 'Courier New', monospace;
+  }
+  #ep1-hud.active { display: block; }
+
+  #ep1-crosshair {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 18px; height: 18px;
+    border: 1px solid rgba(210, 210, 200, 0.55); border-radius: 50%;
+    pointer-events: none; transition: border-color 0.15s;
+  }
+  #ep1-crosshair::before, #ep1-crosshair::after {
+    content: ''; position: absolute; background: rgba(210, 210, 200, 0.55);
+  }
+  #ep1-crosshair::before { top: 50%; left: -5px; right: -5px; height: 1px; }
+  #ep1-crosshair::after { left: 50%; top: -5px; bottom: -5px; width: 1px; }
+  #ep1-crosshair.hot { border-color: var(--amber-glow); }
+  #ep1-crosshair.hot::before, #ep1-crosshair.hot::after { background: var(--amber-glow); }
+
+  #ep1-prompt {
+    position: absolute; top: 56%; left: 50%;
+    transform: translateX(-50%);
+    padding: 9px 18px;
+    background: rgba(2, 4, 2, 0.9);
+    border: 1px solid var(--amber-glow);
+    color: var(--bone-white);
+    font-size: 13px; letter-spacing: 2.5px;
+    opacity: 0; transition: opacity 0.15s;
+    white-space: nowrap; pointer-events: none;
+  }
+  #ep1-prompt.visible { opacity: 1; }
+
+  #ep1-objective {
+    position: absolute; top: 78px; left: 24px;
+    font-size: 12px; letter-spacing: 2px;
+    color: var(--amber-glow); max-width: 340px; line-height: 1.5;
+    text-shadow: 0 0 10px rgba(0, 0, 0, 0.95);
+  }
+  #ep1-objective::before { content: '◆ '; color: var(--rust-red); }
+
+  #ep1-inventory {
+    position: absolute; top: 78px; right: 24px;
+    font-size: 12px; letter-spacing: 2px; text-align: right;
+    color: var(--bone-white); line-height: 1.6;
+    text-shadow: 0 0 10px rgba(0, 0, 0, 0.95);
+  }
+  #ep1-inventory .item { color: var(--amber-glow); }
+
+  #ep1-warning {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, 70px);
+    font-size: 15px; letter-spacing: 5px;
+    color: #ff4422; opacity: 0; pointer-events: none;
+    text-shadow: 0 0 14px rgba(255, 50, 30, 0.9);
+    animation: ep1-pulse 0.7s infinite;
+  }
+  #ep1-warning.visible { opacity: 1; }
+  @keyframes ep1-pulse {
+    0%, 100% { opacity: 0.45; transform: translate(-50%, 70px) scale(0.98); }
+    50%      { opacity: 1;    transform: translate(-50%, 70px) scale(1.02); }
+  }
+
+  #ep1-hint {
+    position: absolute; bottom: 22px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px; letter-spacing: 1.5px;
+    color: rgba(160, 160, 160, 0.6);
+    pointer-events: none; text-align: center;
+  }
+
+  #ep1-overlay-msg {
+    position: absolute; inset: 0; display: none;
+    justify-content: center; align-items: center; flex-direction: column;
+    background: rgba(0, 0, 0, 0.9);
+    pointer-events: auto; text-align: center; padding: 24px;
+  }
+  #ep1-overlay-msg.visible { display: flex; }
+  #ep1-overlay-msg h2 {
+    font-size: 28px; letter-spacing: 6px;
+    color: var(--bone-white); margin-bottom: 16px;
+  }
+  #ep1-overlay-msg.caught h2 { color: #ff4422; text-shadow: 0 0 22px rgba(255, 40, 30, 0.8); }
+  #ep1-overlay-msg.win h2    { color: #8ce0a4; text-shadow: 0 0 22px rgba(60, 200, 110, 0.6); }
+  #ep1-overlay-msg p {
+    font-size: 13px; letter-spacing: 1.8px;
+    color: #9da69a; max-width: 440px;
+    margin-bottom: 26px; line-height: 1.65;
+  }
+
+  #ep1-pause {
+    position: absolute; inset: 0;
+    background: rgba(0, 0, 0, 0.92);
+    display: none; justify-content: center; align-items: center;
+    flex-direction: column; pointer-events: auto; z-index: 60;
+  }
+  #ep1-pause.visible { display: flex; }
+  #ep1-pause h2 { font-size: 24px; letter-spacing: 6px; margin-bottom: 26px; color: var(--bone-white); }
+  #ep1-pause button { margin: 6px 0; min-width: 240px; }
+
+  #ep1-touch { position: absolute; inset: 0; pointer-events: none; display: none; }
+  #ep1-touch.visible { display: block; }
+
+  #ep1-joystick {
+    position: absolute; left: 22px; bottom: 22px;
+    width: 150px; height: 150px; border-radius: 50%;
+    border: 2px solid rgba(180, 180, 180, 0.28);
+    pointer-events: auto; touch-action: none;
+  }
+  #ep1-joystick-knob {
+    position: absolute; top: 50%; left: 50%;
+    width: 64px; height: 64px; border-radius: 50%;
+    background: rgba(180, 180, 180, 0.38);
+    transform: translate(-50%, -50%);
+  }
+
+  #ep1-btn-f, #ep1-btn-e {
+    position: absolute; bottom: 30px;
+    width: 76px; height: 76px; border-radius: 50%;
+    background: rgba(12, 14, 12, 0.72);
+    border: 2px solid rgba(180, 180, 180, 0.42);
+    color: var(--bone-white); font-family: inherit;
+    font-size: 11px; font-weight: bold; letter-spacing: 1px;
+    pointer-events: auto; touch-action: none;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  #ep1-btn-f:active, #ep1-btn-e:active {
+    background: rgba(189, 125, 59, 0.65); border-color: var(--amber-glow);
+  }
+  #ep1-btn-f { right: 116px; }
+  #ep1-btn-e { right: 30px; }
+
+  #ep1-fade {
+    position: fixed; inset: 0; z-index: 45;
+    background: #000; opacity: 0; pointer-events: none;
+    transition: opacity 0.55s ease;
+  }
+  #ep1-fade.visible { opacity: 1; pointer-events: auto; }
+
+  #ep1-startscreen {
+    position: fixed; inset: 0; z-index: 49; display: none;
+    align-items: center; justify-content: center;
+    background: rgba(1,2,1,0.96);
+  }
 </style>
 </head>
 <body>
 
-<canvas id="gl-canvas" aria-label="Сцена комнаты"></canvas>
+<canvas id="gl-canvas" aria-label="Сцена"></canvas>
 <video id="tape-video" src="tape.mp4" playsinline preload="auto"></video>
 <canvas id="fx-canvas" aria-hidden="true"></canvas>
 <div class="vignette-overlay" aria-hidden="true"></div>
@@ -180,6 +341,7 @@
     </p>
     <div class="intro-actions">
       <button class="btn btn-primary" id="btn-enter-house">ВОЙТИ В ДОМ</button>
+      <button class="btn" id="btn-enter-ep1" style="border-color: var(--rust-red); color: #e8a596;">▶ ЭПИЗОД 1: СПУСК</button>
       <button class="btn" id="btn-intro-upload">ЗАГРУЗИТЬ 5 ФОТО КОМНАТ</button>
     </div>
   </div>
@@ -191,6 +353,7 @@
     <div class="room-indicator" id="hud-room-indicator">ЛОКАЦИЯ 01 / 06 — ПРИХОЖАЯ С ДИКТОФОНОМ</div>
   </div>
   <div class="hud-controls">
+    <button class="hud-btn ep1" id="btn-hud-ep1">▶ ЭПИЗОД 1</button>
     <button class="hud-btn" id="btn-open-photos" aria-pressed="false">ФОТО КОМНАТ [0/5]</button>
     <button class="hud-btn active" id="btn-toggle-flashlight" aria-pressed="true">ФОНАРЬ [F]: ВКЛ</button>
     <button class="hud-btn" id="btn-toggle-freemode" aria-pressed="false">РЕЖИМ: КВЕСТ</button>
@@ -266,12 +429,69 @@
   <div>Контекст WebGL потерян.<br>Пожалуйста, перезагрузите страницу.</div>
 </div>
 
+<!-- ================= EPISODE 1 HTML ================= -->
+<div id="ep1-fade"></div>
+
+<div id="ep1-hud">
+  <div id="ep1-crosshair"></div>
+  <div id="ep1-prompt"></div>
+  <div id="ep1-objective"></div>
+  <div id="ep1-inventory"></div>
+  <div id="ep1-warning">ОНО РЯДОМ</div>
+  <div id="ep1-hint">WASD — движение · Мышь — обзор · Shift — бег · F — фонарь · E — действие · ESC — пауза</div>
+
+  <div id="ep1-touch">
+    <div id="ep1-joystick"><div id="ep1-joystick-knob"></div></div>
+    <button id="ep1-btn-f" type="button">ФОНАРЬ</button>
+    <button id="ep1-btn-e" type="button">E</button>
+  </div>
+
+  <div id="ep1-overlay-msg">
+    <h2 id="ep1-overlay-title"></h2>
+    <p id="ep1-overlay-text"></p>
+    <div style="display:flex; gap:12px;">
+      <button class="btn" id="ep1-btn-retry">ПОПРОБОВАТЬ СНОВА</button>
+      <button class="btn btn-primary" id="ep1-btn-exit">ВЫЙТИ В МЕНЮ</button>
+    </div>
+  </div>
+
+  <div id="ep1-pause">
+    <h2>ПАУЗА</h2>
+    <button class="btn btn-primary" id="ep1-btn-resume">ПРОДОЛЖИТЬ</button>
+    <button class="btn" id="ep1-btn-quit">ВЫЙТИ В МЕНЮ</button>
+  </div>
+</div>
+
+<div id="ep1-startscreen">
+  <div class="intro-box" style="max-width:560px;">
+    <div class="intro-tag">ЭПИЗОД 1 // 3D-ПОГРУЖЕНИЕ</div>
+    <h2 class="intro-title" style="font-size:22px;">СПУСК ПОД ФУНДАМЕНТ</h2>
+    <p class="intro-desc">
+      Ты спустишься в бетонный коридор, найдёшь рукоятку механизма, включишь аварийное питание
+      и откроешь гермозатвор. Как только питание вернётся — ты уже не один в этих стенах.<br><br>
+      <strong style="color:var(--amber-glow);">WASD</strong> — движение,
+      <strong style="color:var(--amber-glow);">мышь</strong> — обзор,
+      <strong style="color:var(--amber-glow);">Shift</strong> — бег,
+      <strong style="color:var(--amber-glow);">F</strong> — фонарь,
+      <strong style="color:var(--amber-glow);">E</strong> — взаимодействие,
+      <strong style="color:var(--amber-glow);">ESC</strong> — пауза.
+    </p>
+    <div class="intro-actions">
+      <button class="btn btn-primary" id="ep1-start-go">НАЧАТЬ СПУСК</button>
+      <button class="btn" id="ep1-start-cancel">ОТМЕНА</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
 <script>
 'use strict';
 
+/* ============================================================
+   КОНСТАНТЫ И КОНФИГУРАЦИЯ
+============================================================ */
 const MAX_UPLOAD_SIZE   = 25 * 1024 * 1024;
 const MAX_TEXTURE_DIM   = 4096;
 const REDUCE_MOTION     = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -282,9 +502,6 @@ const POINTER_LERP      = 0.12;
 const ENTITY_LERP       = 0.035;
 const ENTITY_EVADE_LERP = 0.14;
 
-/* ============================================================
-   КОНФИГУРАЦИЯ КОМНАТ (5 ОСНОВНЫХ + 1 ПРОЦЕДУРНАЯ АНОМАЛИЯ)
-============================================================ */
 const ROOMS = [
   {
     id: 0, code: "СЕКТОР 01 // ПРИХОЖАЯ", fileName: "1000404062.jpg",
@@ -380,74 +597,55 @@ const PROCEDURAL_ARCHETYPES = [
 ============================================================ */
 class DarkAmbientAudio {
   constructor() {
-    this.ctx = null;
-    this.enabled = false;
-    this.master = null;
-    this.convolver = null;
-    this.wetGain = null;
-    this.dryGain = null;
-    this.ambientBuffer = null;
-    this.crackleBuffer = null;
-    this.scheduler = null;
-    this.heartbeatTimer = null;
+    this.ctx = null; this.enabled = false; this.master = null;
+    this.convolver = null; this.wetGain = null; this.dryGain = null;
+    this.ambientBuffer = null; this.crackleBuffer = null;
+    this.scheduler = null; this.heartbeatTimer = null;
     this._irCache = new Map();
-    this.activeVoices = 0;
-    this.maxVoices = 8;
+    this.activeVoices = 0; this.maxVoices = 8;
   }
-
   init() {
     if (this.ctx) return;
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) return;
     this.ctx = new AudioCtx();
-
     this.master = this.ctx.createGain();
     this.master.gain.value = 0.92;
     this.master.connect(this.ctx.destination);
-
     this.dryGain = this.ctx.createGain();
     this.dryGain.gain.value = 0.65;
     this.dryGain.connect(this.master);
-
     this.convolver = this.ctx.createConvolver();
     this.wetGain = this.ctx.createGain();
     this.wetGain.gain.value = 0.85;
     this.convolver.connect(this.wetGain);
     this.wetGain.connect(this.master);
-
     this.ambientBuffer = this.buildDarkNoiseBuffer(8.0);
     this.crackleBuffer = this.buildCrackleBuffer(4.0);
     this.updateCavernReverb(4.5);
     this.startSubbassDroneBed();
-
     this.enabled = true;
     this.startEnvironmentalScheduler();
     this.startHeartbeatLoop();
   }
-
   buildDarkNoiseBuffer(sec) {
-    const sr = this.ctx.sampleRate;
-    const len = sr * sec;
+    const sr = this.ctx.sampleRate, len = sr * sec;
     const buf = this.ctx.createBuffer(2, len, sr);
     for (let ch = 0; ch < 2; ch++) {
       const d = buf.getChannelData(ch);
       let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0;
       for (let i = 0; i < len; i++) {
-        const white = Math.random() * 2 - 1;
-        b0 = 0.99886 * b0 + white * 0.0555;
-        b1 = 0.99332 * b1 + white * 0.0750;
-        b2 = 0.96900 * b2 + white * 0.1538;
-        b3 = 0.86650 * b3 + white * 0.3104;
-        b4 = 0.55000 * b4 + white * 0.5329;
-        d[i] = (b0 + b1 + b2 + b3 + b4 + white * 0.53) * 0.035;
+        const w = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + w * 0.0555; b1 = 0.99332 * b1 + w * 0.0750;
+        b2 = 0.96900 * b2 + w * 0.1538; b3 = 0.86650 * b3 + w * 0.3104;
+        b4 = 0.55000 * b4 + w * 0.5329;
+        d[i] = (b0 + b1 + b2 + b3 + b4 + w * 0.53) * 0.035;
       }
     }
     return buf;
   }
-
   buildCrackleBuffer(sec) {
-    const sr = this.ctx.sampleRate;
-    const len = sr * sec;
+    const sr = this.ctx.sampleRate, len = sr * sec;
     const buf = this.ctx.createBuffer(1, len, sr);
     const d = buf.getChannelData(0);
     for (let i = 0; i < len; i++) {
@@ -457,20 +655,17 @@ class DarkAmbientAudio {
     }
     return buf;
   }
-
   updateCavernReverb(decaySec) {
     if (!this.ctx) return;
     const key = decaySec.toFixed(2);
     let imp = this._irCache.get(key);
     if (!imp) {
-      const sr = this.ctx.sampleRate;
-      const len = Math.floor(sr * decaySec);
+      const sr = this.ctx.sampleRate, len = Math.floor(sr * decaySec);
       imp = this.ctx.createBuffer(2, len, sr);
       for (let ch = 0; ch < 2; ch++) {
         const out = imp.getChannelData(ch);
         for (let i = 0; i < len; i++) {
-          const t = i / sr;
-          const noise = Math.random() * 2 - 1;
+          const t = i / sr, noise = Math.random() * 2 - 1;
           const env = Math.pow(1 - i / len, 3.2) * Math.exp(-t * (2.1 / decaySec));
           out[i] = noise * env * 0.55;
         }
@@ -479,60 +674,42 @@ class DarkAmbientAudio {
     }
     this.convolver.buffer = imp;
   }
-
   startSubbassDroneBed() {
     const src1 = this.ctx.createBufferSource();
-    src1.buffer = this.ambientBuffer;
-    src1.loop = true;
+    src1.buffer = this.ambientBuffer; src1.loop = true;
     const lp1 = this.ctx.createBiquadFilter();
-    lp1.type = "lowpass";
-    lp1.frequency.value = 42;
-    lp1.Q.value = 4.0;
-    const g1 = this.ctx.createGain();
-    g1.gain.value = 0.85;
-    src1.connect(lp1);
-    lp1.connect(g1);
-    g1.connect(this.convolver);
-    g1.connect(this.dryGain);
+    lp1.type = "lowpass"; lp1.frequency.value = 42; lp1.Q.value = 4.0;
+    const g1 = this.ctx.createGain(); g1.gain.value = 0.85;
+    src1.connect(lp1); lp1.connect(g1);
+    g1.connect(this.convolver); g1.connect(this.dryGain);
     src1.start();
   }
-
   toggle() {
     if (!this.ctx) { this.init(); return true; }
     this.enabled = !this.enabled;
-    if (this.enabled) {
-      this.ctx.resume();
-      this.master.gain.setTargetAtTime(0.92, this.ctx.currentTime, 0.2);
-    } else {
-      this.master.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.2);
-    }
+    if (this.enabled) { this.ctx.resume(); this.master.gain.setTargetAtTime(0.92, this.ctx.currentTime, 0.2); }
+    else { this.master.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.2); }
     return this.enabled;
   }
-
   _canPlay() { return this.ctx && this.enabled && this.activeVoices < this.maxVoices; }
-
   _trackVoice(ms) {
     this.activeVoices++;
     setTimeout(() => { this.activeVoices = Math.max(0, this.activeVoices - 1); }, ms);
   }
-
   duckForPanic() {
     if (!this.ctx) return;
-    const now = this.ctx.currentTime;
-    const curr = this.master.gain.value;
+    const now = this.ctx.currentTime, curr = this.master.gain.value;
     this.master.gain.cancelScheduledValues(now);
     this.master.gain.setValueAtTime(curr, now);
     this.master.gain.linearRampToValueAtTime(0.45, now + 0.1);
     this.master.gain.linearRampToValueAtTime(this.enabled ? 0.92 : 0.0001, now + 2.5);
   }
-
   playHeartbeatPulse(intensity = 0.55) {
     if (!this.ctx || !this.enabled) return;
     const now = this.ctx.currentTime;
     [0, 0.24].forEach((offset, idx) => {
       const t = now + offset;
-      const osc = this.ctx.createOscillator();
-      osc.type = "sine";
+      const osc = this.ctx.createOscillator(); osc.type = "sine";
       osc.frequency.setValueAtTime(idx === 0 ? 64 : 52, t);
       osc.frequency.exponentialRampToValueAtTime(24, t + 0.18);
       const g = this.ctx.createGain();
@@ -540,13 +717,10 @@ class DarkAmbientAudio {
       g.gain.setValueAtTime(0.001, t);
       g.gain.linearRampToValueAtTime(peak, t + 0.02);
       g.gain.exponentialRampToValueAtTime(0.0005, t + 0.21);
-      osc.connect(g);
-      g.connect(this.dryGain);
-      osc.start(t);
-      osc.stop(t + 0.23);
+      osc.connect(g); g.connect(this.dryGain);
+      osc.start(t); osc.stop(t + 0.23);
     });
   }
-
   startHeartbeatLoop() {
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     this.heartbeatTimer = setInterval(() => {
@@ -555,11 +729,9 @@ class DarkAmbientAudio {
       this.playHeartbeatPulse(baseIntensity);
     }, 1450);
   }
-
   playDistantShriek() {
     if (!this.ctx || !this.enabled) return;
-    const now = this.ctx.currentTime;
-    const dur = 1.1 + Math.random() * 0.6;
+    const now = this.ctx.currentTime, dur = 1.1 + Math.random() * 0.6;
     const panner = this.ctx.createStereoPanner();
     panner.pan.value = (Math.random() * 1.6) - 0.8;
     const src = this.ctx.createBufferSource();
@@ -579,24 +751,20 @@ class DarkAmbientAudio {
     src.start(now); src.stop(now + dur + 0.05);
     this._trackVoice(dur * 1000 + 100);
   }
-
   playWhisper() {
     if (!this._canPlay()) return;
-    const now = this.ctx.currentTime;
-    const dur = 2.0 + Math.random() * 1.5;
+    const now = this.ctx.currentTime, dur = 2.0 + Math.random() * 1.5;
     const panner = this.ctx.createStereoPanner();
     panner.pan.value = (Math.random() * 1.6) - 0.8;
     const src = this.ctx.createBufferSource();
-    src.buffer = this.ambientBuffer;
-    src.loop = true;
+    src.buffer = this.ambientBuffer; src.loop = true;
     const bp1 = this.ctx.createBiquadFilter();
     bp1.type = "bandpass"; bp1.frequency.value = 1800 + Math.random() * 400; bp1.Q.value = 6;
     const bp2 = this.ctx.createBiquadFilter();
     bp2.type = "bandpass"; bp2.frequency.value = 2600 + Math.random() * 600; bp2.Q.value = 8;
     const lfo = this.ctx.createOscillator();
     lfo.frequency.value = 4 + Math.random() * 3;
-    const lfoGain = this.ctx.createGain();
-    lfoGain.gain.value = 0.12;
+    const lfoGain = this.ctx.createGain(); lfoGain.gain.value = 0.12;
     const env = this.ctx.createGain();
     env.gain.setValueAtTime(0.0001, now);
     env.gain.linearRampToValueAtTime(0.28, now + 0.35);
@@ -608,7 +776,6 @@ class DarkAmbientAudio {
     lfo.start(now); lfo.stop(now + dur + 0.05);
     this._trackVoice(dur * 1000 + 200);
   }
-
   playBreathing() {
     if (!this._canPlay()) return;
     const now = this.ctx.currentTime;
@@ -631,15 +798,12 @@ class DarkAmbientAudio {
     src.start(now); src.stop(now + total + 0.1);
     this._trackVoice(total * 1000 + 200);
   }
-
   playDistantCry() {
     if (!this._canPlay()) return;
-    const now = this.ctx.currentTime;
-    const dur = 2.5;
+    const now = this.ctx.currentTime, dur = 2.5;
     const panner = this.ctx.createStereoPanner();
     panner.pan.value = (Math.random() * 1.6) - 0.8;
-    const osc = this.ctx.createOscillator();
-    osc.type = "sawtooth";
+    const osc = this.ctx.createOscillator(); osc.type = "sawtooth";
     osc.frequency.setValueAtTime(180, now);
     osc.frequency.exponentialRampToValueAtTime(90, now + dur);
     const bp1 = this.ctx.createBiquadFilter();
@@ -655,7 +819,6 @@ class DarkAmbientAudio {
     osc.start(now); osc.stop(now + dur);
     this._trackVoice(dur * 1000 + 100);
   }
-
   playDrip() {
     if (!this._canPlay()) return;
     const count = 2 + Math.floor(Math.random() * 3);
@@ -663,8 +826,7 @@ class DarkAmbientAudio {
       const t = this.ctx.currentTime + i * (0.7 + Math.random() * 0.8);
       const panner = this.ctx.createStereoPanner();
       panner.pan.value = (Math.random() * 1.4) - 0.7;
-      const osc = this.ctx.createOscillator();
-      osc.type = "sine";
+      const osc = this.ctx.createOscillator(); osc.type = "sine";
       const base = 900 + Math.random() * 400;
       osc.frequency.setValueAtTime(base, t);
       osc.frequency.exponentialRampToValueAtTime(base * 0.55, t + 0.08);
@@ -676,7 +838,6 @@ class DarkAmbientAudio {
       osc.start(t); osc.stop(t + 0.15);
     }
   }
-
   playMorse() {
     if (!this._canPlay()) return;
     const pattern = [1,0,1,1,0,1,0,1,1,1,0,1];
@@ -700,7 +861,6 @@ class DarkAmbientAudio {
       t += unit * 1.5;
     });
   }
-
   playStepBehind() {
     if (!this._canPlay()) return;
     const pan = pointer.normX > 0 ? -0.9 : 0.9;
@@ -715,21 +875,17 @@ class DarkAmbientAudio {
       panner.pan.value = pan;
       g.gain.setValueAtTime(0.7, t);
       g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
-      src.connect(lp); lp.connect(g); g.connect(panner);
-      panner.connect(this.dryGain);
+      src.connect(lp); lp.connect(g); g.connect(panner); panner.connect(this.dryGain);
       src.start(t); src.stop(t + 0.24);
     }
     this._trackVoice(2000);
   }
-
   playWoodCreak() {
     if (!this._canPlay()) return;
-    const now = this.ctx.currentTime;
-    const dur = 0.8 + Math.random() * 0.9;
+    const now = this.ctx.currentTime, dur = 0.8 + Math.random() * 0.9;
     const panner = this.ctx.createStereoPanner();
     panner.pan.value = (Math.random() * 1.5) - 0.75;
-    const osc = this.ctx.createOscillator();
-    osc.type = "sawtooth";
+    const osc = this.ctx.createOscillator(); osc.type = "sawtooth";
     const base = 180 + Math.random() * 140;
     osc.frequency.setValueAtTime(base, now);
     osc.frequency.linearRampToValueAtTime(base * 1.45, now + dur * 0.4);
@@ -745,7 +901,6 @@ class DarkAmbientAudio {
     osc.start(now); osc.stop(now + dur + 0.03);
     this._trackVoice(dur * 1000 + 100);
   }
-
   playWallScratching() {
     if (!this._canPlay()) return;
     const strokes = 3 + Math.floor(Math.random() * 3);
@@ -771,7 +926,6 @@ class DarkAmbientAudio {
       src.start(t); src.stop(t + dur + 0.02);
     }
   }
-
   playTick() {
     if (!this.ctx || !this.enabled) return;
     const now = this.ctx.currentTime;
@@ -786,7 +940,6 @@ class DarkAmbientAudio {
     src.connect(bp); bp.connect(g); g.connect(this.dryGain);
     src.start(now); src.stop(now + 0.045);
   }
-
   playSteelChains(panOverride = null) {
     if (!this._canPlay()) return;
     const count = 8 + Math.floor(Math.random() * 6);
@@ -813,16 +966,13 @@ class DarkAmbientAudio {
       hit.start(t); hit.stop(t + 0.32);
     }
   }
-
   playSubterraneanRumble() {
     if (!this._canPlay()) return;
-    const now = this.ctx.currentTime;
-    const dur = 3.2 + Math.random() * 1.5;
+    const now = this.ctx.currentTime, dur = 3.2 + Math.random() * 1.5;
     const panner = this.ctx.createStereoPanner();
     panner.pan.value = (Math.random() * 1.4) - 0.7;
     const src = this.ctx.createBufferSource();
-    src.buffer = this.ambientBuffer;
-    src.loop = true;
+    src.buffer = this.ambientBuffer; src.loop = true;
     const lp = this.ctx.createBiquadFilter();
     lp.type = "lowpass";
     lp.frequency.setValueAtTime(32, now);
@@ -837,7 +987,6 @@ class DarkAmbientAudio {
     src.start(now); src.stop(now + dur);
     this._trackVoice(dur * 1000 + 200);
   }
-
   playPanicBurst() {
     if (!this.ctx || !this.enabled) return;
     this.duckForPanic();
@@ -852,7 +1001,6 @@ class DarkAmbientAudio {
     setTimeout(() => this.playWoodCreak(), 620);
     setTimeout(() => this.playStepBehind(), 1200);
   }
-
   playFootsteps() {
     if (!this.ctx || !this.enabled) return;
     for (let i = 0; i < 4; i++) {
@@ -871,7 +1019,6 @@ class DarkAmbientAudio {
       src.start(t); src.stop(t + 0.24);
     }
   }
-
   triggerRandomAmbient() {
     if (!this._canPlay()) return;
     const sets = {
@@ -885,21 +1032,15 @@ class DarkAmbientAudio {
     const pool = sets[currentRoomIndex] || sets[0];
     const pick = pool[Math.floor(Math.random() * pool.length)];
     const fn = {
-      shriek: () => this.playDistantShriek(),
-      creak: () => this.playWoodCreak(),
-      scratch: () => this.playWallScratching(),
-      chains: () => this.playSteelChains(),
-      rumble: () => this.playSubterraneanRumble(),
-      whisper: () => this.playWhisper(),
-      cry: () => this.playDistantCry(),
-      drip: () => this.playDrip(),
-      morse: () => this.playMorse(),
-      step: () => this.playStepBehind(),
+      shriek: () => this.playDistantShriek(), creak: () => this.playWoodCreak(),
+      scratch: () => this.playWallScratching(), chains: () => this.playSteelChains(),
+      rumble: () => this.playSubterraneanRumble(), whisper: () => this.playWhisper(),
+      cry: () => this.playDistantCry(), drip: () => this.playDrip(),
+      morse: () => this.playMorse(), step: () => this.playStepBehind(),
       breathing: () => this.playBreathing()
     }[pick];
     if (fn) fn();
   }
-
   startEnvironmentalScheduler() {
     if (this.scheduler) clearInterval(this.scheduler);
     this.scheduler = setInterval(() => {
@@ -907,17 +1048,15 @@ class DarkAmbientAudio {
       if (this.enabled && Math.random() < 0.82) this.triggerRandomAmbient();
     }, 4800);
   }
-
   destroy() {
     if (this.scheduler) { clearInterval(this.scheduler); this.scheduler = null; }
     if (this.heartbeatTimer) { clearInterval(this.heartbeatTimer); this.heartbeatTimer = null; }
   }
 }
-
 const audioEngine = new DarkAmbientAudio();
 
 /* ============================================================
-   ВИДЕО tape.mp4
+   КАНВАСЫ И ВИДЕО
 ============================================================ */
 const glCanvas = document.getElementById("gl-canvas");
 const fxCanvas = document.getElementById("fx-canvas");
@@ -932,7 +1071,6 @@ function connectTapeVideoToAudio() {
     tapeAudioSourceNode.connect(audioEngine.master);
   } catch (e) {}
 }
-
 if (tapeVideo) {
   tapeVideo.addEventListener("ended", () => {
     const room0 = ROOMS[0];
@@ -941,7 +1079,6 @@ if (tapeVideo) {
     tapeVideo.classList.remove("playing");
   });
 }
-
 function syncTapeVideo() {
   if (!tapeVideo) return;
   const room = ROOMS[currentRoomIndex];
@@ -961,7 +1098,7 @@ function syncTapeVideo() {
 }
 
 /* ============================================================
-   THREE.JS СЦЕНА
+   THREE.JS СЦЕНА (2.5D)
 ============================================================ */
 const renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, alpha: false });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -971,9 +1108,7 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
 camera.position.set(0, 0, 10);
 
-const ambientLight = new THREE.AmbientLight(0x222a24, 0.7);
-scene.add(ambientLight);
-
+scene.add(new THREE.AmbientLight(0x222a24, 0.7));
 const spotLight = new THREE.SpotLight(0xffe6bd, 2.8, 35, Math.PI * 0.22, 0.65, 1.2);
 spotLight.position.set(0, 0, 10);
 scene.add(spotLight);
@@ -986,7 +1121,143 @@ scene.add(roomMesh);
 
 const proceduralTextureCache = {};
 
-/* Подсказки для фиксированных комнат — на случай, если JPG не загружены */
+/* ============================================================
+   СОСТОЯНИЕ
+============================================================ */
+let currentRoomIndex = 0;
+let freeMode = false;
+let flashlightOn = true;
+const roomTextures = {};
+const roomUploadedFlags = {};
+const roomImageDims = {};
+const roomTickFlags = {};
+
+const pointer = {
+  x: window.innerWidth * 0.5, y: window.innerHeight * 0.5,
+  targetX: window.innerWidth * 0.5, targetY: window.innerHeight * 0.5,
+  normX: 0, normY: 0
+};
+const transition = { active: false, phase: "none", progress: 0, targetRoom: 0, focusX: 0.5, focusY: 0.5 };
+const entityState = { visible: false, opacity: 0, targetOpacity: 0, evading: false, timer: 0, spot: { x: 0.59, y: 0.52, scale: 1.0 } };
+const layout = { planeW: 16, planeH: 9, viewW: 16, viewH: 9 };
+
+const PANIC_CHANCE_PER_CLICK = 0.055;
+const PANIC_COOLDOWN_MS      = 26000;
+const PANIC_DURATION_MS      = 6800;
+const panicState = {
+  active: false, startedAt: 0, duration: PANIC_DURATION_MS,
+  lastTriggeredAt: -PANIC_COOLDOWN_MS, intensity: 0, dread: 0
+};
+
+/* ============================================================
+   СОХРАНЕНИЕ
+============================================================ */
+function saveProgress() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      solved: ROOMS.map(r => r.solved),
+      solvedOnce: ROOMS.map(r => Boolean(r.solvedOnce)),
+      currentRoom: currentRoomIndex,
+      freeMode, flashlightOn
+    }));
+  } catch (e) {}
+}
+function loadProgress() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (Array.isArray(data.solved)) data.solved.forEach((s, i) => { if (ROOMS[i]) ROOMS[i].solved = Boolean(s); });
+    if (Array.isArray(data.solvedOnce)) data.solvedOnce.forEach((s, i) => { if (ROOMS[i]) ROOMS[i].solvedOnce = Boolean(s); });
+    if (typeof data.currentRoom === "number" && data.currentRoom >= 0 && data.currentRoom < ROOMS.length) currentRoomIndex = data.currentRoom;
+    if (typeof data.freeMode === "boolean") freeMode = data.freeMode;
+    if (typeof data.flashlightOn === "boolean") flashlightOn = data.flashlightOn;
+  } catch (e) {}
+}
+function resetProgress() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+}
+
+/* ============================================================
+   ФОНАРЬ 2D
+============================================================ */
+let flashlightSprite = null;
+let flashlightSpriteRad = 0;
+function ensureFlashlightSprite() {
+  const rad = Math.min(window.innerWidth, window.innerHeight) * FLASHLIGHT_RATIO;
+  if (flashlightSprite && Math.abs(rad - flashlightSpriteRad) < 0.5) return;
+  flashlightSpriteRad = rad;
+  const size = Math.ceil(rad * 2);
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  const g = c.getContext("2d");
+  const grad = g.createRadialGradient(rad, rad, rad * 0.08, rad, rad, rad);
+  grad.addColorStop(0, "rgba(0, 0, 0, 1)");
+  grad.addColorStop(0.48, "rgba(0, 0, 0, 0.55)");
+  grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+  g.fillStyle = grad;
+  g.fillRect(0, 0, size, size);
+  flashlightSprite = c;
+}
+function getOverlayTransform(w, h) {
+  const scaleX = (layout.planeW / layout.viewW) * w;
+  const scaleY = (layout.planeH / layout.viewH) * h;
+  return {
+    scaleX, scaleY,
+    offsetX: (w - scaleX) * 0.5 - pointer.normX * 16,
+    offsetY: (h - scaleY) * 0.5 - pointer.normY * 11
+  };
+}
+function resizeAll() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  fxCanvas.width  = Math.floor(window.innerWidth * dpr);
+  fxCanvas.height = Math.floor(window.innerHeight * dpr);
+  fxCanvas.style.width  = window.innerWidth + "px";
+  fxCanvas.style.height = window.innerHeight + "px";
+  fxCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ensureFlashlightSprite();
+  Episode1.onResize();
+}
+window.addEventListener("resize", resizeAll);
+resizeAll();
+
+/* ============================================================
+   ТЕКСТУРЫ КОМНАТ
+============================================================ */
+function fitImageSourceToGPU(img) {
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  if (!w || !h) return null;
+  if (w <= MAX_TEXTURE_DIM && h <= MAX_TEXTURE_DIM) return { source: img, width: w, height: h };
+  const scale = Math.min(MAX_TEXTURE_DIM / w, MAX_TEXTURE_DIM / h);
+  const nw = Math.max(1, Math.round(w * scale));
+  const nh = Math.max(1, Math.round(h * scale));
+  const c = document.createElement("canvas");
+  c.width = nw; c.height = nh;
+  c.getContext("2d").drawImage(img, 0, 0, nw, nh);
+  return { source: c, width: nw, height: nh };
+}
+function createTextureFromImageSource(img, roomIdx) {
+  const fitted = fitImageSourceToGPU(img);
+  if (!fitted) return false;
+  const tex = new THREE.Texture(fitted.source);
+  tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false; tex.needsUpdate = true;
+  if (roomTextures[roomIdx] && roomTextures[roomIdx] !== proceduralTextureCache[roomIdx]) roomTextures[roomIdx].dispose();
+  roomTextures[roomIdx] = tex;
+  roomUploadedFlags[roomIdx] = true;
+  roomImageDims[roomIdx] = { w: fitted.width, h: fitted.height };
+  if (roomIdx === currentRoomIndex) applyRoomTexture(roomIdx);
+  updateLoadedCounter();
+  return true;
+}
+
+/* ============================================================
+   ПОДСКАЗКИ ДЛЯ ФОЛЛБЭК-ТЕКСТУР
+============================================================ */
 function drawFallbackHint(g, room) {
   if (room.isProceduralRoom) return;
   const hints = {
@@ -1011,7 +1282,6 @@ function drawFallbackHint(g, room) {
   g.fillText(h.sub, 0, h.size * 0.9);
   g.restore();
 }
-
 function createProceduralTexture(room) {
   const c = document.createElement("canvas");
   c.width = 1280; c.height = 720;
@@ -1019,23 +1289,17 @@ function createProceduralTexture(room) {
   const grad = g.createRadialGradient(640, 320, 40, 640, 360, 780);
   grad.addColorStop(0, room.palette.wall);
   grad.addColorStop(1, "#020302");
-  g.fillStyle = grad;
-  g.fillRect(0, 0, 1280, 720);
-
-  const px = 1280 * room.portal.x;
-  const py = 720 * room.portal.y;
-  g.strokeStyle = "rgba(120, 138, 115, 0.18)";
-  g.lineWidth = 2;
+  g.fillStyle = grad; g.fillRect(0, 0, 1280, 720);
+  const px = 1280 * room.portal.x, py = 720 * room.portal.y;
+  g.strokeStyle = "rgba(120, 138, 115, 0.18)"; g.lineWidth = 2;
   g.beginPath();
   g.moveTo(0, 0); g.lineTo(px - 110, py - 150);
   g.moveTo(1280, 0); g.lineTo(px + 110, py - 150);
   g.moveTo(0, 720); g.lineTo(px - 110, py + 150);
   g.moveTo(1280, 720); g.lineTo(px + 110, py + 150);
   g.stroke();
-
   g.fillStyle = "#010201";
   g.fillRect(px - 110, py - 150, 220, 300);
-
   if (room.id === 0) {
     const tx = 1280 * 0.415, ty = 720 * 0.42;
     g.fillStyle = "#161310";
@@ -1044,44 +1308,32 @@ function createProceduralTexture(room) {
     g.fillRect(tx + 61, ty + 51, 14, 140);
     g.fillStyle = "#2b241e";
     g.fillRect(tx - 68, ty - 95, 136, 130);
-    g.strokeStyle = "#5c4f42";
-    g.lineWidth = 3;
+    g.strokeStyle = "#5c4f42"; g.lineWidth = 3;
     g.strokeRect(tx - 68, ty - 95, 136, 130);
   }
-
-  // Грязь и подтёки
   for (let i = 0; i < 50; i++) {
     const mx = Math.random() * 1280, my = Math.random() * 720, mr = 30 + Math.random() * 100;
     const mg = g.createRadialGradient(mx, my, 4, mx, my, mr);
     mg.addColorStop(0, i % 3 === 0 ? "rgba(65, 22, 14, 0.32)" : "rgba(10, 14, 10, 0.5)");
     mg.addColorStop(1, "rgba(0,0,0,0)");
-    g.fillStyle = mg;
-    g.beginPath();
-    g.arc(mx, my, mr, 0, Math.PI * 2);
-    g.fill();
+    g.fillStyle = mg; g.beginPath(); g.arc(mx, my, mr, 0, Math.PI * 2); g.fill();
   }
-
   drawFallbackHint(g, room);
-
   const tex = new THREE.CanvasTexture(c);
-  tex.minFilter = THREE.LinearFilter;
-  tex.magFilter = THREE.LinearFilter;
-  tex.generateMipmaps = false;
-  tex.needsUpdate = true;
+  tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false; tex.needsUpdate = true;
   return tex;
 }
 
+/* ============================================================
+   ПРОЦЕДУРНАЯ КОМНАТА 6
+============================================================ */
 function generateRandomHorrorRoom(roomObj) {
   const arch = PROCEDURAL_ARCHETYPES[Math.floor(Math.random() * PROCEDURAL_ARCHETYPES.length)];
-  const d1 = Math.floor(Math.random() * 10);
-  const d2 = Math.floor(Math.random() * 10);
-  const d3 = Math.floor(Math.random() * 10);
+  const d1 = Math.floor(Math.random() * 10), d2 = Math.floor(Math.random() * 10), d3 = Math.floor(Math.random() * 10);
   roomObj.targetPin = [d1, d2, d3];
   roomObj.solved = false;
-  // solvedOnce НЕ сбрасываем — финальный прогресс сохраняется
-  roomObj.title = arch.name;
-  roomObj.desc = arch.desc;
-
+  roomObj.title = arch.name; roomObj.desc = arch.desc;
   const portalX = 0.68 + Math.random() * 0.18;
   const portalY = 0.44 + Math.random() * 0.10;
   const artX = 0.22 + Math.random() * 0.24;
@@ -1092,266 +1344,83 @@ function generateRandomHorrorRoom(roomObj) {
     { x: Math.min(0.88, portalX - 0.04), y: portalY + 0.04, scale: 1.04 },
     { x: 0.16 + Math.random() * 0.65, y: 0.54, scale: 0.90 }
   ];
-
   const c = document.createElement("canvas");
   c.width = 1600; c.height = 900;
   const g = c.getContext("2d");
-
   const bg = g.createRadialGradient(800, 380, 60, 800, 450, 980);
-  bg.addColorStop(0, arch.bgTop);
-  bg.addColorStop(0.65, arch.bgBot);
-  bg.addColorStop(1, "#010201");
-  g.fillStyle = bg;
-  g.fillRect(0, 0, 1600, 900);
-
+  bg.addColorStop(0, arch.bgTop); bg.addColorStop(0.65, arch.bgBot); bg.addColorStop(1, "#010201");
+  g.fillStyle = bg; g.fillRect(0, 0, 1600, 900);
   const px = portalX * 1600, py = portalY * 900;
-  const pw = 230 + Math.random() * 60;
-  const ph = 340 + Math.random() * 60;
-
-  g.strokeStyle = "rgba(130, 145, 125, 0.16)";
-  g.lineWidth = 2;
+  const pw = 230 + Math.random() * 60, ph = 340 + Math.random() * 60;
+  g.strokeStyle = "rgba(130, 145, 125, 0.16)"; g.lineWidth = 2;
   g.beginPath();
   g.moveTo(0, 0); g.lineTo(px - pw * 0.5, py - ph * 0.5);
   g.moveTo(1600, 0); g.lineTo(px + pw * 0.5, py - ph * 0.5);
   g.moveTo(0, 900); g.lineTo(px - pw * 0.5, py + ph * 0.5);
   g.moveTo(1600, 900); g.lineTo(px + pw * 0.5, py + ph * 0.5);
   g.stroke();
-
   const ribs = 4 + Math.floor(Math.random() * 5);
   for (let i = 1; i <= ribs; i++) {
     const t = i / (ribs + 1);
-    const xL = (px - pw * 0.5) * t;
-    const xR = 1600 - (1600 - (px + pw * 0.5)) * t;
-    const yT = (py - ph * 0.5) * t;
-    const yB = 900 - (900 - (py + ph * 0.5)) * t;
-    g.strokeStyle = "rgba(95, 110, 95, 0.14)";
-    g.lineWidth = 3;
+    const xL = (px - pw * 0.5) * t, xR = 1600 - (1600 - (px + pw * 0.5)) * t;
+    const yT = (py - ph * 0.5) * t, yB = 900 - (900 - (py + ph * 0.5)) * t;
+    g.strokeStyle = "rgba(95, 110, 95, 0.14)"; g.lineWidth = 3;
     g.strokeRect(xL, yT, xR - xL, yB - yT);
   }
-
-  g.fillStyle = "#010201";
-  g.fillRect(px - pw * 0.5, py - ph * 0.5, pw, ph);
-  g.strokeStyle = arch.rust;
-  g.lineWidth = 4;
+  g.fillStyle = "#010201"; g.fillRect(px - pw * 0.5, py - ph * 0.5, pw, ph);
+  g.strokeStyle = arch.rust; g.lineWidth = 4;
   g.strokeRect(px - pw * 0.5, py - ph * 0.5, pw, ph);
-
   for (let i = 0; i < 65; i++) {
     const mx = Math.random() * 1600, my = Math.random() * 900, mr = 25 + Math.random() * 110;
     const mg = g.createRadialGradient(mx, my, 4, mx, my, mr);
     mg.addColorStop(0, i % 3 === 0 ? "rgba(65, 22, 14, 0.34)" : "rgba(10, 14, 10, 0.52)");
     mg.addColorStop(1, "rgba(0,0,0,0)");
-    g.fillStyle = mg;
-    g.beginPath();
-    g.arc(mx, my, mr, 0, Math.PI * 2);
-    g.fill();
+    g.fillStyle = mg; g.beginPath(); g.arc(mx, my, mr, 0, Math.PI * 2); g.fill();
   }
-
   const cables = 3 + Math.floor(Math.random() * 4);
   for (let i = 0; i < cables; i++) {
-    const cx = 180 + Math.random() * 1240;
-    const len = 140 + Math.random() * 340;
-    g.strokeStyle = "rgba(25, 28, 25, 0.85)";
-    g.lineWidth = 2 + Math.random() * 3;
-    g.beginPath();
-    g.moveTo(cx, 0);
+    const cx = 180 + Math.random() * 1240, len = 140 + Math.random() * 340;
+    g.strokeStyle = "rgba(25, 28, 25, 0.85)"; g.lineWidth = 2 + Math.random() * 3;
+    g.beginPath(); g.moveTo(cx, 0);
     g.quadraticCurveTo(cx + (Math.random() - 0.5) * 80, len * 0.5, cx + (Math.random() - 0.5) * 40, len);
     g.stroke();
   }
-
   const ax = artX * 1600, ay = artY * 900;
-  g.fillStyle = "#171412";
-  g.fillRect(ax - 75, ay - 95, 150, 190);
-  g.strokeStyle = "#4d3c30";
-  g.lineWidth = 3;
-  g.strokeRect(ax - 75, ay - 95, 150, 190);
-
+  g.fillStyle = "#171412"; g.fillRect(ax - 75, ay - 95, 150, 190);
+  g.strokeStyle = "#4d3c30"; g.lineWidth = 3; g.strokeRect(ax - 75, ay - 95, 150, 190);
   const clueSpots = [
     { x: 0.16, y: 0.34 }, { x: 0.52, y: 0.30 }, { x: 0.56, y: 0.72 }, { x: 0.22, y: 0.76 }
   ];
   const chosen = clueSpots[Math.floor(Math.random() * clueSpots.length)];
   const codeText = `${d1} - ${d2} - ${d3}`;
-
   g.save();
   g.translate(chosen.x * 1600, chosen.y * 900);
   g.rotate((Math.random() - 0.5) * 0.18);
   g.font = "bold 34px 'Courier New', monospace";
-  g.fillStyle = "rgba(12, 10, 9, 0.82)";
-  g.fillText(codeText, 3, 3);
-  g.fillStyle = "rgba(205, 190, 165, 0.58)";
-  g.fillText(codeText, 0, 0);
-  g.strokeStyle = "rgba(200, 185, 160, 0.32)";
-  g.lineWidth = 1.4;
-  g.beginPath();
-  g.moveTo(-18, -32); g.lineTo(145, -26);
-  g.moveTo(-12, 16); g.lineTo(138, 20);
-  g.stroke();
+  g.fillStyle = "rgba(12, 10, 9, 0.82)"; g.fillText(codeText, 3, 3);
+  g.fillStyle = "rgba(205, 190, 165, 0.58)"; g.fillText(codeText, 0, 0);
+  g.strokeStyle = "rgba(200, 185, 160, 0.32)"; g.lineWidth = 1.4;
+  g.beginPath(); g.moveTo(-18, -32); g.lineTo(145, -26);
+  g.moveTo(-12, 16); g.lineTo(138, 20); g.stroke();
   g.restore();
-
   const tex = new THREE.CanvasTexture(c);
-  tex.minFilter = THREE.LinearFilter;
-  tex.magFilter = THREE.LinearFilter;
-  tex.generateMipmaps = false;
-  tex.needsUpdate = true;
-
+  tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false; tex.needsUpdate = true;
   if (roomTextures[5]) roomTextures[5].dispose();
   roomTextures[5] = tex;
   roomImageDims[5] = { w: 1600, h: 900 };
 }
 
-/* ============================================================
-   СОСТОЯНИЕ
-============================================================ */
-let currentRoomIndex = 0;
-let freeMode = false;
-let flashlightOn = true;
-
-const roomTextures = {};
-const roomUploadedFlags = {};
-const roomImageDims = {};
-const roomTickFlags = {};
-
-const pointer = {
-  x: window.innerWidth * 0.5, y: window.innerHeight * 0.5,
-  targetX: window.innerWidth * 0.5, targetY: window.innerHeight * 0.5,
-  normX: 0, normY: 0
-};
-const transition = { active: false, phase: "none", progress: 0, targetRoom: 0, focusX: 0.5, focusY: 0.5 };
-const entityState = { visible: false, opacity: 0, targetOpacity: 0, evading: false, timer: 0, spot: { x: 0.59, y: 0.52, scale: 1.0 } };
-const layout = { planeW: 16, planeH: 9, viewW: 16, viewH: 9 };
-
-const PANIC_CHANCE_PER_CLICK = 0.055;
-const PANIC_COOLDOWN_MS      = 26000;
-const PANIC_DURATION_MS      = 6800;
-
-const panicState = {
-  active: false,
-  startedAt: 0,
-  duration: PANIC_DURATION_MS,
-  lastTriggeredAt: -PANIC_COOLDOWN_MS,
-  intensity: 0,
-  dread: 0
-};
-
-function saveProgress() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      solved: ROOMS.map(r => r.solved),
-      solvedOnce: ROOMS.map(r => Boolean(r.solvedOnce)),
-      currentRoom: currentRoomIndex,
-      freeMode, flashlightOn
-    }));
-  } catch (e) {}
-}
-
-function loadProgress() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const data = JSON.parse(raw);
-    if (Array.isArray(data.solved)) data.solved.forEach((s, i) => { if (ROOMS[i]) ROOMS[i].solved = Boolean(s); });
-    if (Array.isArray(data.solvedOnce)) data.solvedOnce.forEach((s, i) => { if (ROOMS[i]) ROOMS[i].solvedOnce = Boolean(s); });
-    if (typeof data.currentRoom === "number" && data.currentRoom >= 0 && data.currentRoom < ROOMS.length) currentRoomIndex = data.currentRoom;
-    if (typeof data.freeMode === "boolean") freeMode = data.freeMode;
-    if (typeof data.flashlightOn === "boolean") flashlightOn = data.flashlightOn;
-  } catch (e) {}
-}
-
-function resetProgress() {
-  try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
-}
-
-let flashlightSprite = null;
-let flashlightSpriteRad = 0;
-
-function ensureFlashlightSprite() {
-  const rad = Math.min(window.innerWidth, window.innerHeight) * FLASHLIGHT_RATIO;
-  if (flashlightSprite && Math.abs(rad - flashlightSpriteRad) < 0.5) return;
-  flashlightSpriteRad = rad;
-  const size = Math.ceil(rad * 2);
-  const c = document.createElement("canvas");
-  c.width = c.height = size;
-  const g = c.getContext("2d");
-  const grad = g.createRadialGradient(rad, rad, rad * 0.08, rad, rad, rad);
-  grad.addColorStop(0, "rgba(0, 0, 0, 1)");
-  grad.addColorStop(0.48, "rgba(0, 0, 0, 0.55)");
-  grad.addColorStop(1, "rgba(0, 0, 0, 0)");
-  g.fillStyle = grad;
-  g.fillRect(0, 0, size, size);
-  flashlightSprite = c;
-}
-
-function getOverlayTransform(w, h) {
-  const scaleX = (layout.planeW / layout.viewW) * w;
-  const scaleY = (layout.planeH / layout.viewH) * h;
-  return {
-    scaleX, scaleY,
-    offsetX: (w - scaleX) * 0.5 - pointer.normX * 16,
-    offsetY: (h - scaleY) * 0.5 - pointer.normY * 11
-  };
-}
-
-function resizeAll() {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-
-  fxCanvas.width  = Math.floor(window.innerWidth * dpr);
-  fxCanvas.height = Math.floor(window.innerHeight * dpr);
-  fxCanvas.style.width  = window.innerWidth + "px";
-  fxCanvas.style.height = window.innerHeight + "px";
-  fxCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-  ensureFlashlightSprite();
-}
-window.addEventListener("resize", resizeAll);
-resizeAll();
-
-function fitImageSourceToGPU(img) {
-  const w = img.naturalWidth || img.width;
-  const h = img.naturalHeight || img.height;
-  if (!w || !h) return null;
-  if (w <= MAX_TEXTURE_DIM && h <= MAX_TEXTURE_DIM) return { source: img, width: w, height: h };
-  const scale = Math.min(MAX_TEXTURE_DIM / w, MAX_TEXTURE_DIM / h);
-  const nw = Math.max(1, Math.round(w * scale));
-  const nh = Math.max(1, Math.round(h * scale));
-  const c = document.createElement("canvas");
-  c.width = nw; c.height = nh;
-  c.getContext("2d").drawImage(img, 0, 0, nw, nh);
-  return { source: c, width: nw, height: nh };
-}
-
-function createTextureFromImageSource(img, roomIdx) {
-  const fitted = fitImageSourceToGPU(img);
-  if (!fitted) return false;
-  const tex = new THREE.Texture(fitted.source);
-  tex.minFilter = THREE.LinearFilter;
-  tex.magFilter = THREE.LinearFilter;
-  tex.generateMipmaps = false;
-  tex.needsUpdate = true;
-  if (roomTextures[roomIdx] && roomTextures[roomIdx] !== proceduralTextureCache[roomIdx]) {
-    roomTextures[roomIdx].dispose();
-  }
-  roomTextures[roomIdx] = tex;
-  roomUploadedFlags[roomIdx] = true;
-  roomImageDims[roomIdx] = { w: fitted.width, h: fitted.height };
-  if (roomIdx === currentRoomIndex) applyRoomTexture(roomIdx);
-  updateLoadedCounter();
-  return true;
-}
-
 function applyRoomTexture(idx) {
   const room = ROOMS[idx];
   if (room.isProceduralRoom && !roomTextures[idx]) generateRandomHorrorRoom(room);
-  if (roomTextures[idx]) {
-    roomPlaneMat.map = roomTextures[idx];
-  } else {
+  if (roomTextures[idx]) roomPlaneMat.map = roomTextures[idx];
+  else {
     if (!proceduralTextureCache[idx]) proceduralTextureCache[idx] = createProceduralTexture(room);
     roomPlaneMat.map = proceduralTextureCache[idx];
   }
   roomPlaneMat.needsUpdate = true;
 }
-
 function tryAutoLoadImages() {
   ROOMS.forEach((room, idx) => {
     if (room.isProceduralRoom) return;
@@ -1361,57 +1430,37 @@ function tryAutoLoadImages() {
     img.src = room.fileName;
   });
 }
-
 function updateLoadedCounter() {
   const count = Object.keys(roomUploadedFlags).length;
   const btn = document.getElementById("btn-open-photos");
   if (btn) btn.textContent = `ФОТО КОМНАТ [${count}/5]`;
 }
-
 function setPhotosFeedback(text) {
   const el = document.getElementById("photos-feedback");
   if (el) el.textContent = text;
 }
-
 function loadSingleFileAsTexture(file, roomIdx) {
-  if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) {
-    setPhotosFeedback("Поддерживаются только изображения JPEG, PNG или WebP.");
-    return;
-  }
-  if (file.size > MAX_UPLOAD_SIZE) {
-    setPhotosFeedback(`Файл «${file.name}» превышает лимит 25 МБ.`);
-    return;
-  }
+  if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) { setPhotosFeedback("Поддерживаются JPEG, PNG или WebP."); return; }
+  if (file.size > MAX_UPLOAD_SIZE) { setPhotosFeedback(`Файл «${file.name}» превышает лимит 25 МБ.`); return; }
   const url = URL.createObjectURL(file);
   const img = new Image();
   img.onload = () => {
     URL.revokeObjectURL(url);
     const ok = createTextureFromImageSource(img, roomIdx);
-    if (ok) {
-      setPhotosFeedback(`Загружено для локации 0${roomIdx + 1}: ${file.name}`);
-      renderPhotoSlotsModal();
-    } else {
-      setPhotosFeedback(`Не удалось прочитать изображение «${file.name}».`);
-    }
+    if (ok) { setPhotosFeedback(`Загружено для локации 0${roomIdx + 1}: ${file.name}`); renderPhotoSlotsModal(); }
+    else setPhotosFeedback(`Не удалось прочитать «${file.name}».`);
   };
-  img.onerror = () => {
-    URL.revokeObjectURL(url);
-    setPhotosFeedback(`Ошибка декодирования файла «${file.name}».`);
-  };
+  img.onerror = () => { URL.revokeObjectURL(url); setPhotosFeedback(`Ошибка декодирования «${file.name}».`); };
   img.src = url;
 }
-
 function handleBulkFiles(fileList) {
   const files = Array.from(fileList).filter(f => /^image\/(jpeg|png|webp)$/.test(f.type) && f.size <= MAX_UPLOAD_SIZE);
-  if (!files.length) {
-    setPhotosFeedback("Нет подходящих файлов (допустимы JPEG/PNG/WebP до 25 МБ).");
-    return;
-  }
+  if (!files.length) { setPhotosFeedback("Нет подходящих файлов."); return; }
   files.forEach((file, idx) => { if (idx < 5) loadSingleFileAsTexture(file, idx); });
 }
 
 /* ============================================================
-   СУЩНОСТЬ ИЗ ТЕНИ
+   СУЩНОСТЬ (2.5D)
 ============================================================ */
 function build3DShadowEntity() {
   const group = new THREE.Group();
@@ -1431,7 +1480,6 @@ function build3DShadowEntity() {
   group.userData = { shadowMat, eyeMat };
   return group;
 }
-
 const shadowEntity = build3DShadowEntity();
 scene.add(shadowEntity);
 
@@ -1448,18 +1496,15 @@ function updateWorldPlaneLayout() {
   const vFov = THREE.MathUtils.degToRad(camera.fov);
   const viewH = 2 * Math.tan(vFov / 2) * dist;
   const viewW = viewH * camera.aspect;
-
   const dims = roomImageDims[currentRoomIndex] || { w: 16, h: 9 };
   const imgAspect = dims.w / dims.h;
   const viewAspect = viewW / viewH;
-
   let planeW, planeH;
   if (viewAspect > imgAspect) { planeW = viewW * 1.08; planeH = planeW / imgAspect; }
   else { planeH = viewH * 1.08; planeW = planeH * imgAspect; }
   roomMesh.scale.set(planeW / 16, planeH / 9, 1);
-
   layout.planeW = planeW; layout.planeH = planeH;
-  layout.viewW = viewW;   layout.viewH = viewH;
+  layout.viewW = viewW; layout.viewH = viewH;
   return layout;
 }
 
@@ -1471,22 +1516,24 @@ function animate(time) {
   lastFrameTime = time;
   const dt = dtMs / 16.667;
 
+  // ПЕРЕХВАТ: ЭПИЗОД 1
+  if (window.Episode1 && window.Episode1.isActive()) {
+    window.Episode1.tick(dtMs / 1000);
+    return;
+  }
+
   if (panicState.active) {
     const elapsed = time - panicState.startedAt;
-    if (elapsed >= panicState.duration) {
-      panicState.active = false;
-      panicState.intensity = 0;
-    } else {
+    if (elapsed >= panicState.duration) { panicState.active = false; panicState.intensity = 0; }
+    else {
       const p = elapsed / panicState.duration;
       panicState.intensity = p < 0.14 ? p / 0.14 : (p > 0.72 ? (1 - p) / 0.28 : 1);
     }
   } else if (panicState.dread > 0.001) {
-    // Затухание страха: half-life ~2 сек
     panicState.dread *= Math.pow(0.5, dt / 120);
   }
 
-  const w = window.innerWidth;
-  const h = window.innerHeight;
+  const w = window.innerWidth, h = window.innerHeight;
   const room = ROOMS[currentRoomIndex];
 
   const lerpFactor = 1 - Math.pow(1 - POINTER_LERP, dt);
@@ -1514,12 +1561,11 @@ function animate(time) {
     if (transition.phase === "in") {
       const ease = transition.progress * transition.progress;
       camZ = 10.0 - ease * 6.4;
-      const targetWorldX = (transition.focusX - 0.5) * planeW;
-      const targetWorldY = (0.5 - transition.focusY) * planeH;
-      camX += targetWorldX * ease * 0.85;
-      camY += targetWorldY * ease * 0.85 + Math.sin(transition.progress * Math.PI * 5) * 0.12;
+      const twX = (transition.focusX - 0.5) * planeW;
+      const twY = (0.5 - transition.focusY) * planeH;
+      camX += twX * ease * 0.85;
+      camY += twY * ease * 0.85 + Math.sin(transition.progress * Math.PI * 5) * 0.12;
       blackFade = Math.min(1, transition.progress * 1.15);
-
       if (transition.progress >= 1) {
         currentRoomIndex = transition.targetRoom;
         entityState.visible = false;
@@ -1536,10 +1582,7 @@ function animate(time) {
       const ease = 1 - Math.pow(1 - transition.progress, 3);
       camZ = 7.6 + ease * 2.4;
       blackFade = 1 - ease;
-      if (transition.progress >= 1) {
-        transition.active = false;
-        transition.phase = "none";
-      }
+      if (transition.progress >= 1) { transition.active = false; transition.phase = "none"; }
     }
   }
 
@@ -1556,36 +1599,28 @@ function animate(time) {
     const ex = (entityState.spot.x - 0.5) * planeW;
     const ey = (0.5 - entityState.spot.y) * planeH;
     const esc = (entityState.spot.scale || 1.0) * (planeH * 0.16);
-
     shadowEntity.visible = true;
     shadowEntity.scale.set(esc, esc, esc);
-
     const distToSpot = Math.hypot(lightWorldX - ex, lightWorldY - ey);
     if (distToSpot < planeW * 0.18 && !entityState.evading) {
       entityState.evading = true;
       entityState.targetOpacity = 0;
       if (audioEngine.enabled) {
-        // Пространственный лязг в сторону сущности
         const panDirection = (ex - lightWorldX) / planeW;
         audioEngine.playSteelChains(Math.max(-0.9, Math.min(0.9, panDirection * 2)));
         audioEngine.playHeartbeatPulse(1.0);
       }
     }
-
     entityState.timer -= dt;
     if (entityState.timer <= 0) entityState.targetOpacity = 0;
-
     const speed = entityState.evading ? ENTITY_EVADE_LERP : ENTITY_LERP;
     const opLerp = 1 - Math.pow(1 - speed, dt);
     entityState.opacity += (entityState.targetOpacity - entityState.opacity) * opLerp;
-
     const recoilX = entityState.evading ? (ex > 0 ? 0.75 : -0.75) * (1 - entityState.opacity) : Math.sin(time * 0.004) * 0.04;
     const recoilZ = entityState.evading ? -0.3 * (1 - entityState.opacity) : 0.35;
     shadowEntity.position.set(ex + recoilX, ey, recoilZ);
-
     shadowEntity.userData.shadowMat.opacity = entityState.opacity * 0.95;
     shadowEntity.userData.eyeMat.opacity = entityState.evading ? 0 : entityState.opacity * 0.8;
-
     if (entityState.opacity < 0.01 && entityState.targetOpacity === 0) {
       entityState.visible = false;
       shadowEntity.visible = false;
@@ -1594,9 +1629,7 @@ function animate(time) {
     shadowEntity.visible = false;
   }
 
-  // Реактивный тик при наведении на артефакт / портал
   updateDiscoveryTicks(w, h);
-
   renderer.render(scene, camera);
   render2DOverlay(w, h, room, blackFade, time, dt);
 }
@@ -1607,27 +1640,18 @@ function updateDiscoveryTicks(w, h) {
   const t = getOverlayTransform(w, h);
   if (!roomTickFlags[currentRoomIndex]) roomTickFlags[currentRoomIndex] = {};
   const flags = roomTickFlags[currentRoomIndex];
-
   const artX = t.offsetX + room.artifact.x * t.scaleX;
   const artY = t.offsetY + room.artifact.y * t.scaleY;
-  if (!flags.artifact && Math.hypot(pointer.x - artX, pointer.y - artY) < 100) {
-    flags.artifact = true;
-    audioEngine.playTick();
-  }
+  if (!flags.artifact && Math.hypot(pointer.x - artX, pointer.y - artY) < 100) { flags.artifact = true; audioEngine.playTick(); }
   const portX = t.offsetX + room.portal.x * t.scaleX;
   const portY = t.offsetY + room.portal.y * t.scaleY;
-  if (!flags.portal && Math.hypot(pointer.x - portX, pointer.y - portY) < 100) {
-    flags.portal = true;
-    audioEngine.playTick();
-  }
+  if (!flags.portal && Math.hypot(pointer.x - portX, pointer.y - portY) < 100) { flags.portal = true; audioEngine.playTick(); }
 }
 
 function render2DOverlay(w, h, room, blackFade, time, dt) {
   fxCtx.clearRect(0, 0, w, h);
-
   const t = getOverlayTransform(w, h);
   const scaleX = t.scaleX, scaleY = t.scaleY, offsetX = t.offsetX, offsetY = t.offsetY;
-
   dustParticles.forEach(p => {
     p.x += p.vx * dt; p.y += p.vy * dt;
     if (p.y < 0) p.y = 1;
@@ -1638,17 +1662,13 @@ function render2DOverlay(w, h, room, blackFade, time, dt) {
     const dist = Math.hypot(px - pointer.x, py - pointer.y);
     const boost = (flashlightOn && dist < 240) ? (1 - dist / 240) * 0.7 : 0;
     fxCtx.fillStyle = `rgba(195, 208, 188, ${Math.min(0.92, 0.12 + boost)})`;
-    fxCtx.beginPath();
-    fxCtx.arc(px, py, p.size * p.z, 0, Math.PI * 2);
-    fxCtx.fill();
+    fxCtx.beginPath(); fxCtx.arc(px, py, p.size * p.z, 0, Math.PI * 2); fxCtx.fill();
   });
-
   drawMarker2D(offsetX + room.artifact.x * scaleX, offsetY + room.artifact.y * scaleY,
     room.artifact.label, room.solved ? "#528c63" : "#bd7d3b", time);
   const canPass = room.solved || freeMode;
   drawMarker2D(offsetX + room.portal.x * scaleX, offsetY + room.portal.y * scaleY,
     room.portal.label, canPass ? "#528c63" : "#8f3222", time);
-
   if (flashlightOn) {
     const flicker = REDUCE_MOTION ? 1.0 : (Math.sin(time * 0.041) * Math.sin(time * 0.017) > 0.96 ? 0.72 : 1.0);
     fxCtx.fillStyle = "rgba(1, 2, 1, 0.94)";
@@ -1662,17 +1682,14 @@ function render2DOverlay(w, h, room, blackFade, time, dt) {
     fxCtx.fillStyle = "rgba(1, 2, 1, 0.91)";
     fxCtx.fillRect(0, 0, w, h);
   }
-
   if (panicState.active) {
     const pulse = 0.5 + 0.5 * Math.sin(time * 0.019);
     const alarmAlpha = (REDUCE_MOTION ? 0.12 : 0.28 * pulse) * panicState.intensity;
     const alarmGrad = fxCtx.createRadialGradient(w * 0.5, h * 0.5, Math.min(w, h) * 0.16, w * 0.5, h * 0.5, Math.max(w, h) * 0.72);
     alarmGrad.addColorStop(0, "rgba(143, 50, 34, 0)");
     alarmGrad.addColorStop(1, `rgba(143, 50, 34, ${alarmAlpha.toFixed(3)})`);
-    fxCtx.fillStyle = alarmGrad;
-    fxCtx.fillRect(0, 0, w, h);
+    fxCtx.fillStyle = alarmGrad; fxCtx.fillRect(0, 0, w, h);
   }
-
   if (blackFade > 0.01) {
     fxCtx.fillStyle = `rgba(1, 2, 1, ${blackFade})`;
     fxCtx.fillRect(0, 0, w, h);
@@ -1682,36 +1699,30 @@ function render2DOverlay(w, h, room, blackFade, time, dt) {
 function drawMarker2D(x, y, label, color, time) {
   const pulse = REDUCE_MOTION ? 1 : 1 + Math.sin(time * 0.005) * 0.2;
   fxCtx.save();
-  fxCtx.strokeStyle = color;
-  fxCtx.lineWidth = 1.6;
+  fxCtx.strokeStyle = color; fxCtx.lineWidth = 1.6;
   fxCtx.beginPath(); fxCtx.arc(x, y, 14 * pulse, 0, Math.PI * 2); fxCtx.stroke();
   fxCtx.fillStyle = color;
   fxCtx.beginPath(); fxCtx.arc(x, y, 4, 0, Math.PI * 2); fxCtx.fill();
-
   fxCtx.font = "11px 'Courier New', monospace";
   const tw = fxCtx.measureText(label).width + 14;
   fxCtx.fillStyle = "rgba(5, 7, 5, 0.88)";
   fxCtx.fillRect(x - tw * 0.5, y + 19, tw, 20);
-  fxCtx.strokeStyle = color;
-  fxCtx.strokeRect(x - tw * 0.5, y + 19, tw, 20);
-  fxCtx.fillStyle = "#ded6cc";
-  fxCtx.textAlign = "center";
+  fxCtx.strokeStyle = color; fxCtx.strokeRect(x - tw * 0.5, y + 19, tw, 20);
+  fxCtx.fillStyle = "#ded6cc"; fxCtx.textAlign = "center";
   fxCtx.fillText(label, x, y + 33);
   fxCtx.restore();
 }
 
 /* ============================================================
-   HUD
+   HUD 2.5D
 ============================================================ */
 const depthNav = document.getElementById("depth-nav");
-
 function buildDepthNav() {
   depthNav.innerHTML = "";
   ROOMS.forEach((r, idx) => {
     const node = document.createElement("div");
     node.className = `depth-node ${idx === currentRoomIndex ? "active" : ""} ${r.solved ? "solved" : ""} ${r.isProceduralRoom ? "procedural" : ""}`;
-    node.setAttribute("role", "button");
-    node.setAttribute("tabindex", "0");
+    node.setAttribute("role", "button"); node.setAttribute("tabindex", "0");
     node.innerHTML = `<span class="depth-label">0${idx + 1} // ${r.title.split(" ")[0]}</span><span class="depth-dot"></span>`;
     node.addEventListener("click", () => attemptRoomTransition(idx));
     node.addEventListener("keydown", (e) => {
@@ -1720,14 +1731,12 @@ function buildDepthNav() {
     depthNav.appendChild(node);
   });
 }
-
 function refreshDepthNavState() {
   depthNav.querySelectorAll(".depth-node").forEach((node, idx) => {
     node.classList.toggle("active", idx === currentRoomIndex);
     node.classList.toggle("solved", ROOMS[idx].solved);
   });
 }
-
 function updateRoomHUD() {
   const room = ROOMS[currentRoomIndex];
   document.getElementById("hud-room-indicator").textContent =
@@ -1736,10 +1745,8 @@ function updateRoomHUD() {
   document.getElementById("dossier-file-hint").textContent = room.isProceduralRoom ? "ГЕНЕРАТОР: АКТИВЕН" : `ФАЙЛ: ${room.fileName}`;
   document.getElementById("dossier-title").textContent = room.title;
   document.getElementById("dossier-text").textContent = room.desc;
-
   const regenBtn = document.getElementById("btn-regen-room");
   if (regenBtn) regenBtn.style.display = room.isProceduralRoom ? "inline-block" : "none";
-
   const badge = document.getElementById("puzzle-badge");
   if (room.solved || freeMode) {
     badge.textContent = room.solved ? "ЗАМОК ОТКРЫТ" : "СВОБОДНЫЙ ОБХОД";
@@ -1750,38 +1757,31 @@ function updateRoomHUD() {
   }
   refreshDepthNavState();
 }
-
 function attemptRoomTransition(targetIdx) {
   if (transition.active || targetIdx === currentRoomIndex) return;
   if (targetIdx < 0 || targetIdx >= ROOMS.length) return;
-
   const currentRoom = ROOMS[currentRoomIndex];
   if (targetIdx > currentRoomIndex && !currentRoom.solved && !freeMode) {
     audioEngine.playSubterraneanRumble();
     openPuzzleModal();
     return;
   }
-
   audioEngine.playFootsteps();
   transition.active = true;
-  transition.phase = "in";
-  transition.progress = 0;
+  transition.phase = "in"; transition.progress = 0;
   transition.targetRoom = targetIdx;
   if (targetIdx < currentRoomIndex) {
-    const targetRoom = ROOMS[targetIdx];
-    transition.focusX = targetRoom.portal.x;
-    transition.focusY = targetRoom.portal.y;
+    const tr = ROOMS[targetIdx];
+    transition.focusX = tr.portal.x; transition.focusY = tr.portal.y;
   } else {
-    transition.focusX = currentRoom.portal.x;
-    transition.focusY = currentRoom.portal.y;
+    transition.focusX = currentRoom.portal.x; transition.focusY = currentRoom.portal.y;
   }
 }
 
 /* ============================================================
-   МОДАЛКИ (фокус-трап, закрытие по фону)
+   МОДАЛКИ
 ============================================================ */
 let focusedBeforeModal = null;
-
 function openModalEl(modalEl) {
   focusedBeforeModal = document.activeElement;
   modalEl.classList.add("open");
@@ -1790,15 +1790,11 @@ function openModalEl(modalEl) {
     if (first) first.focus();
   }, 60);
 }
-
 function closeModalEl(modalEl) {
   modalEl.classList.remove("open");
-  if (focusedBeforeModal && focusedBeforeModal.focus) {
-    try { focusedBeforeModal.focus(); } catch (e) {}
-  }
+  if (focusedBeforeModal && focusedBeforeModal.focus) { try { focusedBeforeModal.focus(); } catch (e) {} }
   focusedBeforeModal = null;
 }
-
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Tab") return;
   const openModal = document.querySelector(".modal-backdrop.open");
@@ -1809,28 +1805,25 @@ document.addEventListener("keydown", (e) => {
   if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
   else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
 });
-
 document.querySelectorAll(".modal-backdrop").forEach(m => {
-  m.addEventListener("click", (e) => {
-    if (e.target === m) closeModalEl(m);
-  });
+  m.addEventListener("click", (e) => { if (e.target === m) closeModalEl(m); });
 });
 
 /* ============================================================
-   ВВОД
+   ВВОД 2.5D
 ============================================================ */
 glCanvas.addEventListener("pointerdown", (e) => {
-  pointer.targetX = e.clientX;
-  pointer.targetY = e.clientY;
+  if (window.Episode1 && window.Episode1.isActive()) return;
+  pointer.targetX = e.clientX; pointer.targetY = e.clientY;
 });
-
 window.addEventListener("pointermove", (e) => {
   if (document.querySelector(".modal-backdrop.open")) return;
-  pointer.targetX = e.clientX;
-  pointer.targetY = e.clientY;
+  if (window.Episode1 && window.Episode1.isActive()) return;
+  pointer.targetX = e.clientX; pointer.targetY = e.clientY;
 }, { passive: true });
 
 glCanvas.addEventListener("click", (e) => {
+  if (window.Episode1 && window.Episode1.isActive()) return;
   if (transition.active) return;
   if (document.querySelector(".modal-backdrop.open")) return;
 
@@ -1851,8 +1844,7 @@ glCanvas.addEventListener("click", (e) => {
   const portX = t.offsetX + room.portal.x * t.scaleX;
   const portY = t.offsetY + room.portal.y * t.scaleY;
   if (Math.hypot(e.clientX - portX, e.clientY - portY) < 90) {
-    attemptRoomTransition((currentRoomIndex + 1) % ROOMS.length);
-    return;
+    attemptRoomTransition((currentRoomIndex + 1) % ROOMS.length); return;
   }
 
   const now = performance.now();
@@ -1863,19 +1855,16 @@ glCanvas.addEventListener("click", (e) => {
 
 let lastWheelTime = 0;
 window.addEventListener("wheel", (e) => {
+  if (window.Episode1 && window.Episode1.isActive()) return;
   const now = performance.now();
   if (now - lastWheelTime < 1100) return;
   if (document.querySelector(".modal-backdrop.open")) return;
-  if (e.deltaY > 25) {
-    lastWheelTime = now;
-    attemptRoomTransition(Math.min(ROOMS.length - 1, currentRoomIndex + 1));
-  } else if (e.deltaY < -25) {
-    lastWheelTime = now;
-    attemptRoomTransition(Math.max(0, currentRoomIndex - 1));
-  }
+  if (e.deltaY > 25) { lastWheelTime = now; attemptRoomTransition(Math.min(ROOMS.length - 1, currentRoomIndex + 1)); }
+  else if (e.deltaY < -25) { lastWheelTime = now; attemptRoomTransition(Math.max(0, currentRoomIndex - 1)); }
 }, { passive: true });
 
 window.addEventListener("keydown", (e) => {
+  if (window.Episode1 && window.Episode1.isActive()) return;
   const k = e.key.toLowerCase();
   if (k === "f" || k === "а") document.getElementById("btn-toggle-flashlight").click();
   if (e.key === "Escape") document.querySelectorAll(".modal-backdrop.open").forEach(m => closeModalEl(m));
@@ -1887,26 +1876,20 @@ window.addEventListener("keydown", (e) => {
 function triggerPanicEpisode(now = performance.now()) {
   if (panicState.active) return;
   if (now - panicState.lastTriggeredAt < PANIC_COOLDOWN_MS) return;
-
   const room0 = ROOMS[0];
-  const tapeActiveNow = room0.id === 0 && room0.tapePlaying && !room0.tapeFinished && currentRoomIndex === 0;
-  if (tapeActiveNow) return;
-
+  if (room0.id === 0 && room0.tapePlaying && !room0.tapeFinished && currentRoomIndex === 0) return;
   panicState.active = true;
   panicState.startedAt = now;
   panicState.lastTriggeredAt = now;
   panicState.intensity = 1.0;
   panicState.dread = 0;
-
   if (audioEngine.enabled) audioEngine.playPanicBurst();
   spawnShadowEntity(true);
 }
-
 function spawnShadowEntity(force = false) {
   const room = ROOMS[currentRoomIndex];
   if (!room.shadowSpots || room.shadowSpots.length === 0) return;
   if (entityState.visible && !force) return;
-
   const spot = room.shadowSpots[Math.floor(Math.random() * room.shadowSpots.length)];
   entityState.spot = spot;
   entityState.visible = true;
@@ -1914,19 +1897,18 @@ function spawnShadowEntity(force = false) {
   entityState.targetOpacity = 0.92;
   entityState.evading = false;
   entityState.timer = 340;
-
   if (audioEngine.enabled) audioEngine.playSubterraneanRumble();
 }
-
 const entitySpawnTimer = setInterval(() => {
   if (document.hidden) return;
+  if (window.Episode1 && window.Episode1.isActive()) return;
   if (document.getElementById("intro-screen").classList.contains("hidden") && !transition.active) {
     if (Math.random() < 0.65) spawnShadowEntity(false);
   }
 }, 5500);
 
 /* ============================================================
-   ЗАГАДКИ
+   ЗАГАДКИ 2.5D
 ============================================================ */
 function openPuzzleModal() {
   const room = ROOMS[currentRoomIndex];
@@ -1934,13 +1916,10 @@ function openPuzzleModal() {
   document.getElementById("modal-tag").textContent = room.code;
   document.getElementById("modal-title").textContent = room.puzzleTitle;
   document.getElementById("modal-desc").textContent = room.puzzleDesc;
-
   const container = document.getElementById("modal-interactive");
   const feedback = document.getElementById("modal-feedback");
   container.innerHTML = "";
-  feedback.textContent = room.solved
-    ? "МЕХАНИЗМ УЖЕ РАЗБЛОКИРОВАН."
-    : "Осмотрите поверхности комнаты лучом фонаря.";
+  feedback.textContent = room.solved ? "МЕХАНИЗМ УЖЕ РАЗБЛОКИРОВАН." : "Осмотрите поверхности комнаты лучом фонаря.";
 
   if (room.puzzleType === "frequency") {
     let cur = room.solved ? room.targetFreq : 390;
@@ -1950,35 +1929,22 @@ function openPuzzleModal() {
       <div style="margin-top:12px; display:flex; justify-content:space-between; gap:8px;">
         <button class="btn" id="btn-replay-tape" style="${room.solved ? '' : 'display:none;'}">ПОВТОРИТЬ ПЛЁНКУ</button>
         <button class="btn btn-primary" id="btn-chk" style="margin-left:auto;">ЗАПУСТИТЬ КАТУШКИ</button>
-      </div>
-    `;
+      </div>`;
     const sl = container.querySelector("#freq-sl");
     const rd = container.querySelector("#freq-rd");
     sl.addEventListener("input", () => { rd.textContent = `${sl.value} Гц`; audioEngine.playTick(); });
-
     const replayBtn = container.querySelector("#btn-replay-tape");
-    if (replayBtn) {
-      replayBtn.addEventListener("click", () => {
-        room.tapePlaying = true;
-        room.tapeFinished = false;
-        closeModalEl(modal);
-        if (tapeVideo) { tapeVideo.currentTime = 0; syncTapeVideo(); }
-      });
-    }
-
+    if (replayBtn) replayBtn.addEventListener("click", () => {
+      room.tapePlaying = true; room.tapeFinished = false;
+      closeModalEl(modal);
+      if (tapeVideo) { tapeVideo.currentTime = 0; syncTapeVideo(); }
+    });
     container.querySelector("#btn-chk").addEventListener("click", () => {
       if (parseInt(sl.value, 10) === room.targetFreq) {
-        room.tapePlaying = true;
-        room.tapeFinished = false;
+        room.tapePlaying = true; room.tapeFinished = false;
         solveCurrentRoom("Катушки запущены.");
-        setTimeout(() => {
-          closeModalEl(modal);
-          if (tapeVideo) { tapeVideo.currentTime = 0; syncTapeVideo(); }
-        }, 400);
-      } else {
-        audioEngine.playWallScratching();
-        feedback.textContent = "Неверная частота. Осмотрите стену слева.";
-      }
+        setTimeout(() => { closeModalEl(modal); if (tapeVideo) { tapeVideo.currentTime = 0; syncTapeVideo(); } }, 400);
+      } else { audioEngine.playWallScratching(); feedback.textContent = "Неверная частота. Осмотрите стену слева."; }
     });
   } else if (room.puzzleType === "roman_code") {
     const syms = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"];
@@ -1986,44 +1952,31 @@ function openPuzzleModal() {
     const wrap = document.createElement("div"); wrap.className = "code-slots";
     st.forEach((s, i) => {
       const b = document.createElement("button"); b.className = "code-slot-btn"; b.textContent = s;
-      b.addEventListener("click", () => {
-        st[i] = syms[(syms.indexOf(st[i]) + 1) % syms.length];
-        b.textContent = st[i];
-        audioEngine.playTick();
-      });
+      b.addEventListener("click", () => { st[i] = syms[(syms.indexOf(st[i]) + 1) % syms.length]; b.textContent = st[i]; audioEngine.playTick(); });
       wrap.appendChild(b);
     });
     const cb = document.createElement("button");
-    cb.className = "btn btn-primary"; cb.style.width = "100%";
-    cb.textContent = "ПРОВЕРНУТЬ ЗАСОВ";
+    cb.className = "btn btn-primary"; cb.style.width = "100%"; cb.textContent = "ПРОВЕРНУТЬ ЗАСОВ";
     cb.addEventListener("click", () => {
       if (st.join("-") === room.targetCode.join("-")) solveCurrentRoom("Кольца совпали. Цепи упали.");
       else { audioEngine.playWallScratching(); feedback.textContent = "Замок заклинило. Осмотрите царапины на правой стене."; }
     });
-    container.appendChild(wrap);
-    container.appendChild(cb);
+    container.appendChild(wrap); container.appendChild(cb);
   } else if (room.puzzleType === "weights") {
-    const weights = [
-      { kg: 2, side: "L" },
-      { kg: 4, side: room.solved ? "L" : "R" },
-      { kg: 6, side: "R" }
-    ];
+    const weights = [{ kg: 2, side: "L" }, { kg: 4, side: room.solved ? "L" : "R" }, { kg: 6, side: "R" }];
     const renderW = () => {
       const l = weights.filter(x => x.side === "L").reduce((a, b) => a + b.kg, 0);
       const r = weights.filter(x => x.side === "R").reduce((a, b) => a + b.kg, 0);
       container.innerHTML = `
         <div class="puzzle-row"><span>ЛЕВАЯ (Л): <strong>${l} КГ</strong></span><span>ПРАВАЯ (П): <strong>${r} КГ</strong></span></div>
         <div class="scale-pan-group" id="w-grid"></div>
-        <button class="btn btn-primary" id="btn-w" style="width:100%; margin-top:8px;">ОСВОБОДИТЬ СТОПОР</button>
-      `;
+        <button class="btn btn-primary" id="btn-w" style="width:100%; margin-top:8px;">ОСВОБОДИТЬ СТОПОР</button>`;
       const grid = container.querySelector("#w-grid");
       weights.forEach(w => {
         const card = document.createElement("div"); card.className = "weight-card";
         card.innerHTML = `<div style="font-size:14px; font-weight:bold; margin-bottom:6px;">ГИРЯ ${w.kg}КГ</div><button class="hud-btn" style="width:100%">${w.side === "L" ? "ЛЕВАЯ" : "ПРАВАЯ"}</button>`;
         card.querySelector("button").addEventListener("click", () => {
-          w.side = w.side === "L" ? "R" : "L";
-          audioEngine.playSteelChains();
-          renderW();
+          w.side = w.side === "L" ? "R" : "L"; audioEngine.playSteelChains(); renderW();
         });
         grid.appendChild(card);
       });
@@ -2034,8 +1987,7 @@ function openPuzzleModal() {
     };
     renderW();
   } else if (room.puzzleType === "dosage") {
-    let dA = room.solved ? room.targetA : 0;
-    let dB = room.solved ? room.targetB : 0;
+    let dA = room.solved ? room.targetA : 0, dB = room.solved ? room.targetB : 0;
     const renderD = () => {
       container.innerHTML = `
         <div class="puzzle-row"><span>КОЛБА А: <strong>${dA}</strong></span><button class="hud-btn" id="ba">+1</button></div>
@@ -2043,8 +1995,7 @@ function openPuzzleModal() {
         <div style="display:flex; gap:8px; margin-top:12px;">
           <button class="btn" id="br" style="flex:1;">СБРОС</button>
           <button class="btn btn-primary" id="bi" style="flex:2;">ПОДАТЬ</button>
-        </div>
-      `;
+        </div>`;
       container.querySelector("#ba").addEventListener("click", () => { dA = (dA + 1) % 7; audioEngine.playTick(); renderD(); });
       container.querySelector("#bb").addEventListener("click", () => { dB = (dB + 1) % 7; audioEngine.playTick(); renderD(); });
       container.querySelector("#br").addEventListener("click", () => { dA = 0; dB = 0; audioEngine.playTick(); renderD(); });
@@ -2065,15 +2016,12 @@ function openPuzzleModal() {
           <button class="hud-btn" id="vrs">СБРОС</button>
         </div>
         <input type="text" id="b-msg" maxlength="80" placeholder="Сообщение в эфир..." style="width:100%; padding:9px; background:#050705; border:1px solid var(--mold-green); color:var(--bone-white); font-family:inherit; margin-bottom:8px;">
-        <button class="btn btn-primary" id="bs" style="width:100%;">ОТПРАВИТЬ СИГНАЛ</button>
-      `;
+        <button class="btn btn-primary" id="bs" style="width:100%;">ОТПРАВИТЬ СИГНАЛ</button>`;
       const chk = () => {
         if (seq.join(",") === room.targetSequence.join(",")) solveCurrentRoom("Гермошлюз разгерметизирован.");
         else if (seq.length >= room.targetSequence.length) {
-          audioEngine.playWallScratching();
-          feedback.textContent = "Клапан сорвался. Осмотрите металл у штурвала.";
-          seq = [];
-          setTimeout(renderV, 500);
+          audioEngine.playWallScratching(); feedback.textContent = "Клапан сорвался. Осмотрите металл у штурвала.";
+          seq = []; setTimeout(renderV, 500);
         }
       };
       container.querySelector("#vr").addEventListener("click", () => { seq.push("R"); audioEngine.playSteelChains(); renderV(); chk(); });
@@ -2088,12 +2036,9 @@ function openPuzzleModal() {
     renderV();
   } else if (room.puzzleType === "procedural_pin") {
     const curPin = room.solved ? [...room.targetPin] : [0, 0, 0];
-    const wrap = document.createElement("div");
-    wrap.className = "code-slots";
+    const wrap = document.createElement("div"); wrap.className = "code-slots";
     curPin.forEach((digit, idx) => {
-      const btn = document.createElement("button");
-      btn.className = "code-slot-btn";
-      btn.textContent = String(digit);
+      const btn = document.createElement("button"); btn.className = "code-slot-btn"; btn.textContent = String(digit);
       btn.addEventListener("click", () => {
         curPin[idx] = (curPin[idx] + 1) % 10;
         btn.textContent = String(curPin[idx]);
@@ -2102,16 +2047,13 @@ function openPuzzleModal() {
       wrap.appendChild(btn);
     });
     const submitBtn = document.createElement("button");
-    submitBtn.className = "btn btn-primary"; submitBtn.style.width = "100%";
-    submitBtn.textContent = "СНЯТЬ БЛОКИРОВКУ";
+    submitBtn.className = "btn btn-primary"; submitBtn.style.width = "100%"; submitBtn.textContent = "СНЯТЬ БЛОКИРОВКУ";
     submitBtn.addEventListener("click", () => {
       if (curPin.join("-") === room.targetPin.join("-")) solveCurrentRoom("Релейный замок аномалии открыт.");
       else { audioEngine.playWallScratching(); feedback.textContent = "Неверный шифр. Проведите фонарём по стенам камеры."; }
     });
-    container.appendChild(wrap);
-    container.appendChild(submitBtn);
+    container.appendChild(wrap); container.appendChild(submitBtn);
   }
-
   openModalEl(modal);
 }
 
@@ -2124,7 +2066,6 @@ function solveCurrentRoom(msg) {
   document.getElementById("modal-feedback").textContent = msg;
   updateRoomHUD();
   saveProgress();
-
   if (!alreadySolvedOnce && ROOMS.every(r => r.solvedOnce)) {
     setTimeout(() => openModalEl(document.getElementById("final-modal")), 1400);
   }
@@ -2142,8 +2083,7 @@ function renderPhotoSlotsModal() {
       <div style="display:flex; align-items:center; gap:8px;">
         <span class="photo-slot-status ${isLoaded ? "loaded" : ""}">${isLoaded ? "ЗАГРУЖЕНО" : "НЕ ЗАГРУЖЕНО"}</span>
         <label class="hud-btn" style="cursor:pointer;">ВЫБРАТЬ<input type="file" accept="image/jpeg,image/png,image/webp" style="display:none"></label>
-      </div>
-    `;
+      </div>`;
     row.querySelector("input").addEventListener("change", (e) => {
       if (e.target.files && e.target.files[0]) loadSingleFileAsTexture(e.target.files[0], idx);
     });
@@ -2152,8 +2092,796 @@ function renderPhotoSlotsModal() {
 }
 
 /* ============================================================
+   ЭПИЗОД 1 — 3D-СЦЕНА
+============================================================ */
+window.Episode1 = (() => {
+  const EYE = 1.7, PR = 0.35;
+  const WALK = 4.0, RUN = 7.5;
+  const ENTITY_SPEED = 4.8;
+  const INTERACT_RANGE = 3.0;
+
+  let active = false, paused = false, pointerLocked = false, started = false;
+  let epScene, epCamera, epFlash, epFlashTarget, epEmergLight;
+  const keys = Object.create(null);
+  const player = {
+    pos: new THREE.Vector3(0, EYE, 6),
+    vel: new THREE.Vector3(),
+    yaw: 0, pitch: 0, flashlightOn: true
+  };
+  const walls = [];
+  const interactables = [];
+  const gateDoor = { mesh: null, opening: 0, isOpening: false, baseY: 0, wall: null };
+  const entity = { active: false, mesh: null, pos: new THREE.Vector3(), speed: ENTITY_SPEED, caught: false };
+  const state = { hasHandle: false, handleInstalled: false, powerOn: false, gateOpen: false, gameOver: false, won: false };
+
+  let elHud, elCrosshair, elPrompt, elObjective, elInventory, elWarning, elHint;
+  let elOverlay, elOverlayTitle, elOverlayText;
+  let elPause, elFade, elStartScreen;
+  let elTouch, elJoystick, elJoystickKnob, elBtnF, elBtnE;
+
+  const touch = { moveId: null, moveStartX: 0, moveStartY: 0, moveDX: 0, moveDY: 0, lookId: null, lookLastX: 0, lookLastY: 0 };
+  const raycaster = new THREE.Raycaster();
+  const screenCenter = new THREE.Vector2(0, 0);
+  let hotInteractable = null;
+  let inited = false;
+
+  // ===== Текстуры =====
+  function makeConcreteTexture(repeat = 2) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 512;
+    const g = c.getContext('2d');
+    g.fillStyle = '#3a3a37'; g.fillRect(0, 0, 512, 512);
+    for (let i = 0; i < 6000; i++) {
+      const v = (Math.random() * 80 - 40) | 0;
+      g.fillStyle = `rgba(${128+v},${128+v},${120+v},0.28)`;
+      g.fillRect(Math.random()*512, Math.random()*512, 2, 2);
+    }
+    for (let i = 0; i < 6; i++) {
+      g.strokeStyle = `rgba(20,20,20,${0.5 + Math.random()*0.4})`;
+      g.lineWidth = 1; g.beginPath();
+      let x = Math.random()*512, y = Math.random()*512;
+      g.moveTo(x, y);
+      for (let j = 0; j < 10; j++) { x += Math.random()*50-25; y += Math.random()*50-25; g.lineTo(x, y); }
+      g.stroke();
+    }
+    for (let i = 0; i < 5; i++) {
+      const mx = Math.random()*512, my = Math.random()*512, mr = 30 + Math.random()*80;
+      const mg = g.createRadialGradient(mx, my, 4, mx, my, mr);
+      mg.addColorStop(0, i % 2 ? 'rgba(60,20,10,0.4)' : 'rgba(15,20,15,0.5)');
+      mg.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = mg; g.beginPath(); g.arc(mx, my, mr, 0, Math.PI*2); g.fill();
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(repeat, repeat);
+    return tex;
+  }
+  function makeMetalTexture() {
+    const c = document.createElement('canvas');
+    c.width = c.height = 256;
+    const g = c.getContext('2d');
+    g.fillStyle = '#2b2018'; g.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 2000; i++) {
+      const v = (Math.random() * 60 - 30) | 0;
+      g.fillStyle = `rgba(${120+v},${90+v},${60+v},0.35)`;
+      g.fillRect(Math.random()*256, Math.random()*256, 2, 2);
+    }
+    for (let i = 0; i < 20; i++) {
+      g.fillStyle = `rgba(${100+Math.random()*40},${50+Math.random()*30},${20+Math.random()*20},0.4)`;
+      g.fillRect(Math.random()*256, Math.random()*256, 20 + Math.random()*40, 4 + Math.random()*8);
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+  }
+  function addWallBox(cx, cy, cz, w, h, d, mat) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    mesh.position.set(cx, cy, cz);
+    epScene.add(mesh);
+    const wall = {
+      box: new THREE.Box3(new THREE.Vector3(cx - w/2, cy - h/2, cz - d/2), new THREE.Vector3(cx + w/2, cy + h/2, cz + d/2)),
+      enabled: true, mesh
+    };
+    walls.push(wall);
+    return wall;
+  }
+
+  // ===== Уровень =====
+  function buildLevel() {
+    const conc = new THREE.MeshStandardMaterial({ map: makeConcreteTexture(3), roughness: 0.95, metalness: 0.05 });
+    const floorMat = new THREE.MeshStandardMaterial({ map: makeConcreteTexture(6), roughness: 0.98, metalness: 0.02, color: 0x8a8a80 });
+    const ceilMat = new THREE.MeshStandardMaterial({ color: 0x1a1a18, roughness: 1.0 });
+    const metal = new THREE.MeshStandardMaterial({ map: makeMetalTexture(), roughness: 0.55, metalness: 0.75 });
+    const rustMetal = new THREE.MeshStandardMaterial({ map: makeMetalTexture(), roughness: 0.85, metalness: 0.35, color: 0x9a7a60 });
+    const WALL_H = 3.0, wallTh = 0.3;
+
+    // Стартовая площадка
+    addWallBox(0, -0.1, 5, 7, 0.2, 8, floorMat);
+    addWallBox(0, WALL_H + 0.1, 5, 7, 0.2, 8, ceilMat);
+    addWallBox(-3.5, WALL_H/2, 5, wallTh, WALL_H, 4, conc);
+    addWallBox(3.5, WALL_H/2, 5, wallTh, WALL_H, 4, conc);
+    addWallBox(0, WALL_H/2, 7, 7, WALL_H, wallTh, conc);
+    addWallBox(-2.75, WALL_H/2, 3, 1.5, WALL_H, wallTh, conc);
+    addWallBox(2.75, WALL_H/2, 3, 1.5, WALL_H, wallTh, conc);
+
+    // Лестница визуально
+    for (let i = 0; i < 6; i++) {
+      const step = new THREE.Mesh(new THREE.BoxGeometry(3, 0.2, 0.5), conc);
+      step.position.set(0, 0.2 + i * 0.35, 7.3 + i * 0.5);
+      epScene.add(step);
+    }
+
+    // Коридор
+    addWallBox(0, -0.1, -19.5, 4, 0.2, 45, floorMat);
+    addWallBox(0, WALL_H + 0.1, -19.5, 4, 0.2, 45, ceilMat);
+    addWallBox(-2.15, WALL_H/2, -19.5, wallTh, WALL_H, 45, conc);
+    addWallBox(2.15, WALL_H/2, -7.5, wallTh, WALL_H, 21, conc);
+    addWallBox(2.15, WALL_H/2, -32, wallTh, WALL_H, 20, conc);
+    addWallBox(2.15, 2.8, -20, wallTh, 0.4, 4, conc);
+
+    // Комната
+    addWallBox(10, -0.1, -21, 16, 0.2, 18, floorMat);
+    addWallBox(10, WALL_H + 0.1, -21, 16, 0.2, 18, ceilMat);
+    addWallBox(18.15, WALL_H/2, -21, wallTh, WALL_H, 18, conc);
+    addWallBox(10, WALL_H/2, -12, 16, WALL_H, wallTh, conc);
+    addWallBox(10, WALL_H/2, -30, 16, WALL_H, wallTh, conc);
+    addWallBox(2.15, WALL_H/2, -14.5, wallTh, WALL_H, 5, conc);
+    addWallBox(2.15, WALL_H/2, -26, wallTh, WALL_H, 8, conc);
+
+    // Гермозатвор
+    const gateGroup = new THREE.Group();
+    const gateMesh = new THREE.Mesh(new THREE.BoxGeometry(3.8, 3.0, 0.25), metal);
+    gateMesh.position.set(0, 1.5, -42);
+    gateGroup.add(gateMesh);
+    for (let i = 0; i < 3; i++) {
+      const rib = new THREE.Mesh(new THREE.BoxGeometry(3.9, 0.12, 0.3), rustMetal);
+      rib.position.set(0, 0.6 + i * 1.0, -42);
+      gateGroup.add(rib);
+    }
+    const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.06, 8, 20), rustMetal);
+    wheel.position.set(0, 1.5, -41.85);
+    gateGroup.add(wheel);
+    epScene.add(gateGroup);
+    gateDoor.mesh = gateMesh;
+    gateDoor.baseY = 1.5;
+    gateDoor.wall = {
+      box: new THREE.Box3(new THREE.Vector3(-2, 0, -42.2), new THREE.Vector3(2, 3, -41.8)),
+      enabled: true
+    };
+    walls.push(gateDoor.wall);
+
+    // Выходная площадка
+    addWallBox(0, -0.1, -47, 6, 0.2, 10, floorMat);
+    addWallBox(0, WALL_H + 0.1, -47, 6, 0.2, 10, ceilMat);
+    addWallBox(-3.15, WALL_H/2, -47, wallTh, WALL_H, 10, conc);
+    addWallBox(3.15, WALL_H/2, -47, wallTh, WALL_H, 10, conc);
+    addWallBox(0, WALL_H/2, -52, 6, WALL_H, wallTh, conc);
+    for (let i = 0; i < 6; i++) {
+      const step = new THREE.Mesh(new THREE.BoxGeometry(3, 0.2, 0.5), conc);
+      step.position.set(0, 0.2 + i * 0.35, -52.3 - i * 0.5);
+      epScene.add(step);
+    }
+
+    // Рукоятка
+    const handleGroup = new THREE.Group();
+    const hb = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8), rustMetal);
+    hb.rotation.z = Math.PI / 2; handleGroup.add(hb);
+    const hg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.22, 8),
+      new THREE.MeshStandardMaterial({ color: 0x3a2010, roughness: 0.9 }));
+    hg.rotation.z = Math.PI / 2; hg.position.x = 0.32; handleGroup.add(hg);
+    handleGroup.position.set(16, 0.3, -28);
+    handleGroup.rotation.y = Math.random() * Math.PI;
+    const handleGlow = new THREE.PointLight(0xffcc88, 0.4, 2.0);
+    handleGroup.add(handleGlow);
+    epScene.add(handleGroup);
+
+    interactables.push({
+      id: 'handle', mesh: handleGroup,
+      getPrompt: () => state.hasHandle || state.handleInstalled ? null : 'ВЗЯТЬ РУКОЯТКУ',
+      canInteract: () => !state.hasHandle && !state.handleInstalled,
+      onInteract: () => {
+        state.hasHandle = true;
+        handleGroup.visible = false;
+        updateObjective(); updateInventory();
+        audioEngine.playSteelChains();
+      }
+    });
+
+    // Механизм
+    const mechGroup = new THREE.Group();
+    const mechBase = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.9, 0.3), metal);
+    mechGroup.add(mechBase);
+    const socket = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.1),
+      new THREE.MeshStandardMaterial({ color: 0x110a06, roughness: 1 }));
+    socket.position.set(0, 0.15, 0.16); mechGroup.add(socket);
+    const visualHandle = new THREE.Group();
+    const vh1 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8), rustMetal);
+    vh1.rotation.z = Math.PI / 2; vh1.position.set(0, 0.15, 0.2); visualHandle.add(vh1);
+    const vh2 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.22, 8),
+      new THREE.MeshStandardMaterial({ color: 0x3a2010, roughness: 0.9 }));
+    vh2.rotation.z = Math.PI / 2; vh2.position.set(0.32, 0.15, 0.2); visualHandle.add(vh2);
+    visualHandle.visible = false; mechGroup.add(visualHandle);
+    const mechIndicator = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xff2200 }));
+    mechIndicator.position.set(0, -0.3, 0.17); mechGroup.add(mechIndicator);
+    mechGroup.position.set(4, 1.5, -20);
+    mechGroup.rotation.y = -Math.PI / 2;
+    epScene.add(mechGroup);
+
+    interactables.push({
+      id: 'mechanism', mesh: mechGroup,
+      getPrompt: () => {
+        if (state.gateOpen) return null;
+        if (!state.handleInstalled) return state.hasHandle ? 'УСТАНОВИТЬ РУКОЯТКУ' : 'НУЖНА РУКОЯТКА';
+        if (!state.powerOn) return 'НЕТ ПИТАНИЯ';
+        return 'ОТКРЫТЬ ГЕРМОЗАТВОР';
+      },
+      canInteract: () => {
+        if (state.gateOpen) return false;
+        if (!state.handleInstalled) return state.hasHandle;
+        return state.powerOn;
+      },
+      onInteract: () => {
+        if (!state.handleInstalled) {
+          state.handleInstalled = true; state.hasHandle = false;
+          visualHandle.visible = true;
+          audioEngine.playSteelChains();
+          updateObjective(); updateInventory();
+        } else if (state.powerOn) openGate();
+      }
+    });
+
+    // Питание
+    const powerGroup = new THREE.Group();
+    const powerBox = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.0, 0.25), metal);
+    powerGroup.add(powerBox);
+    const lever = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.35, 0.1),
+      new THREE.MeshStandardMaterial({ color: 0xa01010, roughness: 0.5 }));
+    lever.position.set(0, 0.15, 0.18); powerGroup.add(lever);
+    const powerInd = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0x220000 }));
+    powerInd.position.set(0, -0.3, 0.18); powerGroup.add(powerInd);
+    powerGroup.position.set(-1.8, 1.5, -38);
+    powerGroup.rotation.y = Math.PI / 2;
+    epScene.add(powerGroup);
+
+    interactables.push({
+      id: 'power', mesh: powerGroup,
+      getPrompt: () => state.powerOn ? 'ПИТАНИЕ ВКЛЮЧЕНО' : 'ВКЛЮЧИТЬ АВАРИЙНОЕ ПИТАНИЕ',
+      canInteract: () => !state.powerOn,
+      onInteract: () => {
+        state.powerOn = true;
+        lever.rotation.z = -Math.PI / 3;
+        powerInd.material.color.setHex(0x22ff44);
+        mechIndicator.material.color.setHex(0x22ff44);
+        activatePower();
+      }
+    });
+
+    // Фонарь
+    epFlash = new THREE.SpotLight(0xffe9c8, 3.2, 18, Math.PI / 6.5, 0.45, 1.2);
+    epFlashTarget = new THREE.Object3D();
+    epFlashTarget.position.set(0, 0, -1);
+    epCamera.add(epFlash);
+    epCamera.add(epFlashTarget);
+    epFlash.target = epFlashTarget;
+
+    epEmergLight = new THREE.PointLight(0xff2200, 0, 10);
+    epEmergLight.position.set(0, 2.6, -41.5);
+    epScene.add(epEmergLight);
+
+    epScene.add(new THREE.AmbientLight(0x0a0c0a, 0.35));
+
+    entity.mesh = createEntityMesh();
+    entity.mesh.visible = false;
+    epScene.add(entity.mesh);
+  }
+
+  function createEntityMesh() {
+    const g = new THREE.Group();
+    const bodyMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.35, 1.6, 12), bodyMat);
+    torso.position.y = 0.8; g.add(torso);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), bodyMat);
+    head.position.y = 1.85; head.scale.set(0.9, 1.15, 0.95); g.add(head);
+    const armGeo = new THREE.CylinderGeometry(0.07, 0.05, 1.4, 8);
+    const la = new THREE.Mesh(armGeo, bodyMat); la.position.set(-0.42, 0.95, 0.05); la.rotation.z = 0.18; g.add(la);
+    const ra = new THREE.Mesh(armGeo, bodyMat); ra.position.set(0.42, 0.95, 0.05); ra.rotation.z = -0.18; g.add(ra);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff2200 });
+    const eyeGeo = new THREE.SphereGeometry(0.035, 8, 8);
+    const le = new THREE.Mesh(eyeGeo, eyeMat); le.position.set(-0.08, 1.9, 0.18); g.add(le);
+    const re = new THREE.Mesh(eyeGeo, eyeMat); re.position.set(0.08, 1.9, 0.18); g.add(re);
+    return g;
+  }
+
+  function activatePower() {
+    audioEngine.playSubterraneanRumble();
+    setTimeout(() => audioEngine.playDistantCry(), 400);
+    setTimeout(() => audioEngine.playSteelChains(), 900);
+    epEmergLight.intensity = 1.8;
+    updateObjective();
+    setTimeout(() => spawnEntity(), 1400);
+  }
+  function spawnEntity() {
+    if (entity.active) return;
+    entity.pos.set(16, 0, -28);
+    entity.mesh.position.set(16, 0, -28);
+    entity.mesh.visible = true;
+    entity.active = true;
+    audioEngine.playWallScratching();
+    audioEngine.playHeartbeatPulse(1.0);
+    updateObjective();
+  }
+  function openGate() {
+    if (gateDoor.isOpening) return;
+    gateDoor.isOpening = true; gateDoor.opening = 0;
+    audioEngine.playSteelChains();
+    audioEngine.playSubterraneanRumble();
+    gateDoor.wall.enabled = false;
+    state.gateOpen = true;
+    updateObjective();
+    if (!entity.active) spawnEntity();
+  }
+
+  function updateObjective() {
+    let txt = '';
+    if (state.won) txt = 'ВЫ ВЫБРАЛИСЬ';
+    else if (state.gateOpen) txt = 'БЕГИТЕ К ВЫХОДУ. НЕ ОГЛЯДЫВАЙТЕСЬ.';
+    else if (state.powerOn && state.handleInstalled) txt = 'Питание восстановлено. Откройте гермозатвор.';
+    else if (state.powerOn && !state.handleInstalled) txt = 'Питание есть. Установите рукоятку в механизм у проёма.';
+    else if (state.handleInstalled) txt = 'Рукоятка на месте. Найдите аварийное питание в конце коридора.';
+    else if (state.hasHandle) txt = 'Рукоятка найдена. Установите её в механизм у проёма.';
+    else txt = 'Обыщите комнату справа от коридора.';
+    elObjective.textContent = txt;
+  }
+  function updateInventory() {
+    if (state.hasHandle) elInventory.innerHTML = '<span class="item">[ РУКОЯТКА ]</span>';
+    else if (state.handleInstalled) elInventory.innerHTML = '<span class="item">[ МЕХАНИЗМ: ГОТОВ ]</span>';
+    else elInventory.innerHTML = '';
+  }
+  function updateWarning() {
+    if (!entity.active || state.gameOver || state.won) { elWarning.classList.remove('visible'); return; }
+    const dx = entity.pos.x - player.pos.x, dz = entity.pos.z - player.pos.z;
+    if (Math.sqrt(dx*dx + dz*dz) < 8) elWarning.classList.add('visible');
+    else elWarning.classList.remove('visible');
+  }
+
+  function resolveCollisions(pos, radius) {
+    for (const wall of walls) {
+      if (!wall.enabled) continue;
+      if (wall.box.max.y < 0.4 || wall.box.min.y > EYE + 0.6) continue;
+      const cx = Math.max(wall.box.min.x, Math.min(pos.x, wall.box.max.x));
+      const cz = Math.max(wall.box.min.z, Math.min(pos.z, wall.box.max.z));
+      const dx = pos.x - cx, dz = pos.z - cz;
+      const distSq = dx*dx + dz*dz;
+      if (distSq < radius * radius) {
+        const dist = Math.sqrt(distSq);
+        if (dist > 0.0001) {
+          const push = radius - dist;
+          pos.x += (dx / dist) * push;
+          pos.z += (dz / dist) * push;
+        } else {
+          const opts = [
+            { axis: 'x', d: pos.x - wall.box.min.x, s: -1 },
+            { axis: 'x', d: wall.box.max.x - pos.x, s: 1 },
+            { axis: 'z', d: pos.z - wall.box.min.z, s: -1 },
+            { axis: 'z', d: wall.box.max.z - pos.z, s: 1 }
+          ];
+          opts.sort((a, b) => a.d - b.d);
+          const n = opts[0], push = radius + n.d;
+          if (n.axis === 'x') pos.x += n.s * push; else pos.z += n.s * push;
+        }
+      }
+    }
+  }
+
+  function updateInteraction() {
+    raycaster.setFromCamera(screenCenter, epCamera);
+    raycaster.far = INTERACT_RANGE;
+    const hits = raycaster.intersectObjects(interactables.map(i => i.mesh), true);
+    let found = null;
+    if (hits.length > 0) {
+      for (const hit of hits) {
+        let obj = hit.object;
+        while (obj && obj !== epScene) {
+          const inter = interactables.find(i => i.mesh === obj);
+          if (inter) { found = inter; break; }
+          obj = obj.parent;
+        }
+        if (found) break;
+      }
+    }
+    hotInteractable = found;
+    if (found) {
+      const prompt = found.getPrompt();
+      if (prompt) {
+        elPrompt.textContent = `[E] ${prompt}`;
+        elPrompt.classList.add('visible');
+        elCrosshair.classList.add('hot');
+      } else {
+        elPrompt.classList.remove('visible');
+        elCrosshair.classList.remove('hot');
+      }
+    } else {
+      elPrompt.classList.remove('visible');
+      elCrosshair.classList.remove('hot');
+    }
+  }
+  function tryInteract() {
+    if (hotInteractable && hotInteractable.canInteract()) {
+      hotInteractable.onInteract();
+      updateInteraction();
+    }
+  }
+
+  const tmpForward = new THREE.Vector3(), tmpRight = new THREE.Vector3();
+  function updatePlayer(dt) {
+    let mx = 0, mz = 0;
+    if (keys['w'] || keys['ц'] || keys['arrowup'])    mz -= 1;
+    if (keys['s'] || keys['ы'] || keys['arrowdown'])  mz += 1;
+    if (keys['a'] || keys['ф'] || keys['arrowleft'])  mx -= 1;
+    if (keys['d'] || keys['в'] || keys['arrowright']) mx += 1;
+    if (touch.moveId !== null) { mx += touch.moveDX; mz += touch.moveDY; }
+    const len = Math.hypot(mx, mz);
+    if (len > 1) { mx /= len; mz /= len; }
+
+    tmpForward.set(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
+    tmpRight.set(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
+    const sprint = keys['shift'] || keys['shiftleft'] || keys['shiftright'];
+    const speed = sprint ? RUN : WALK;
+    const targetVx = (tmpForward.x * (-mz) + tmpRight.x * mx) * speed;
+    const targetVz = (tmpForward.z * (-mz) + tmpRight.z * mx) * speed;
+    player.vel.x += (targetVx - player.vel.x) * Math.min(1, dt * 12);
+    player.vel.z += (targetVz - player.vel.z) * Math.min(1, dt * 12);
+    player.pos.x += player.vel.x * dt;
+    player.pos.z += player.vel.z * dt;
+    resolveCollisions(player.pos, PR);
+
+    epCamera.position.copy(player.pos);
+    epCamera.position.y = EYE;
+    epCamera.rotation.order = 'YXZ';
+    epCamera.rotation.y = player.yaw;
+    epCamera.rotation.x = player.pitch;
+    epFlash.intensity = player.flashlightOn ? 3.2 : 0;
+
+    if (state.gameOver || state.won) return;
+
+    if (state.gateOpen && player.pos.z < -47 && !state.won) {
+      state.won = true;
+      showOverlay('win', 'ВЫ ВЫБРАЛИСЬ',
+        'Гермозатвор остался позади. Лестница вывела вас обратно на поверхность. Что-то внизу всё ещё смотрит вам вслед.');
+      audioEngine.playDistantCry();
+      setTimeout(() => audioEngine.playSubterraneanRumble(), 600);
+    }
+  }
+
+  function updateEntity(dt) {
+    if (!entity.active || state.gameOver || state.won) return;
+    const dx = player.pos.x - entity.pos.x, dz = player.pos.z - entity.pos.z;
+    const dist = Math.sqrt(dx*dx + dz*dz);
+    if (dist < 1.5) {
+      entity.caught = true;
+      state.gameOver = true;
+      audioEngine.playHeartbeatPulse(1.0);
+      setTimeout(() => audioEngine.playDistantCry(), 100);
+      setTimeout(() => audioEngine.playWallScratching(), 300);
+      showOverlay('caught', 'ВЫ ПОЙМАНЫ',
+        'Тёмная фигура догнала вас в коридоре. Не хватило одного шага. Попробуйте снова — бегите быстрее.');
+      return;
+    }
+    if (dist > 0.05) {
+      const step = entity.speed * dt;
+      entity.pos.x += (dx / dist) * step;
+      entity.pos.z += (dz / dist) * step;
+      resolveCollisions(entity.pos, 0.4);
+    }
+    entity.mesh.position.set(entity.pos.x, 0, entity.pos.z);
+    const targetYaw = Math.atan2(dx, dz);
+    let dyaw = targetYaw - entity.mesh.rotation.y;
+    while (dyaw > Math.PI) dyaw -= Math.PI * 2;
+    while (dyaw < -Math.PI) dyaw += Math.PI * 2;
+    entity.mesh.rotation.y += dyaw * Math.min(1, dt * 6);
+    if (dist < 4 && Math.random() < dt * 1.2) audioEngine.playHeartbeatPulse(1.0);
+  }
+
+  function updateGate(dt) {
+    if (!gateDoor.isOpening) return;
+    gateDoor.opening = Math.min(1, gateDoor.opening + dt / 2.0);
+    const ease = 1 - Math.pow(1 - gateDoor.opening, 3);
+    gateDoor.mesh.position.y = gateDoor.baseY + ease * 3.2;
+    if (gateDoor.opening >= 1) gateDoor.isOpening = false;
+  }
+
+  function showOverlay(kind, title, text) {
+    elOverlay.className = 'visible ' + kind;
+    elOverlayTitle.textContent = title;
+    elOverlayText.textContent = text;
+    if (document.pointerLockElement === glCanvas) document.exitPointerLock();
+  }
+  function hideOverlay() { elOverlay.className = ''; }
+
+  function resetState() {
+    state.hasHandle = false;
+    state.handleInstalled = false;
+    state.powerOn = false;
+    state.gateOpen = false;
+    state.gameOver = false;
+    state.won = false;
+  }
+  function resetLevelVisuals() {
+    for (const inter of interactables) {
+      if (inter.id === 'handle') inter.mesh.visible = true;
+    }
+    gateDoor.mesh.position.y = gateDoor.baseY;
+    gateDoor.opening = 0;
+    gateDoor.isOpening = false;
+    gateDoor.wall.enabled = true;
+    epEmergLight.intensity = 0;
+    entity.mesh.visible = false;
+    entity.active = false;
+    entity.caught = false;
+  }
+
+  function isTouchDevice() { return 'ontouchstart' in window || navigator.maxTouchPoints > 0; }
+
+  function onKeyDown(e) {
+    if (!active) return;
+    if (e.repeat) return;
+    const k = e.key.toLowerCase();
+    keys[k] = true;
+    if (k === 'f' || k === 'а') toggleFlashlight();
+    if (k === 'e' || k === 'у') tryInteract();
+    if (e.key === 'Escape') {
+      if (pointerLocked) document.exitPointerLock();
+      else togglePause();
+    }
+  }
+  function onKeyUp(e) {
+    if (!active) return;
+    keys[e.key.toLowerCase()] = false;
+  }
+  function onMouseMove(e) {
+    if (!active || !pointerLocked) return;
+    const sens = 0.0022;
+    player.yaw -= e.movementX * sens;
+    player.pitch -= e.movementY * sens;
+    player.pitch = Math.max(-Math.PI/2 + 0.05, Math.min(Math.PI/2 - 0.05, player.pitch));
+  }
+  function onPointerLockChange() {
+    pointerLocked = (document.pointerLockElement === glCanvas);
+    if (active && !pointerLocked && !state.gameOver && !state.won && !paused) togglePause();
+  }
+  function onCanvasClick() {
+    if (!active) return;
+    if (!pointerLocked && !isTouchDevice() && !state.gameOver && !state.won && !paused) glCanvas.requestPointerLock?.();
+  }
+  function toggleFlashlight() {
+    player.flashlightOn = !player.flashlightOn;
+    epFlash.intensity = player.flashlightOn ? 3.2 : 0;
+    elBtnF.style.background = player.flashlightOn ? 'rgba(189,125,59,0.55)' : '';
+  }
+  function togglePause() {
+    if (!active) return;
+    paused = !paused;
+    elPause.classList.toggle('visible', paused);
+    if (paused && pointerLocked) document.exitPointerLock();
+    if (!paused && !isTouchDevice()) glCanvas.requestPointerLock?.();
+  }
+
+  function bindTouchControls() {
+    if (!isTouchDevice()) return;
+    elTouch.classList.add('visible');
+    elHint.style.display = 'none';
+    const js = elJoystick;
+    js.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const t = e.changedTouches[0];
+      touch.moveId = t.identifier;
+      touch.moveStartX = t.clientX;
+      touch.moveStartY = t.clientY;
+    }, { passive: false });
+    js.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      for (const t of e.changedTouches) {
+        if (t.identifier === touch.moveId) {
+          const dx = t.clientX - touch.moveStartX, dy = t.clientY - touch.moveStartY;
+          const maxR = 55, dist = Math.hypot(dx, dy);
+          const nx = dist > maxR ? dx / dist * maxR : dx;
+          const ny = dist > maxR ? dy / dist * maxR : dy;
+          touch.moveDX = nx / maxR; touch.moveDY = ny / maxR;
+          elJoystickKnob.style.transform = `translate(calc(-50% + ${nx}px), calc(-50% + ${ny}px))`;
+        }
+      }
+    }, { passive: false });
+    const endMove = (e) => {
+      for (const t of e.changedTouches) {
+        if (t.identifier === touch.moveId) {
+          touch.moveId = null; touch.moveDX = 0; touch.moveDY = 0;
+          elJoystickKnob.style.transform = 'translate(-50%, -50%)';
+        }
+      }
+    };
+    js.addEventListener('touchend', endMove, { passive: false });
+    js.addEventListener('touchcancel', endMove, { passive: false });
+
+    elHud.addEventListener('touchstart', (e) => {
+      for (const t of e.changedTouches) {
+        if (t.clientX > window.innerWidth / 2 &&
+            !e.target.closest('#ep1-joystick, #ep1-btn-f, #ep1-btn-e, #ep1-pause, #ep1-overlay-msg')) {
+          touch.lookId = t.identifier;
+          touch.lookLastX = t.clientX; touch.lookLastY = t.clientY;
+          break;
+        }
+      }
+    }, { passive: true });
+    elHud.addEventListener('touchmove', (e) => {
+      for (const t of e.changedTouches) {
+        if (t.identifier === touch.lookId) {
+          player.yaw -= (t.clientX - touch.lookLastX) * 0.005;
+          player.pitch -= (t.clientY - touch.lookLastY) * 0.005;
+          player.pitch = Math.max(-Math.PI/2 + 0.05, Math.min(Math.PI/2 - 0.05, player.pitch));
+          touch.lookLastX = t.clientX; touch.lookLastY = t.clientY;
+        }
+      }
+    }, { passive: true });
+    const endLook = (e) => {
+      for (const t of e.changedTouches) if (t.identifier === touch.lookId) touch.lookId = null;
+    };
+    elHud.addEventListener('touchend', endLook, { passive: true });
+    elHud.addEventListener('touchcancel', endLook, { passive: true });
+    elBtnF.addEventListener('touchstart', (e) => { e.preventDefault(); toggleFlashlight(); });
+    elBtnE.addEventListener('touchstart', (e) => { e.preventDefault(); tryInteract(); });
+  }
+
+  function init() {
+    if (inited) return;
+    inited = true;
+    elHud = document.getElementById('ep1-hud');
+    elCrosshair = document.getElementById('ep1-crosshair');
+    elPrompt = document.getElementById('ep1-prompt');
+    elObjective = document.getElementById('ep1-objective');
+    elInventory = document.getElementById('ep1-inventory');
+    elWarning = document.getElementById('ep1-warning');
+    elHint = document.getElementById('ep1-hint');
+    elOverlay = document.getElementById('ep1-overlay-msg');
+    elOverlayTitle = document.getElementById('ep1-overlay-title');
+    elOverlayText = document.getElementById('ep1-overlay-text');
+    elPause = document.getElementById('ep1-pause');
+    elFade = document.getElementById('ep1-fade');
+    elStartScreen = document.getElementById('ep1-startscreen');
+    elTouch = document.getElementById('ep1-touch');
+    elJoystick = document.getElementById('ep1-joystick');
+    elJoystickKnob = document.getElementById('ep1-joystick-knob');
+    elBtnF = document.getElementById('ep1-btn-f');
+    elBtnE = document.getElementById('ep1-btn-e');
+
+    epScene = new THREE.Scene();
+    epScene.background = new THREE.Color(0x000000);
+    epScene.fog = new THREE.FogExp2(0x000000, 0.075);
+    epCamera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 100);
+    epCamera.position.set(0, EYE, 6);
+    epCamera.rotation.order = 'YXZ';
+    epScene.add(epCamera);
+
+    buildLevel();
+
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('pointerlockchange', onPointerLockChange);
+    glCanvas.addEventListener('click', onCanvasClick);
+
+    document.getElementById('ep1-btn-retry').addEventListener('click', restartEpisode);
+    document.getElementById('ep1-btn-exit').addEventListener('click', () => stop());
+    document.getElementById('ep1-btn-resume').addEventListener('click', () => togglePause());
+    document.getElementById('ep1-btn-quit').addEventListener('click', () => stop());
+
+    bindTouchControls();
+  }
+
+  function start() {
+    if (active) return;
+    active = true;
+    paused = false;
+    resetState();
+    resetLevelVisuals();
+    player.pos.set(0, EYE, 6);
+    player.vel.set(0, 0, 0);
+    player.yaw = 0;
+    player.pitch = 0;
+    player.flashlightOn = true;
+    epFlash.intensity = 3.2;
+    elBtnF.style.background = 'rgba(189,125,59,0.55)';
+
+    document.body.classList.add('ep1-active');
+    elHud.classList.add('active');
+    hideOverlay();
+    elPause.classList.remove('visible');
+    updateObjective();
+    updateInventory();
+
+    if (!isTouchDevice()) glCanvas.requestPointerLock?.();
+    if (!started) { started = true; audioEngine.playSubterraneanRumble(); }
+    audioEngine.playFootsteps();
+  }
+
+  function stop() {
+    if (!active) return;
+    active = false;
+    paused = false;
+    if (document.pointerLockElement === glCanvas) document.exitPointerLock();
+    document.body.classList.remove('ep1-active');
+    elHud.classList.remove('active');
+    hideOverlay();
+    elPause.classList.remove('visible');
+    entity.mesh.visible = false;
+    entity.active = false;
+    saveProgress();
+    syncTapeVideo();
+  }
+
+  function restartEpisode() {
+    hideOverlay();
+    resetState();
+    resetLevelVisuals();
+    player.pos.set(0, EYE, 6);
+    player.vel.set(0, 0, 0);
+    player.yaw = 0;
+    player.pitch = 0;
+    player.flashlightOn = true;
+    epFlash.intensity = 3.2;
+    elBtnF.style.background = 'rgba(189,125,59,0.55)';
+    updateObjective();
+    updateInventory();
+    elWarning.classList.remove('visible');
+    if (!isTouchDevice()) setTimeout(() => glCanvas.requestPointerLock?.(), 100);
+  }
+
+  function onResize() {
+    if (!epCamera) return;
+    epCamera.aspect = window.innerWidth / window.innerHeight;
+    epCamera.updateProjectionMatrix();
+  }
+
+  function tick(dtSec) {
+    if (!active) return;
+    if (paused) { renderer.render(epScene, epCamera); return; }
+    if (state.gameOver || state.won) {
+      if (entity.active) entity.mesh.rotation.y += dtSec * 0.5;
+      renderer.render(epScene, epCamera);
+      return;
+    }
+    updatePlayer(dtSec);
+    updateEntity(dtSec);
+    updateGate(dtSec);
+    updateInteraction();
+    updateWarning();
+    renderer.render(epScene, epCamera);
+  }
+
+  return {
+    init, start, stop, tick, onResize,
+    isActive: () => active
+  };
+})();
+
+/* ============================================================
    ИНИЦИАЛИЗАЦИЯ UI
 ============================================================ */
+function openEpisodeStartscreen() {
+  document.getElementById('ep1-startscreen').style.display = 'flex';
+}
+document.getElementById('btn-enter-ep1').addEventListener('click', openEpisodeStartscreen);
+document.getElementById('btn-hud-ep1').addEventListener('click', openEpisodeStartscreen);
+document.getElementById('ep1-start-go').addEventListener('click', () => {
+  document.getElementById('ep1-startscreen').style.display = 'none';
+  window.Episode1.init();
+  window.Episode1.start();
+});
+document.getElementById('ep1-start-cancel').addEventListener('click', () => {
+  document.getElementById('ep1-startscreen').style.display = 'none';
+});
+
 document.getElementById("btn-enter-house").addEventListener("click", () => {
   document.getElementById("intro-screen").classList.add("hidden");
   audioEngine.init();
@@ -2186,17 +2914,12 @@ document.getElementById("btn-open-photos").addEventListener("click", () => {
   renderPhotoSlotsModal();
   openModalEl(document.getElementById("photos-modal"));
 });
-document.getElementById("btn-close-photos").addEventListener("click", () =>
-  closeModalEl(document.getElementById("photos-modal")));
-document.getElementById("btn-select-bulk").addEventListener("click", () =>
-  document.getElementById("bulk-file-input").click());
-document.getElementById("bulk-file-input").addEventListener("change", (e) => {
-  if (e.target.files) handleBulkFiles(e.target.files);
-});
+document.getElementById("btn-close-photos").addEventListener("click", () => closeModalEl(document.getElementById("photos-modal")));
+document.getElementById("btn-select-bulk").addEventListener("click", () => document.getElementById("bulk-file-input").click());
+document.getElementById("bulk-file-input").addEventListener("change", (e) => { if (e.target.files) handleBulkFiles(e.target.files); });
 
 document.getElementById("btn-open-puzzle").addEventListener("click", openPuzzleModal);
-document.getElementById("btn-close-puzzle").addEventListener("click", () =>
-  closeModalEl(document.getElementById("puzzle-modal")));
+document.getElementById("btn-close-puzzle").addEventListener("click", () => closeModalEl(document.getElementById("puzzle-modal")));
 
 document.getElementById("btn-toggle-flashlight").addEventListener("click", (e) => {
   flashlightOn = !flashlightOn;
@@ -2228,8 +2951,7 @@ document.getElementById("btn-prev-room").addEventListener("click", () =>
 document.getElementById("btn-next-room").addEventListener("click", () =>
   attemptRoomTransition((currentRoomIndex + 1) % ROOMS.length));
 
-document.getElementById("btn-close-final").addEventListener("click", () =>
-  closeModalEl(document.getElementById("final-modal")));
+document.getElementById("btn-close-final").addEventListener("click", () => closeModalEl(document.getElementById("final-modal")));
 
 document.getElementById("btn-reset-progress").addEventListener("click", () => {
   resetProgress();
@@ -2240,11 +2962,7 @@ document.getElementById("btn-reset-progress").addEventListener("click", () => {
   fBtn.textContent = "РЕЖИМ: КВЕСТ";
   fBtn.classList.remove("active");
   fBtn.setAttribute("aria-pressed", "false");
-  if (tapeVideo) {
-    tapeVideo.pause();
-    tapeVideo.currentTime = 0;
-    tapeVideo.classList.remove("playing");
-  }
+  if (tapeVideo) { tapeVideo.pause(); tapeVideo.currentTime = 0; tapeVideo.classList.remove("playing"); }
   closeModalEl(document.getElementById("final-modal"));
   applyRoomTexture(0);
   updateRoomHUD();
@@ -2254,6 +2972,7 @@ document.getElementById("btn-reset-progress").addEventListener("click", () => {
 window.addEventListener("dragover", (e) => e.preventDefault());
 window.addEventListener("drop", (e) => {
   e.preventDefault();
+  if (window.Episode1 && window.Episode1.isActive()) return;
   if (e.dataTransfer && e.dataTransfer.files.length) {
     setPhotosFeedback("");
     renderPhotoSlotsModal();
@@ -2267,7 +2986,7 @@ document.addEventListener("visibilitychange", () => {
     saveProgress();
     if (tapeVideo && !tapeVideo.paused) tapeVideo.pause();
   } else {
-    syncTapeVideo();
+    if (!(window.Episode1 && window.Episode1.isActive())) syncTapeVideo();
   }
 });
 
@@ -2296,16 +3015,15 @@ updateRoomHUD();
 renderPhotoSlotsModal();
 ensureFlashlightSprite();
 
-// Восстановление визуального состояния кнопок после загрузки прогресса
-const fBtn = document.getElementById("btn-toggle-flashlight");
-fBtn.textContent = `ФОНАРЬ [F]: ${flashlightOn ? "ВКЛ" : "ВЫКЛ"}`;
-fBtn.classList.toggle("active", flashlightOn);
-fBtn.setAttribute("aria-pressed", String(flashlightOn));
+const fBtnInit = document.getElementById("btn-toggle-flashlight");
+fBtnInit.textContent = `ФОНАРЬ [F]: ${flashlightOn ? "ВКЛ" : "ВЫКЛ"}`;
+fBtnInit.classList.toggle("active", flashlightOn);
+fBtnInit.setAttribute("aria-pressed", String(flashlightOn));
 
-const fmBtn = document.getElementById("btn-toggle-freemode");
-fmBtn.textContent = `РЕЖИМ: ${freeMode ? "СВОБОДНЫЙ" : "КВЕСТ"}`;
-fmBtn.classList.toggle("active", freeMode);
-fmBtn.setAttribute("aria-pressed", String(freeMode));
+const fmBtnInit = document.getElementById("btn-toggle-freemode");
+fmBtnInit.textContent = `РЕЖИМ: ${freeMode ? "СВОБОДНЫЙ" : "КВЕСТ"}`;
+fmBtnInit.classList.toggle("active", freeMode);
+fmBtnInit.setAttribute("aria-pressed", String(freeMode));
 
 requestAnimationFrame(animate);
 syncTapeVideo();
