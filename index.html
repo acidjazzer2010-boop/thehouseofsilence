@@ -188,20 +188,78 @@
   .hud-btn.ep1 { border-color: var(--rust-red); color: #e8a596; }
   .hud-btn.ep1:hover { background: var(--rust-red); color: #fff; border-color: var(--rust-red); }
   .depth-nav {
-    position: fixed; right: 20px; top: 50%; transform: translateY(-50%); z-index: 10;
-    display: flex; flex-direction: column; gap: 11px;
-    background: rgba(5,7,5,0.85); border: 1px solid var(--border-dim); padding: 12px 10px;
+    position: fixed;
+    left: 50%;
+    bottom: 16px;
+    transform: translateX(-50%);
+    z-index: 11;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    background: rgba(4, 5, 4, 0.72);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(120, 138, 115, 0.16);
+    padding: 6px 10px;
+    pointer-events: auto;
   }
-  .depth-node { display: flex; align-items: center; justify-content: flex-end; gap: 8px; cursor: pointer; opacity: 0.55; transition: all 0.2s ease; }
-  .depth-node:hover, .depth-node.active { opacity: 1; }
-  .depth-node.locked-secret { opacity: 0.24; cursor: not-allowed; }
-  .depth-label { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; display: none; }
-  .depth-node:hover .depth-label, .depth-node.active .depth-label { display: inline-block; }
-  .depth-dot { width: 10px; height: 10px; border: 1px solid var(--mold-green); }
-  .depth-node.active .depth-dot { background: var(--amber-glow); border-color: var(--amber-glow); box-shadow: 0 0 10px var(--amber-glow); }
-  .depth-node.solved .depth-dot { border-color: #528c63; background: rgba(82,140,99,0.5); }
-  .depth-node.secret .depth-dot { border-color: #b8422e; transform: rotate(45deg); }
-  .depth-node.procedural .depth-dot { border-color: #8f3222; border-style: dashed; }
+
+  .depth-node {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    opacity: 0.48;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+  }
+
+  .depth-node:hover, .depth-node.active {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+
+  .depth-node.locked-secret {
+    opacity: 0.2;
+    cursor: not-allowed;
+  }
+
+  /* Текстовая метка убрана из оверлея поверх сцены — используется атрибут title */
+  .depth-label {
+    display: none !important;
+  }
+
+  .depth-dot {
+    width: 8px;
+    height: 8px;
+    border: 1px solid rgba(140, 160, 135, 0.65);
+    background: transparent;
+    transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  .depth-node.active .depth-dot {
+    background: var(--amber-glow);
+    border-color: var(--amber-glow);
+    box-shadow: 0 0 8px rgba(189, 125, 59, 0.75);
+  }
+
+  .depth-node.solved .depth-dot {
+    border-color: #528c63;
+    background: rgba(82, 140, 99, 0.55);
+  }
+
+  .depth-node.secret .depth-dot {
+    border-color: #b8422e;
+    transform: rotate(45deg);
+    width: 7px;
+    height: 7px;
+  }
+
+  .depth-node.procedural .depth-dot {
+    border-color: #8f3222;
+    border-style: dashed;
+  }
   .bottom-hud {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
     display: flex; justify-content: space-between; align-items: flex-end;
@@ -260,10 +318,11 @@
     padding: 24px; text-align: center; font-size: 14px; letter-spacing: 1.5px;
   }
   #fatal-overlay.visible { display: flex; }
-  @media (max-width: 768px) {
-    .bottom-hud { flex-direction: column; align-items: stretch; gap: 10px; }
+  @media (max-width: 900px) {
+    .bottom-hud { flex-direction: column; align-items: stretch; gap: 10px; padding-bottom: 54px; }
     .nav-controls { align-items: stretch; }
-    .depth-nav { right: 8px; padding: 8px 6px; gap: 8px; }
+    .depth-nav { bottom: 10px; padding: 5px 8px; gap: 4px; }
+    .depth-node { width: 15px; height: 15px; }
     #tape-video { width: 94vw; height: 64vh; }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -1870,7 +1929,8 @@ function buildDepthNav() {
     node.setAttribute("role", "button"); node.setAttribute("tabindex", "0");
     const numStr = idx < 9 ? `0${idx + 1}` : `${idx + 1}`;
     const shortName = lockedSecret ? "ЗАПЕЧАТАНО" : r.title.split(" ")[0];
-    node.innerHTML = `<span class="depth-label">${numStr} // ${shortName}</span><span class="depth-dot"></span>`;
+    node.setAttribute("title", `${numStr} // ${shortName}`);
+    node.innerHTML = `<span class="depth-dot"></span>`;
     node.addEventListener("click", () => attemptRoomTransition(idx));
     node.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); attemptRoomTransition(idx); }
@@ -1887,8 +1947,8 @@ function refreshDepthNavState() {
     node.classList.toggle("solved", r.solved);
     node.classList.toggle("locked-secret", lockedSecret);
     const numStr = idx < 9 ? `0${idx + 1}` : `${idx + 1}`;
-    const lbl = node.querySelector(".depth-label");
-    if (lbl) lbl.textContent = `${numStr} // ${lockedSecret ? "ЗАПЕЧАТАНО" : r.title.split(" ")[0]}`;
+    const shortName = lockedSecret ? "ЗАПЕЧАТАНО" : r.title.split(" ")[0];
+    node.setAttribute("title", `${numStr} // ${shortName}`);
   });
 }
 function updateRoomHUD() {
