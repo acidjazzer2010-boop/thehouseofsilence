@@ -505,3 +505,7 @@
     align-items: center; justify-content: center;
     background: rgba(1,2,1,0.96);
   }
+
+  @media (max-width: 640px) {
+    #ending-selector-row { grid-template-columns: 1fr !important; }
+  }
