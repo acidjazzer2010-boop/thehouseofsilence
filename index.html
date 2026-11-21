@@ -26,11 +26,30 @@
     user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
   }
   #gl-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; z-index: 1; touch-action: none; }
-  #tape-video {
+
+  /* Слой анимированных комнат (GIF) и видео катушек */
+  #gif-room-layer {
     position: fixed; inset: 0; width: 100vw; height: 100vh;
-    object-fit: cover; z-index: 1; opacity: 0; pointer-events: none; transition: opacity 0.65s ease;
+    object-fit: cover; z-index: 1; opacity: 0; pointer-events: none;
+    transition: opacity 0.45s ease;
   }
-  #tape-video.playing { opacity: 1; }
+  #gif-room-layer.visible { opacity: 1; }
+
+  #tape-video-wrap {
+    position: fixed; inset: 0; z-index: 1;
+    display: flex; align-items: center; justify-content: center;
+    background: #020302; opacity: 0; pointer-events: none;
+    transition: opacity 0.65s ease;
+  }
+  #tape-video-wrap.playing { opacity: 1; }
+  #tape-video {
+    width: 82vw; height: 82vh; max-width: 1400px; max-height: 820px;
+    object-fit: contain;
+    border: 1px solid rgba(120, 138, 115, 0.28);
+    box-shadow: 0 0 90px rgba(0, 0, 0, 0.98), inset 0 0 40px rgba(0,0,0,0.85);
+    background: #000;
+  }
+
   #fx-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; z-index: 2; pointer-events: none; }
   .vignette-overlay {
     position: fixed; inset: 0; pointer-events: none; z-index: 3;
@@ -40,16 +59,105 @@
   }
   #intro-screen {
     position: fixed; inset: 0; z-index: 50;
-    background: radial-gradient(circle at center, #0a0d0a 0%, #010201 100%);
-    display: flex; flex-direction: column; justify-content: center; align-items: center;
-    padding: 24px; text-align: center; transition: opacity 0.8s ease, visibility 0.8s ease;
+    background: #010201;
+    display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+    padding: 0 24px 54px; text-align: center;
+    overflow: hidden;
+    transition: opacity 0.85s ease, visibility 0.85s ease;
   }
   #intro-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-  .intro-box { max-width: 660px; border: 1px solid var(--border-dim); background: rgba(7,9,7,0.96); padding: 36px 32px; box-shadow: 0 25px 90px rgba(0,0,0,0.99); }
-  .intro-tag { font-size: 10px; letter-spacing: 3.5px; color: var(--rust-red); text-transform: uppercase; margin-bottom: 10px; }
-  .intro-title { font-size: 28px; letter-spacing: 6px; font-weight: bold; color: var(--bone-white); margin-bottom: 14px; }
-  .intro-desc { font-size: 13px; line-height: 1.68; color: #929c8e; margin-bottom: 24px; }
-  .intro-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+
+  #intro-gif-bg {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    filter: contrast(1.12) brightness(0.76) saturate(0.72);
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  #intro-scrim {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(180deg, rgba(1,2,1,0.52) 0%, rgba(1,2,1,0.12) 42%, rgba(1,2,1,0.72) 76%, rgba(0,0,0,0.97) 100%),
+      radial-gradient(circle at 50% 45%, transparent 35%, rgba(0,0,0,0.86) 100%);
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .intro-footer-panel {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    max-width: 680px;
+    width: 100%;
+  }
+
+  .intro-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .btn-indie-horror {
+    position: relative;
+    background: rgba(6, 5, 5, 0.88);
+    color: var(--bone-white);
+    border: 1px solid rgba(143, 50, 34, 0.78);
+    padding: 15px 34px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow:
+      0 0 28px rgba(0, 0, 0, 0.95),
+      0 0 18px rgba(143, 50, 34, 0.28),
+      inset 0 0 18px rgba(0, 0, 0, 0.9);
+    transition: transform 0.18s ease, background 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, color 0.22s ease;
+  }
+
+  .btn-indie-horror::before {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border: 1px solid rgba(189, 125, 59, 0.22);
+    pointer-events: none;
+  }
+
+  .btn-indie-horror:hover {
+    background: rgba(143, 50, 34, 0.34);
+    border-color: var(--rust-red);
+    color: #f0ebe1;
+    transform: translateY(-1px);
+    box-shadow:
+      0 0 34px rgba(143, 50, 34, 0.55),
+      inset 0 0 22px rgba(20, 4, 2, 0.85);
+  }
+
+  .btn-indie-horror:active {
+    transform: translateY(1px);
+  }
+
+  .btn-indie-horror.secondary-horror {
+    padding: 13px 22px;
+    font-size: 11px;
+    letter-spacing: 3px;
+    border-color: rgba(120, 138, 115, 0.45);
+    color: #b4bdb0;
+  }
+
+  .btn-indie-horror.secondary-horror:hover {
+    background: rgba(24, 30, 24, 0.92);
+    border-color: var(--amber-glow);
+    color: var(--bone-white);
+  }
   .btn {
     background: rgba(18,22,18,0.94); color: var(--bone-white); border: 1px solid var(--mold-green);
     padding: 11px 18px; font-family: inherit; font-size: 12px; letter-spacing: 2px;
@@ -81,16 +189,18 @@
   .hud-btn.ep1:hover { background: var(--rust-red); color: #fff; border-color: var(--rust-red); }
   .depth-nav {
     position: fixed; right: 20px; top: 50%; transform: translateY(-50%); z-index: 10;
-    display: flex; flex-direction: column; gap: 14px;
-    background: rgba(5,7,5,0.85); border: 1px solid var(--border-dim); padding: 14px 10px;
+    display: flex; flex-direction: column; gap: 11px;
+    background: rgba(5,7,5,0.85); border: 1px solid var(--border-dim); padding: 12px 10px;
   }
   .depth-node { display: flex; align-items: center; justify-content: flex-end; gap: 8px; cursor: pointer; opacity: 0.55; transition: all 0.2s ease; }
   .depth-node:hover, .depth-node.active { opacity: 1; }
+  .depth-node.locked-secret { opacity: 0.24; cursor: not-allowed; }
   .depth-label { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; display: none; }
   .depth-node:hover .depth-label, .depth-node.active .depth-label { display: inline-block; }
   .depth-dot { width: 10px; height: 10px; border: 1px solid var(--mold-green); }
   .depth-node.active .depth-dot { background: var(--amber-glow); border-color: var(--amber-glow); box-shadow: 0 0 10px var(--amber-glow); }
   .depth-node.solved .depth-dot { border-color: #528c63; background: rgba(82,140,99,0.5); }
+  .depth-node.secret .depth-dot { border-color: #b8422e; transform: rotate(45deg); }
   .depth-node.procedural .depth-dot { border-color: #8f3222; border-style: dashed; }
   .bottom-hud {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
@@ -100,7 +210,7 @@
   }
   .bottom-hud > * { pointer-events: auto; }
   .room-dossier {
-    max-width: 560px; background: var(--panel-bg);
+    max-width: 580px; background: var(--panel-bg);
     border-left: 3px solid var(--rust-red);
     border-top: 1px solid var(--border-dim);
     border-right: 1px solid var(--border-dim);
@@ -144,10 +254,6 @@
   }
   .scale-pan-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 10px 0; }
   .weight-card { border: 1px solid var(--border-dim); padding: 10px; text-align: center; background: #0d110d; }
-  .photo-grid { display: grid; grid-template-columns: 1fr; gap: 10px; max-height: 310px; overflow-y: auto; margin: 12px 0; }
-  .photo-slot { display: flex; justify-content: space-between; align-items: center; background: #0f130f; border: 1px solid var(--border-dim); padding: 8px 12px; font-size: 11px; }
-  .photo-slot-status { color: var(--amber-glow); font-size: 10px; }
-  .photo-slot-status.loaded { color: #7cd492; }
   #fatal-overlay {
     position: fixed; inset: 0; z-index: 9999; background: rgba(1,2,1,0.97);
     color: var(--bone-white); display: none; align-items: center; justify-content: center;
@@ -157,7 +263,8 @@
   @media (max-width: 768px) {
     .bottom-hud { flex-direction: column; align-items: stretch; gap: 10px; }
     .nav-controls { align-items: stretch; }
-    .depth-nav { right: 8px; padding: 8px 6px; }
+    .depth-nav { right: 8px; padding: 8px 6px; gap: 8px; }
+    #tape-video { width: 94vw; height: 64vh; }
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
@@ -168,7 +275,8 @@
   body.ep1-active .depth-nav,
   body.ep1-active .bottom-hud,
   body.ep1-active #fx-canvas,
-  body.ep1-active #tape-video,
+  body.ep1-active #tape-video-wrap,
+  body.ep1-active #gif-room-layer,
   body.ep1-active .vignette-overlay {
     display: none !important;
   }
@@ -323,23 +431,22 @@
 <body>
 
 <canvas id="gl-canvas" aria-label="Сцена"></canvas>
-<video id="tape-video" src="tape.mp4" playsinline preload="auto"></video>
+<img id="gif-room-layer" alt="" aria-hidden="true">
+<div id="tape-video-wrap" aria-hidden="true">
+  <video id="tape-video" src="tape.mp4" playsinline preload="auto"></video>
+</div>
 <canvas id="fx-canvas" aria-hidden="true"></canvas>
 <div class="vignette-overlay" aria-hidden="true"></div>
 
+<audio id="intro-bgm" src="Abandoned%20Victims.mp3" loop preload="auto"></audio>
+
 <div id="intro-screen">
-  <div class="intro-box">
-    <div class="intro-tag">АРХИВНОЕ ДЕЛО № 404-06</div>
-    <h1 class="intro-title">ОСОБНЯК // БЕЗМОЛВИЕ</h1>
-    <p class="intro-desc">
-      В этих стенах произошло то, о чём не осталось ни одной официальной записи.
-      Осматривайте стены, ткани, стекло и металл лучом фонаря — ответы на замки выцарапаны прямо на поверхностях комнат.
-      В глубине дома также скрыта аномальная зона, меняющая облик при каждом входе.
-    </p>
+  <img id="intro-gif-bg" src="title_l.gif" alt="Особняк // Безмолвие">
+  <div id="intro-scrim" aria-hidden="true"></div>
+  <div class="intro-footer-panel">
     <div class="intro-actions">
-      <button class="btn btn-primary" id="btn-enter-house">ВОЙТИ В ДОМ</button>
-      <button class="btn" id="btn-enter-ep1" style="border-color: var(--rust-red); color: #e8a596;">▶ ЭПИЗОД 1: СПУСК</button>
-      <button class="btn" id="btn-intro-upload">ЗАГРУЗИТЬ 5 ФОТО КОМНАТ</button>
+      <button class="btn-indie-horror" id="btn-enter-house">ВОЙТИ В ДОМ</button>
+      <button class="btn-indie-horror secondary-horror" id="btn-enter-ep1">СПУСК В ПОДВАЛ</button>
     </div>
   </div>
 </div>
@@ -347,11 +454,10 @@
 <header class="top-hud">
   <div>
     <div class="brand-title">ОСОБНЯК // БЕЗМОЛВИЕ</div>
-    <div class="room-indicator" id="hud-room-indicator">ЛОКАЦИЯ 01 / 06 — ПРИХОЖАЯ С ДИКТОФОНОМ</div>
+    <div class="room-indicator" id="hud-room-indicator">ЛОКАЦИЯ 01 / 10 — ПРИХОЖАЯ С ДИКТОФОНОМ</div>
   </div>
   <div class="hud-controls">
-    <button class="hud-btn ep1" id="btn-hud-ep1">▶ ЭПИЗОД 1</button>
-    <button class="hud-btn" id="btn-open-photos" aria-pressed="false">ФОТО КОМНАТ [0/5]</button>
+    <button class="hud-btn ep1" id="btn-hud-ep1">▶ СПУСК В ПОДВАЛ</button>
     <button class="hud-btn active" id="btn-toggle-flashlight" aria-pressed="true">ФОНАРЬ [F]: ВКЛ</button>
     <button class="hud-btn" id="btn-toggle-freemode" aria-pressed="false">РЕЖИМ: КВЕСТ</button>
     <button class="hud-btn" id="btn-toggle-sound" aria-pressed="false">ЗВУК: ВЫКЛ</button>
@@ -363,8 +469,8 @@
 <footer class="bottom-hud">
   <div class="room-dossier">
     <div class="dossier-header">
-      <span id="dossier-code">СЕКТОР 01 // ВХОДНАЯ ГРУППА</span>
-      <span id="dossier-file-hint">ФАЙЛ: 1000404062.jpg</span>
+      <span id="dossier-code">СЕКТОР 01 // TAPEROOM</span>
+      <span id="dossier-file-hint">ФАЙЛ: Taperoom.jpg</span>
     </div>
     <h2 class="dossier-title" id="dossier-title">Прихожая с катушечным диктофоном</h2>
     <p class="dossier-text" id="dossier-text">
@@ -397,24 +503,11 @@
   </div>
 </div>
 
-<div class="modal-backdrop" id="photos-modal" role="dialog" aria-modal="true" aria-labelledby="photos-title">
-  <div class="modal-card">
-    <button class="modal-close" id="btn-close-photos" aria-label="Закрыть">✕</button>
-    <div class="modal-tag">ТЕКСТУРЫ ЛОКАЦИЙ</div>
-    <h3 class="modal-title" id="photos-title">Загрузка рендеров комнат</h3>
-    <p class="modal-body">Выберите файлы <code>1000404061.jpg</code> — <code>1000404065.jpg</code> или перетащите их в окно. Максимум 25 МБ на файл. Без файлов комнаты используют процедурные заглушки со встроенными подсказками.</p>
-    <input type="file" id="bulk-file-input" multiple accept="image/jpeg,image/png,image/webp" style="display:none">
-    <button class="btn btn-primary" id="btn-select-bulk" style="width:100%; margin-bottom:10px;">ВЫБРАТЬ ВСЕ 5 ФАЙЛОВ</button>
-    <div class="photo-grid" id="photo-slots-container"></div>
-    <div class="puzzle-feedback" id="photos-feedback"></div>
-  </div>
-</div>
-
 <div class="modal-backdrop" id="final-modal" role="dialog" aria-modal="true" aria-labelledby="final-title">
   <div class="modal-card">
     <div class="modal-tag">АРХИВ ЗАКРЫТ</div>
     <h3 class="modal-title" id="final-title">Дело № 404-06</h3>
-    <p class="modal-body">Вы прошли все сектора особняка, включая его меняющееся ядро. Дом отпустил вас... на время.</p>
+    <p class="modal-body">Вы прошли все основные и тайные сектора особняка. Дом отпустил вас... на время.</p>
     <div style="display:flex; gap:8px; margin-top:16px;">
       <button class="btn" id="btn-reset-progress">СБРОСИТЬ ПРОГРЕСС</button>
       <button class="btn btn-primary" id="btn-close-final" style="flex:1">ЗАКРЫТЬ</button>
@@ -460,11 +553,11 @@
 
 <div id="ep1-startscreen">
   <div class="intro-box" style="max-width:560px;">
-    <div class="intro-tag">ЭПИЗОД 1 // 3D-ПОГРУЖЕНИЕ</div>
-    <h2 class="intro-title" style="font-size:22px;">СПУСК ПОД ФУНДАМЕНТ</h2>
+    <div class="intro-tag">СПЕЦУРОВЕНЬ // 3D-ПОГРУЖЕНИЕ</div>
+    <h2 class="intro-title" style="font-size:22px;">СПУСК В ПОДВАЛ</h2>
     <p class="intro-desc">
-      Ты спустишься в бетонный коридор, найдёшь рукоятку механизма, включишь аварийное питание
-      и откроешь гермозатвор. Как только питание вернётся — ты уже не один в этих стенах.<br><br>
+      Сырые бетонные стены фундамента покрыты чёрной плесенью, ржавчиной и бурыми подтёками.
+      Найдите рукоятку механизма, включите аварийное питание и откройте гермозатвор.<br><br>
       <strong style="color:var(--amber-glow);">WASD</strong> — движение,
       <strong style="color:var(--amber-glow);">мышь</strong> — обзор,
       <strong style="color:var(--amber-glow);">Shift</strong> — бег,
@@ -486,12 +579,13 @@
 'use strict';
 
 /* ============================================================
-   КОНСТАНТЫ
+   КОНСТАНТЫ И СПИСОК КОМНАТ
+   1-5: основные (Taperoom.jpg, Gallery.jpg, attic.jpg, Surgeryroom.jpg, Bunker.jpg)
+   6-9: секретные (открываются только после прохождения 1-5)
+   10:  процедурная аномалия
 ============================================================ */
-const MAX_UPLOAD_SIZE   = 25 * 1024 * 1024;
-const MAX_TEXTURE_DIM   = 4096;
 const REDUCE_MOTION     = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const STORAGE_KEY       = 'osobnyak_progress_v3';
+const STORAGE_KEY       = 'osobnyak_progress_v4';
 const FLASHLIGHT_RATIO  = 0.34;
 const TRANSITION_SPEED  = 0.026;
 const POINTER_LERP      = 0.12;
@@ -500,10 +594,10 @@ const ENTITY_EVADE_LERP = 0.14;
 
 const ROOMS = [
   {
-    id: 0, code: "СЕКТОР 01 // ПРИХОЖАЯ", fileName: "1000404062.jpg",
+    id: 0, code: "СЕКТОР 01 // TAPEROOM", fileName: "Taperoom.jpg",
     title: "Прихожая с катушечным диктофоном",
     desc: "Сырые обои отслаиваются от гнилой штукатурки. В центре на покосившемся столе стоит ржавый бобинный диктофон. Справа — тёмный проём.",
-    portal: { x: 0.62, y: 0.48, label: "Проём в коридор" },
+    portal: { x: 0.62, y: 0.48, label: "Проём в Gallery" },
     artifact: { x: 0.41, y: 0.42, label: "Катушечный диктофон" },
     shadowSpots: [{ x: 0.59, y: 0.52, scale: 1.05 }, { x: 0.67, y: 0.55, scale: 0.90 }],
     palette: { wall: "#18201b", floor: "#0d110e", light: "#6c8074" },
@@ -513,10 +607,10 @@ const ROOMS = [
     puzzleType: "frequency", targetFreq: 442
   },
   {
-    id: 1, code: "СЕКТОР 02 // ГАЛЕРЕЯ", fileName: "1000404063.jpg",
-    title: "Коридор с пустыми рамами и верёвками",
+    id: 1, code: "СЕКТОР 02 // GALLERY", fileName: "Gallery.jpg",
+    title: "Галерея с пустыми рамами и цепями",
     desc: "Вытянутая анфилада с облезлыми стенами, пустыми рамами и тяжёлыми цепями.",
-    portal: { x: 0.50, y: 0.46, label: "Дальний переход к чердаку" },
+    portal: { x: 0.50, y: 0.46, label: "Подъём в Attic" },
     artifact: { x: 0.31, y: 0.44, label: "Узел с кодовым замком" },
     shadowSpots: [{ x: 0.45, y: 0.52, scale: 0.85 }, { x: 0.55, y: 0.50, scale: 0.92 }],
     palette: { wall: "#1c221b", floor: "#121510", light: "#7a8c76" },
@@ -526,10 +620,10 @@ const ROOMS = [
     puzzleType: "roman_code", targetCode: ["I", "IV", "VII", "IX"]
   },
   {
-    id: 2, code: "СЕКТОР 03 // ЧЕРДАК", fileName: "1000404064.jpg",
+    id: 2, code: "СЕКТОР 03 // ATTIC", fileName: "attic.jpg",
     title: "Чердак с заляпанными простынями",
     desc: "Под гниющими стропилами стоят сундуки и мебель под заляпанными простынями.",
-    portal: { x: 0.50, y: 0.45, label: "Люк в шахту лазарета" },
+    portal: { x: 0.50, y: 0.45, label: "Люк в Surgeryroom" },
     artifact: { x: 0.14, y: 0.72, label: "Кованый сундук с противовесами" },
     shadowSpots: [{ x: 0.42, y: 0.48, scale: 0.82 }, { x: 0.73, y: 0.50, scale: 0.95 }],
     palette: { wall: "#211c16", floor: "#14110d", light: "#9c896e" },
@@ -539,10 +633,10 @@ const ROOMS = [
     puzzleType: "weights"
   },
   {
-    id: 3, code: "СЕКТОР 04 // ЛАЗАРЕТ", fileName: "1000404065.jpg",
+    id: 3, code: "СЕКТОР 04 // SURGERYROOM", fileName: "Surgeryroom.jpg",
     title: "Заброшенная операционная",
     desc: "Потрескавшийся кафель, ржавые ширмы и операционный стол.",
-    portal: { x: 0.64, y: 0.49, label: "Гермошлюз в подземный бункер" },
+    portal: { x: 0.64, y: 0.49, label: "Гермошлюз в Bunker" },
     artifact: { x: 0.48, y: 0.54, label: "Хирургический стол и дозатор" },
     shadowSpots: [{ x: 0.26, y: 0.53, scale: 1.02 }, { x: 0.64, y: 0.51, scale: 0.88 }],
     palette: { wall: "#172420", floor: "#0e1412", light: "#779c8e" },
@@ -552,10 +646,10 @@ const ROOMS = [
     puzzleType: "dosage", targetA: 3, targetB: 1
   },
   {
-    id: 4, code: "СЕКТОР 05 // БУНКЕР", fileName: "1000404061.jpg",
+    id: 4, code: "СЕКТОР 05 // BUNKER", fileName: "Bunker.jpg",
     title: "Подземный бункер связи",
     desc: "Массивная ржавая гермодверь, аварийный маяк и полевой телефон.",
-    portal: { x: 0.90, y: 0.52, label: "Спуск в аномальный сектор" },
+    portal: { x: 0.90, y: 0.52, label: "Секретный шлюз: Архив" },
     artifact: { x: 0.33, y: 0.56, label: "Полевой телефон и гермовентиль" },
     shadowSpots: [{ x: 0.87, y: 0.54, scale: 0.96 }, { x: 0.76, y: 0.55, scale: 0.85 }],
     palette: { wall: "#1b1917", floor: "#0f0d0c", light: "#c93b2b" },
@@ -564,8 +658,71 @@ const ROOMS = [
     puzzleDesc: "На ржавой гермодвери прямо над маховиком выбита последовательность оборотов вправо (R) и влево (L).",
     puzzleType: "valve", targetSequence: ["R", "R", "R", "L", "L"]
   },
+  /* ==== 4 СЕКРЕТНЫЕ КОМНАТЫ (ОТКРЫВАЮТСЯ ТОЛЬКО ПОСЛЕ РЕШЕНИЯ КОМНАТ 1–5) ==== */
   {
-    id: 5, code: "СЕКТОР 06 // ПРОЦЕДУРНАЯ АНОМАЛИЯ", fileName: "PROCEDURAL_ENGINE",
+    id: 5, code: "СЕКРЕТ 01 // ARCHIVE", fileName: "Archive_secret1.gif",
+    isSecret: true, isAnimatedGif: true,
+    title: "Тайник I: Затопленный архив",
+    desc: "Полузатопленное хранилище дел № 404. Вода рябит под мерцающей решёткой потолка, а на сырой штукатурке справа процарапано предостережение.",
+    portal: { x: 0.50, y: 0.46, label: "Проход в Тайник II: Котельная" },
+    artifact: { x: 0.78, y: 0.56, label: "Водомерный замок стеллажа" },
+    shadowSpots: [{ x: 0.48, y: 0.50, scale: 0.95 }, { x: 0.25, y: 0.54, scale: 0.88 }],
+    palette: { wall: "#141d17", floor: "#080d0a", light: "#658f74" },
+    reverbDecay: 5.4, solved: false, solvedOnce: false,
+    puzzleTitle: "Шифр затопленного архива",
+    puzzleDesc: "Наведите луч фонаря на правую сырую стену над водой — в штукатурке вырезаны два слова предостережения.",
+    puzzleType: "text_code",
+    placeholder: "Два слова со стены...",
+    targetWord: "НЕ СМОТРИ"
+  },
+  {
+    id: 6, code: "СЕКРЕТ 02 // FURNACE", fileName: "Furnace_secret1.jpg",
+    isSecret: true,
+    title: "Тайник II: Заброшенная котельная",
+    desc: "Чёрная от копоти топка со старыми манометрами. В толстом слое золы перед чугунной дверцей кто-то вывел трёхзначный номер.",
+    portal: { x: 0.68, y: 0.46, label: "Лаз в Тайник III: Камера маятника" },
+    artifact: { x: 0.34, y: 0.54, label: "Топочный засов котла" },
+    shadowSpots: [{ x: 0.66, y: 0.52, scale: 1.0 }, { x: 0.82, y: 0.54, scale: 0.9 }],
+    palette: { wall: "#1f1712", floor: "#0d0907", light: "#c27838" },
+    reverbDecay: 4.8, solved: false, solvedOnce: false,
+    puzzleTitle: "Термозамок топочной дверцы",
+    puzzleDesc: "Осветите слой серой золы на полу перед топкой — там процарапаны три цифры.",
+    puzzleType: "pin_digits",
+    targetPin: [6, 1, 8]
+  },
+  {
+    id: 7, code: "СЕКРЕТ 03 // GORECHAMBER", fileName: "Gorechamber_secret1.jpg",
+    isSecret: true,
+    title: "Тайник III: Камера с маятником",
+    desc: "Сырой каземат с ржавыми кандалами на стенах. Под массивным лезвием маятника в каменных плитах пола выбиты четыре римских числа.",
+    portal: { x: 0.54, y: 0.45, label: "Переход в Тайник IV: Зеркальный изолятор" },
+    artifact: { x: 0.16, y: 0.46, label: "Цепной стопор маятника" },
+    shadowSpots: [{ x: 0.55, y: 0.52, scale: 0.96 }, { x: 0.84, y: 0.54, scale: 0.88 }],
+    palette: { wall: "#1c2019", floor: "#0d100c", light: "#85967e" },
+    reverbDecay: 5.6, solved: false, solvedOnce: false,
+    puzzleTitle: "Римский замок каземата",
+    puzzleDesc: "Посветите на каменную плиту пола прямо под лезвием маятника — там вырезаны 4 римских знака.",
+    puzzleType: "roman_code_extended",
+    targetCode: ["I", "III", "IX", "X"]
+  },
+  {
+    id: 8, code: "СЕКРЕТ 04 // MIRROROOM", fileName: "Mirroroom_secret1.jpg",
+    isSecret: true,
+    title: "Тайник IV: Зеркальный изолятор",
+    desc: "Круглая камера с треснувшими зеркалами и ржавой клеткой в центре. В проломе потолочной штукатурки нацарапаны две цифры — одна из них перевёрнута в отражении.",
+    portal: { x: 0.62, y: 0.48, label: "Спуск в Процедурную аномалию" },
+    artifact: { x: 0.62, y: 0.55, label: "Засов заколоченной двери" },
+    shadowSpots: [{ x: 0.28, y: 0.52, scale: 0.92 }, { x: 0.80, y: 0.52, scale: 0.92 }],
+    palette: { wall: "#1c1c18", floor: "#0d0c0a", light: "#b59d78" },
+    reverbDecay: 5.0, solved: false, solvedOnce: false,
+    puzzleTitle: "Зеркальный шифр изолятора",
+    puzzleDesc: "Поднимите луч фонаря на обвалившуюся штукатурку потолка над клеткой — прочитайте обе нацарапанные цифры (сверху вниз).",
+    puzzleType: "pin_digits",
+    targetPin: [9, 4]
+  },
+  /* ==== 10-Я КОМНАТА: ПРОЦЕДУРНАЯ АНОМАЛИЯ ==== */
+  {
+    id: 9, code: "СЕКТОР 10 // ПРОЦЕДУРНАЯ АНОМАЛИЯ", fileName: "PROCEDURAL_ENGINE",
     isProceduralRoom: true,
     title: "Меняющаяся камера под фундаментом",
     desc: "Стены этого помещения перестраиваются каждый раз, когда вы переступаете порог. Ищите выцарапанный шифр в луче фонаря.",
@@ -587,6 +744,26 @@ const PROCEDURAL_ARCHETYPES = [
   { name: "Архивный склеп с обрушенными стеллажами", desc: "Покосившиеся железные шкафы завалены истлевшими папками и битым стеклом. Воздух тяжёлый и ледяной.", bgTop: "#1a1412", bgBot: "#050403", accent: "#42332d", rust: "#7a2c1d" },
   { name: "Шахта старого грузового подъёмника", desc: "Ржавые тросы уходят в непроглядную черноту наверху. На сыром бетоне видны следы чьих-то ногтей.", bgTop: "#121316", bgBot: "#030405", accent: "#2d313b", rust: "#6e261b" }
 ];
+
+function areMainRoomsCompleted() {
+  for (let i = 0; i < 5; i++) {
+    if (!ROOMS[i].solved && !ROOMS[i].solvedOnce) return false;
+  }
+  return true;
+}
+
+function isRoomAccessible(targetIdx) {
+  if (freeMode) return true;
+  const target = ROOMS[targetIdx];
+  if (!target) return false;
+  if (target.isSecret && !areMainRoomsCompleted()) return false;
+  if (targetIdx === 9 && !areMainRoomsCompleted()) return false;
+  if (targetIdx <= currentRoomIndex) return true;
+  for (let i = 0; i < targetIdx; i++) {
+    if (!ROOMS[i].solved) return false;
+  }
+  return true;
+}
 
 /* ============================================================
    АУДИО-ДВИЖОК
@@ -721,7 +898,7 @@ class DarkAmbientAudio {
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     this.heartbeatTimer = setInterval(() => {
       if (document.hidden || !this.enabled) return;
-      const baseIntensity = entityState.visible ? 1.0 : (0.35 + currentRoomIndex * 0.11);
+      const baseIntensity = entityState.visible ? 1.0 : (0.35 + Math.min(5, currentRoomIndex) * 0.11);
       this.playHeartbeatPulse(baseIntensity);
     }, 1450);
   }
@@ -1017,15 +1194,19 @@ class DarkAmbientAudio {
   }
   triggerRandomAmbient() {
     if (!this._canPlay()) return;
-    const sets = {
-      0: ['shriek', 'creak', 'scratch', 'whisper'],
-      1: ['chains', 'shriek', 'creak', 'whisper', 'step'],
-      2: ['creak', 'scratch', 'cry', 'rumble'],
-      3: ['drip', 'whisper', 'creak', 'scratch'],
-      4: ['morse', 'rumble', 'shriek', 'chains'],
-      5: ['whisper', 'cry', 'scratch', 'rumble', 'breathing']
-    };
-    const pool = sets[currentRoomIndex] || sets[0];
+    const pools = [
+      ['shriek', 'creak', 'scratch', 'whisper'],
+      ['chains', 'shriek', 'creak', 'whisper', 'step'],
+      ['creak', 'scratch', 'cry', 'rumble'],
+      ['drip', 'whisper', 'creak', 'scratch'],
+      ['morse', 'rumble', 'shriek', 'chains'],
+      ['drip', 'whisper', 'rumble', 'breathing'],
+      ['rumble', 'creak', 'scratch', 'shriek'],
+      ['chains', 'cry', 'rumble', 'step'],
+      ['whisper', 'breathing', 'creak', 'shriek'],
+      ['whisper', 'cry', 'scratch', 'rumble', 'breathing']
+    ];
+    const pool = pools[currentRoomIndex] || pools[0];
     const pick = pool[Math.floor(Math.random() * pool.length)];
     const fn = {
       shriek: () => this.playDistantShriek(), creak: () => this.playWoodCreak(),
@@ -1052,11 +1233,13 @@ class DarkAmbientAudio {
 const audioEngine = new DarkAmbientAudio();
 
 /* ============================================================
-   КАНВАСЫ И ВИДЕО
+   КАНВАСЫ, GIF-СЛОЙ И ВИДЕО КАТУШЕК
 ============================================================ */
 const glCanvas = document.getElementById("gl-canvas");
 const fxCanvas = document.getElementById("fx-canvas");
 const fxCtx = fxCanvas.getContext("2d");
+const gifRoomLayer = document.getElementById("gif-room-layer");
+const tapeVideoWrap = document.getElementById("tape-video-wrap");
 const tapeVideo = document.getElementById("tape-video");
 let tapeAudioSourceNode = null;
 
@@ -1072,15 +1255,15 @@ if (tapeVideo) {
     const room0 = ROOMS[0];
     room0.tapePlaying = false;
     room0.tapeFinished = true;
-    tapeVideo.classList.remove("playing");
+    if (tapeVideoWrap) tapeVideoWrap.classList.remove("playing");
   });
 }
 function syncTapeVideo() {
-  if (!tapeVideo) return;
+  if (!tapeVideo || !tapeVideoWrap) return;
   const room = ROOMS[currentRoomIndex];
   const shouldPlay = room.id === 0 && room.tapePlaying && !room.tapeFinished;
   if (shouldPlay) {
-    tapeVideo.classList.add("playing");
+    tapeVideoWrap.classList.add("playing");
     tapeVideo.muted = !audioEngine.enabled;
     connectTapeVideoToAudio();
     if (tapeVideo.paused) {
@@ -1088,7 +1271,7 @@ function syncTapeVideo() {
       if (p && typeof p.catch === "function") p.catch(() => {});
     }
   } else {
-    tapeVideo.classList.remove("playing");
+    tapeVideoWrap.classList.remove("playing");
     if (!tapeVideo.paused) tapeVideo.pause();
   }
 }
@@ -1099,6 +1282,8 @@ function syncTapeVideo() {
 const renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, alpha: false });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
@@ -1124,7 +1309,6 @@ let currentRoomIndex = 0;
 let freeMode = false;
 let flashlightOn = true;
 const roomTextures = {};
-const roomUploadedFlags = {};
 const roomImageDims = {};
 const roomTickFlags = {};
 
@@ -1202,9 +1386,6 @@ function getOverlayTransform(w, h) {
   };
 }
 
-/* ============================================================
-   ИСПРАВЛЕНИЕ: resizeAll больше не падает при первом вызове
-============================================================ */
 function resizeAll() {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -1216,7 +1397,6 @@ function resizeAll() {
   fxCanvas.style.height = window.innerHeight + "px";
   fxCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ensureFlashlightSprite();
-  // Безопасный вызов — Episode1 может быть ещё не объявлен при первом resize
   if (window.Episode1 && typeof window.Episode1.onResize === "function") {
     window.Episode1.onResize();
   }
@@ -1225,33 +1405,19 @@ window.addEventListener("resize", resizeAll);
 resizeAll();
 
 /* ============================================================
-   ТЕКСТУРЫ КОМНАТ
+   ТЕКСТУРЫ КОМНАТ ИЗ РЕПОЗИТОРИЯ
 ============================================================ */
-function fitImageSourceToGPU(img) {
+function createTextureFromImageSource(img, roomIdx) {
   const w = img.naturalWidth || img.width;
   const h = img.naturalHeight || img.height;
-  if (!w || !h) return null;
-  if (w <= MAX_TEXTURE_DIM && h <= MAX_TEXTURE_DIM) return { source: img, width: w, height: h };
-  const scale = Math.min(MAX_TEXTURE_DIM / w, MAX_TEXTURE_DIM / h);
-  const nw = Math.max(1, Math.round(w * scale));
-  const nh = Math.max(1, Math.round(h * scale));
-  const c = document.createElement("canvas");
-  c.width = nw; c.height = nh;
-  c.getContext("2d").drawImage(img, 0, 0, nw, nh);
-  return { source: c, width: nw, height: nh };
-}
-function createTextureFromImageSource(img, roomIdx) {
-  const fitted = fitImageSourceToGPU(img);
-  if (!fitted) return false;
-  const tex = new THREE.Texture(fitted.source);
+  if (!w || !h) return false;
+  const tex = new THREE.Texture(img);
   tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
   tex.generateMipmaps = false; tex.needsUpdate = true;
   if (roomTextures[roomIdx] && roomTextures[roomIdx] !== proceduralTextureCache[roomIdx]) roomTextures[roomIdx].dispose();
   roomTextures[roomIdx] = tex;
-  roomUploadedFlags[roomIdx] = true;
-  roomImageDims[roomIdx] = { w: fitted.width, h: fitted.height };
+  roomImageDims[roomIdx] = { w, h };
   if (roomIdx === currentRoomIndex) applyRoomTexture(roomIdx);
-  updateLoadedCounter();
   return true;
 }
 
@@ -1262,7 +1428,11 @@ function drawFallbackHint(g, room) {
     1: { text: "I · IV · VII · IX", x: 0.68, y: 0.34, size: 26, rot: 0.04, sub: "порядок дисков" },
     2: { text: "Л: 6 кг  =  П: 6 кг", x: 0.48, y: 0.60, size: 26, rot: -0.03, sub: "уравновесить чаши" },
     3: { text: "A = 3  ·  B = 1", x: 0.50, y: 0.42, size: 28, rot: 0.02, sub: "пропорция дозатора" },
-    4: { text: "R · R · R · L · L", x: 0.82, y: 0.42, size: 24, rot: 0.06, sub: "обороты штурвала" }
+    4: { text: "R · R · R · L · L", x: 0.82, y: 0.42, size: 24, rot: 0.06, sub: "обороты штурвала" },
+    5: { text: "НЕ СМОТРИ", x: 0.72, y: 0.52, size: 30, rot: -0.02, sub: "выцарапано над водой" },
+    6: { text: "618", x: 0.44, y: 0.76, size: 36, rot: -0.04, sub: "процарапано в золе" },
+    7: { text: "I - III - IX - X", x: 0.40, y: 0.72, size: 28, rot: 0.0, sub: "выбито на плите пола" },
+    8: { text: "9 / 4", x: 0.62, y: 0.14, size: 28, rot: 0.03, sub: "в проломе потолка" }
   };
   const h = hints[room.id];
   if (!h) return;
@@ -1279,6 +1449,7 @@ function drawFallbackHint(g, room) {
   g.fillText(h.sub, 0, h.size * 0.9);
   g.restore();
 }
+
 function createProceduralTexture(room) {
   const c = document.createElement("canvas");
   c.width = 1280; c.height = 720;
@@ -1297,17 +1468,6 @@ function createProceduralTexture(room) {
   g.stroke();
   g.fillStyle = "#010201";
   g.fillRect(px - 110, py - 150, 220, 300);
-  if (room.id === 0) {
-    const tx = 1280 * 0.415, ty = 720 * 0.42;
-    g.fillStyle = "#161310";
-    g.fillRect(tx - 95, ty + 35, 190, 16);
-    g.fillRect(tx - 75, ty + 51, 14, 140);
-    g.fillRect(tx + 61, ty + 51, 14, 140);
-    g.fillStyle = "#2b241e";
-    g.fillRect(tx - 68, ty - 95, 136, 130);
-    g.strokeStyle = "#5c4f42"; g.lineWidth = 3;
-    g.strokeRect(tx - 68, ty - 95, 136, 130);
-  }
   for (let i = 0; i < 50; i++) {
     const mx = Math.random() * 1280, my = Math.random() * 720, mr = 30 + Math.random() * 100;
     const mg = g.createRadialGradient(mx, my, 4, mx, my, mr);
@@ -1400,21 +1560,36 @@ function generateRandomHorrorRoom(roomObj) {
   const tex = new THREE.CanvasTexture(c);
   tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
   tex.generateMipmaps = false; tex.needsUpdate = true;
-  if (roomTextures[5]) roomTextures[5].dispose();
-  roomTextures[5] = tex;
-  roomImageDims[5] = { w: 1600, h: 900 };
+  const anomIdx = ROOMS.length - 1;
+  if (roomTextures[anomIdx]) roomTextures[anomIdx].dispose();
+  roomTextures[anomIdx] = tex;
+  roomImageDims[anomIdx] = { w: 1600, h: 900 };
 }
 
 function applyRoomTexture(idx) {
   const room = ROOMS[idx];
   if (room.isProceduralRoom && !roomTextures[idx]) generateRandomHorrorRoom(room);
-  if (roomTextures[idx]) roomPlaneMat.map = roomTextures[idx];
-  else {
+
+  // Анимированная GIF-комната (Archive_secret1.gif) отображается через нативный <img>,
+  // чтобы браузер воспроизводил все кадры анимации
+  if (room.isAnimatedGif && gifRoomLayer) {
+    if (gifRoomLayer.getAttribute("src") !== room.fileName) {
+      gifRoomLayer.src = room.fileName;
+    }
+    gifRoomLayer.classList.add("visible");
+  } else if (gifRoomLayer) {
+    gifRoomLayer.classList.remove("visible");
+  }
+
+  if (roomTextures[idx]) {
+    roomPlaneMat.map = roomTextures[idx];
+  } else {
     if (!proceduralTextureCache[idx]) proceduralTextureCache[idx] = createProceduralTexture(room);
     roomPlaneMat.map = proceduralTextureCache[idx];
   }
   roomPlaneMat.needsUpdate = true;
 }
+
 function tryAutoLoadImages() {
   ROOMS.forEach((room, idx) => {
     if (room.isProceduralRoom) return;
@@ -1423,34 +1598,6 @@ function tryAutoLoadImages() {
     img.onerror = () => { if (idx === currentRoomIndex) applyRoomTexture(idx); };
     img.src = room.fileName;
   });
-}
-function updateLoadedCounter() {
-  const count = Object.keys(roomUploadedFlags).length;
-  const btn = document.getElementById("btn-open-photos");
-  if (btn) btn.textContent = `ФОТО КОМНАТ [${count}/5]`;
-}
-function setPhotosFeedback(text) {
-  const el = document.getElementById("photos-feedback");
-  if (el) el.textContent = text;
-}
-function loadSingleFileAsTexture(file, roomIdx) {
-  if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) { setPhotosFeedback("Поддерживаются JPEG, PNG или WebP."); return; }
-  if (file.size > MAX_UPLOAD_SIZE) { setPhotosFeedback(`Файл «${file.name}» превышает лимит 25 МБ.`); return; }
-  const url = URL.createObjectURL(file);
-  const img = new Image();
-  img.onload = () => {
-    URL.revokeObjectURL(url);
-    const ok = createTextureFromImageSource(img, roomIdx);
-    if (ok) { setPhotosFeedback(`Загружено для локации 0${roomIdx + 1}: ${file.name}`); renderPhotoSlotsModal(); }
-    else setPhotosFeedback(`Не удалось прочитать «${file.name}».`);
-  };
-  img.onerror = () => { URL.revokeObjectURL(url); setPhotosFeedback(`Ошибка декодирования «${file.name}».`); };
-  img.src = url;
-}
-function handleBulkFiles(fileList) {
-  const files = Array.from(fileList).filter(f => /^image\/(jpeg|png|webp)$/.test(f.type) && f.size <= MAX_UPLOAD_SIZE);
-  if (!files.length) { setPhotosFeedback("Нет подходящих файлов."); return; }
-  files.forEach((file, idx) => { if (idx < 5) loadSingleFileAsTexture(file, idx); });
 }
 
 /* ============================================================
@@ -1581,6 +1728,10 @@ function animate(time) {
 
   camera.position.set(camX, camY, camZ);
   camera.lookAt(camX * 0.65, camY * 0.65, 0);
+
+  if (gifRoomLayer && gifRoomLayer.classList.contains("visible") && !REDUCE_MOTION) {
+    gifRoomLayer.style.transform = `scale(1.06) translate(${(-pointer.normX * 14).toFixed(1)}px, ${(-pointer.normY * 10).toFixed(1)}px)`;
+  }
 
   const lightWorldX = pointer.normX * (viewW * 0.5);
   const lightWorldY = -pointer.normY * (viewH * 0.5);
@@ -1714,9 +1865,12 @@ function buildDepthNav() {
   depthNav.innerHTML = "";
   ROOMS.forEach((r, idx) => {
     const node = document.createElement("div");
-    node.className = `depth-node ${idx === currentRoomIndex ? "active" : ""} ${r.solved ? "solved" : ""} ${r.isProceduralRoom ? "procedural" : ""}`;
+    const lockedSecret = (r.isSecret || r.isProceduralRoom) && !areMainRoomsCompleted() && !freeMode;
+    node.className = `depth-node ${idx === currentRoomIndex ? "active" : ""} ${r.solved ? "solved" : ""} ${r.isSecret ? "secret" : ""} ${r.isProceduralRoom ? "procedural" : ""} ${lockedSecret ? "locked-secret" : ""}`;
     node.setAttribute("role", "button"); node.setAttribute("tabindex", "0");
-    node.innerHTML = `<span class="depth-label">0${idx + 1} // ${r.title.split(" ")[0]}</span><span class="depth-dot"></span>`;
+    const numStr = idx < 9 ? `0${idx + 1}` : `${idx + 1}`;
+    const shortName = lockedSecret ? "ЗАПЕЧАТАНО" : r.title.split(" ")[0];
+    node.innerHTML = `<span class="depth-label">${numStr} // ${shortName}</span><span class="depth-dot"></span>`;
     node.addEventListener("click", () => attemptRoomTransition(idx));
     node.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); attemptRoomTransition(idx); }
@@ -1725,15 +1879,23 @@ function buildDepthNav() {
   });
 }
 function refreshDepthNavState() {
+  const mainDone = areMainRoomsCompleted();
   depthNav.querySelectorAll(".depth-node").forEach((node, idx) => {
+    const r = ROOMS[idx];
+    const lockedSecret = (r.isSecret || r.isProceduralRoom) && !mainDone && !freeMode;
     node.classList.toggle("active", idx === currentRoomIndex);
-    node.classList.toggle("solved", ROOMS[idx].solved);
+    node.classList.toggle("solved", r.solved);
+    node.classList.toggle("locked-secret", lockedSecret);
+    const numStr = idx < 9 ? `0${idx + 1}` : `${idx + 1}`;
+    const lbl = node.querySelector(".depth-label");
+    if (lbl) lbl.textContent = `${numStr} // ${lockedSecret ? "ЗАПЕЧАТАНО" : r.title.split(" ")[0]}`;
   });
 }
 function updateRoomHUD() {
   const room = ROOMS[currentRoomIndex];
+  const curStr = currentRoomIndex < 9 ? `0${currentRoomIndex + 1}` : `${currentRoomIndex + 1}`;
   document.getElementById("hud-room-indicator").textContent =
-    `ЛОКАЦИЯ 0${currentRoomIndex + 1} / 0${ROOMS.length} — ${room.title.toUpperCase()}`;
+    `ЛОКАЦИЯ ${curStr} / ${ROOMS.length} — ${room.title.toUpperCase()}`;
   document.getElementById("dossier-code").textContent = room.code;
   document.getElementById("dossier-file-hint").textContent = room.isProceduralRoom ? "ГЕНЕРАТОР: АКТИВЕН" : `ФАЙЛ: ${room.fileName}`;
   document.getElementById("dossier-title").textContent = room.title;
@@ -1750,15 +1912,34 @@ function updateRoomHUD() {
   }
   refreshDepthNavState();
 }
+
 function attemptRoomTransition(targetIdx) {
   if (transition.active || targetIdx === currentRoomIndex) return;
   if (targetIdx < 0 || targetIdx >= ROOMS.length) return;
   const currentRoom = ROOMS[currentRoomIndex];
+  const targetRoom = ROOMS[targetIdx];
+
+  // Секретные комнаты (индексы 5..8) и аномалия (9) открываются только после прохождения первых 5 комнат
+  if ((targetRoom.isSecret || targetRoom.isProceduralRoom) && !areMainRoomsCompleted() && !freeMode) {
+    audioEngine.playSubterraneanRumble();
+    audioEngine.playWallScratching();
+    const badge = document.getElementById("puzzle-badge");
+    badge.textContent = "НУЖНО ПРОЙТИ ПЕРВЫЕ 5 КОМНАТ";
+    badge.className = "status-badge";
+    setTimeout(updateRoomHUD, 2400);
+    return;
+  }
+
   if (targetIdx > currentRoomIndex && !currentRoom.solved && !freeMode) {
     audioEngine.playSubterraneanRumble();
     openPuzzleModal();
     return;
   }
+  if (!isRoomAccessible(targetIdx)) {
+    audioEngine.playSubterraneanRumble();
+    return;
+  }
+
   audioEngine.playFootsteps();
   transition.active = true;
   transition.phase = "in"; transition.progress = 0;
@@ -1901,7 +2082,7 @@ const entitySpawnTimer = setInterval(() => {
 }, 5500);
 
 /* ============================================================
-   ЗАГАДКИ 2.5D
+   ЗАГАДКИ 2.5D (ОСНОВНЫЕ + СЕКРЕТНЫЕ)
 ============================================================ */
 function openPuzzleModal() {
   const room = ROOMS[currentRoomIndex];
@@ -1939,8 +2120,8 @@ function openPuzzleModal() {
         setTimeout(() => { closeModalEl(modal); if (tapeVideo) { tapeVideo.currentTime = 0; syncTapeVideo(); } }, 400);
       } else { audioEngine.playWallScratching(); feedback.textContent = "Неверная частота. Осмотрите стену слева."; }
     });
-  } else if (room.puzzleType === "roman_code") {
-    const syms = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"];
+  } else if (room.puzzleType === "roman_code" || room.puzzleType === "roman_code_extended") {
+    const syms = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
     const st = room.solved ? [...room.targetCode] : ["I", "I", "I", "I"];
     const wrap = document.createElement("div"); wrap.className = "code-slots";
     st.forEach((s, i) => {
@@ -1951,8 +2132,8 @@ function openPuzzleModal() {
     const cb = document.createElement("button");
     cb.className = "btn btn-primary"; cb.style.width = "100%"; cb.textContent = "ПРОВЕРНУТЬ ЗАСОВ";
     cb.addEventListener("click", () => {
-      if (st.join("-") === room.targetCode.join("-")) solveCurrentRoom("Кольца совпали. Цепи упали.");
-      else { audioEngine.playWallScratching(); feedback.textContent = "Замок заклинило. Осмотрите царапины на правой стене."; }
+      if (st.join("-") === room.targetCode.join("-")) solveCurrentRoom("Знаки совпали. Замок открыт.");
+      else { audioEngine.playWallScratching(); feedback.textContent = "Замок заклинило. Сверьтесь с вырезанными цифрами на поверхности."; }
     });
     container.appendChild(wrap); container.appendChild(cb);
   } else if (room.puzzleType === "weights") {
@@ -2011,7 +2192,7 @@ function openPuzzleModal() {
         <input type="text" id="b-msg" maxlength="80" placeholder="Сообщение в эфир..." style="width:100%; padding:9px; background:#050705; border:1px solid var(--mold-green); color:var(--bone-white); font-family:inherit; margin-bottom:8px;">
         <button class="btn btn-primary" id="bs" style="width:100%;">ОТПРАВИТЬ СИГНАЛ</button>`;
       const chk = () => {
-        if (seq.join(",") === room.targetSequence.join(",")) solveCurrentRoom("Гермошлюз разгерметизирован.");
+        if (seq.join(",") === room.targetSequence.join(",")) solveCurrentRoom("Гермошлюз разгерметизирован. Путь в секретные сектора открыт.");
         else if (seq.length >= room.targetSequence.length) {
           audioEngine.playWallScratching(); feedback.textContent = "Клапан сорвался. Осмотрите металл у штурвала.";
           seq = []; setTimeout(renderV, 500);
@@ -2027,8 +2208,29 @@ function openPuzzleModal() {
       });
     };
     renderV();
-  } else if (room.puzzleType === "procedural_pin") {
-    const curPin = room.solved ? [...room.targetPin] : [0, 0, 0];
+  } else if (room.puzzleType === "text_code") {
+    const val = room.solved ? room.targetWord : "";
+    container.innerHTML = `
+      <div class="puzzle-row"><span>НАДПИСЬ НА СТЕНЕ:</span></div>
+      <input type="text" id="secret-word-inp" maxlength="30" value="${val}" placeholder="${room.placeholder || 'Введите фразу...'}"
+             style="width:100%; padding:10px; background:#050705; border:1px solid var(--mold-green); color:var(--bone-white); font-family:inherit; font-size:15px; letter-spacing:2px; text-transform:uppercase; margin-bottom:10px;">
+      <button class="btn btn-primary" id="btn-word-chk" style="width:100%;">ПОДТВЕРДИТЬ ФРАЗУ</button>
+    `;
+    const inp = container.querySelector("#secret-word-inp");
+    const submit = () => {
+      const normalized = inp.value.trim().toUpperCase().replace(/\s+/g, " ");
+      if (normalized === room.targetWord) {
+        solveCurrentRoom("Засов архива поддался. Проход открыт.");
+      } else {
+        audioEngine.playWallScratching();
+        feedback.textContent = "Неверная фраза. Осветите правую стену над водой.";
+      }
+    };
+    container.querySelector("#btn-word-chk").addEventListener("click", submit);
+    inp.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+  } else if (room.puzzleType === "pin_digits" || room.puzzleType === "procedural_pin") {
+    const len = room.targetPin.length;
+    const curPin = room.solved ? [...room.targetPin] : Array(len).fill(0);
     const wrap = document.createElement("div"); wrap.className = "code-slots";
     curPin.forEach((digit, idx) => {
       const btn = document.createElement("button"); btn.className = "code-slot-btn"; btn.textContent = String(digit);
@@ -2042,8 +2244,8 @@ function openPuzzleModal() {
     const submitBtn = document.createElement("button");
     submitBtn.className = "btn btn-primary"; submitBtn.style.width = "100%"; submitBtn.textContent = "СНЯТЬ БЛОКИРОВКУ";
     submitBtn.addEventListener("click", () => {
-      if (curPin.join("-") === room.targetPin.join("-")) solveCurrentRoom("Релейный замок аномалии открыт.");
-      else { audioEngine.playWallScratching(); feedback.textContent = "Неверный шифр. Проведите фонарём по стенам камеры."; }
+      if (curPin.join("-") === room.targetPin.join("-")) solveCurrentRoom("Шифр принят. Механизм разблокирован.");
+      else { audioEngine.playWallScratching(); feedback.textContent = "Неверный шифр. Проведите фонарём по стенам, полу и потолку."; }
     });
     container.appendChild(wrap); container.appendChild(submitBtn);
   }
@@ -2064,28 +2266,9 @@ function solveCurrentRoom(msg) {
   }
 }
 
-function renderPhotoSlotsModal() {
-  const container = document.getElementById("photo-slots-container");
-  if (!container) return;
-  container.innerHTML = "";
-  ROOMS.filter(r => !r.isProceduralRoom).forEach((room, idx) => {
-    const isLoaded = Boolean(roomUploadedFlags[idx]);
-    const row = document.createElement("div"); row.className = "photo-slot";
-    row.innerHTML = `
-      <div><strong>0${idx + 1}. ${room.title}</strong><br><span style="color:#828e7f;">${room.fileName}</span></div>
-      <div style="display:flex; align-items:center; gap:8px;">
-        <span class="photo-slot-status ${isLoaded ? "loaded" : ""}">${isLoaded ? "ЗАГРУЖЕНО" : "НЕ ЗАГРУЖЕНО"}</span>
-        <label class="hud-btn" style="cursor:pointer;">ВЫБРАТЬ<input type="file" accept="image/jpeg,image/png,image/webp" style="display:none"></label>
-      </div>`;
-    row.querySelector("input").addEventListener("change", (e) => {
-      if (e.target.files && e.target.files[0]) loadSingleFileAsTexture(e.target.files[0], idx);
-    });
-    container.appendChild(row);
-  });
-}
-
 /* ============================================================
-   ЭПИЗОД 1 — 3D-СЦЕНА
+   ЭПИЗОД 1 — «СПУСК В ПОДВАЛ» С ФОТОРЕАЛИСТИЧНЫМИ СТЕНОВЫМИ ТЕКСТУРАМИ
+   Поддерживает загрузку structure.jpg из репозитория + процедурный PBR-рельеф (плесень, подтёки, сырость)
 ============================================================ */
 window.Episode1 = (() => {
   const EYE = 1.7, PR = 0.35;
@@ -2095,6 +2278,7 @@ window.Episode1 = (() => {
 
   let active = false, paused = false, pointerLocked = false, started = false;
   let epScene, epCamera, epFlash, epFlashTarget, epEmergLight;
+  let bobTimer = 0;
   const keys = Object.create(null);
   const player = {
     pos: new THREE.Vector3(0, EYE, 6),
@@ -2118,54 +2302,220 @@ window.Episode1 = (() => {
   let hotInteractable = null;
   let inited = false;
 
-  function makeConcreteTexture(repeat = 2) {
-    const c = document.createElement('canvas');
-    c.width = c.height = 512;
-    const g = c.getContext('2d');
-    g.fillStyle = '#3a3a37'; g.fillRect(0, 0, 512, 512);
-    for (let i = 0; i < 6000; i++) {
-      const v = (Math.random() * 80 - 40) | 0;
-      g.fillStyle = `rgba(${128+v},${128+v},${120+v},0.28)`;
-      g.fillRect(Math.random()*512, Math.random()*512, 2, 2);
-    }
-    for (let i = 0; i < 6; i++) {
-      g.strokeStyle = `rgba(20,20,20,${0.5 + Math.random()*0.4})`;
-      g.lineWidth = 1; g.beginPath();
-      let x = Math.random()*512, y = Math.random()*512;
-      g.moveTo(x, y);
-      for (let j = 0; j < 10; j++) { x += Math.random()*50-25; y += Math.random()*50-25; g.lineTo(x, y); }
-      g.stroke();
-    }
-    for (let i = 0; i < 5; i++) {
-      const mx = Math.random()*512, my = Math.random()*512, mr = 30 + Math.random()*80;
-      const mg = g.createRadialGradient(mx, my, 4, mx, my, mr);
-      mg.addColorStop(0, i % 2 ? 'rgba(60,20,10,0.4)' : 'rgba(15,20,15,0.5)');
-      mg.addColorStop(1, 'rgba(0,0,0,0)');
-      g.fillStyle = mg; g.beginPath(); g.arc(mx, my, mr, 0, Math.PI*2); g.fill();
-    }
-    const tex = new THREE.CanvasTexture(c);
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(repeat, repeat);
-    return tex;
+  // Генератор мерзких, сырых, покрытых плесенью и бурыми подтёками стен фундамента
+  // Если в репозитории есть structure.jpg — подмешивает его поверх фактуры!
+  function makeGrimyBasementSet(repeatX = 3, repeatY = 2) {
+    const size = 1024;
+    const colorCanvas = document.createElement('canvas');
+    colorCanvas.width = colorCanvas.height = size;
+    const cg = colorCanvas.getContext('2d');
+
+    const bumpCanvas = document.createElement('canvas');
+    bumpCanvas.width = bumpCanvas.height = size;
+    const bg = bumpCanvas.getContext('2d');
+
+    const roughCanvas = document.createElement('canvas');
+    roughCanvas.width = roughCanvas.height = size;
+    const rg = roughCanvas.getContext('2d');
+
+    const paintGrimeLayers = (baseImg = null) => {
+      if (baseImg) {
+        cg.drawImage(baseImg, 0, 0, size, size);
+        // Затемняем и тонируем под сырой подвал
+        cg.fillStyle = 'rgba(18, 22, 16, 0.36)';
+        cg.fillRect(0, 0, size, size);
+      } else {
+        cg.fillStyle = '#383832';
+        cg.fillRect(0, 0, size, size);
+      }
+
+      bg.fillStyle = '#808080';
+      bg.fillRect(0, 0, size, size);
+      rg.fillStyle = '#d8d8d8';
+      rg.fillRect(0, 0, size, size);
+
+      // Швы бетонных блоков фундамента и вздутия штукатурки
+      for (let y = 0; y < size; y += 256) {
+        cg.fillStyle = 'rgba(10, 12, 9, 0.62)';
+        cg.fillRect(0, y, size, 4);
+        bg.fillStyle = '#242424';
+        bg.fillRect(0, y, size, 4);
+      }
+
+      // Зернистость, раковины и облупившаяся краска
+      for (let i = 0; i < 20000; i++) {
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        const w = 1 + Math.random() * 3;
+        const h = 1 + Math.random() * 3;
+        const delta = (Math.random() - 0.5) * 42;
+
+        cg.fillStyle = `rgba(${96 + delta}, ${98 + delta}, ${84 + delta}, 0.24)`;
+        cg.fillRect(x, y, w, h);
+
+        const bVal = Math.max(0, Math.min(255, 128 + delta * 2.1)) | 0;
+        bg.fillStyle = `rgb(${bVal},${bVal},${bVal})`;
+        bg.fillRect(x, y, w, h);
+      }
+
+      // Глубокие трещины и обвалы штукатурки
+      for (let i = 0; i < 14; i++) {
+        let x = Math.random() * size;
+        let y = Math.random() * size;
+        cg.strokeStyle = 'rgba(8, 9, 7, 0.85)';
+        cg.lineWidth = 1.4 + Math.random() * 2.0;
+        bg.strokeStyle = '#121212';
+        bg.lineWidth = 2.8;
+
+        cg.beginPath(); bg.beginPath();
+        cg.moveTo(x, y); bg.moveTo(x, y);
+        for (let j = 0; j < 14; j++) {
+          x += (Math.random() - 0.48) * 44;
+          y += (Math.random() - 0.48) * 44;
+          cg.lineTo(x, y); bg.lineTo(x, y);
+        }
+        cg.stroke(); bg.stroke();
+      }
+
+      // Колонии чёрно-зелёной плесени и бурой ржавчины
+      for (let i = 0; i < 22; i++) {
+        const mx = Math.random() * size;
+        const my = Math.random() * size;
+        const mr = 40 + Math.random() * 145;
+        const mode = i % 3;
+
+        const mg = cg.createRadialGradient(mx, my, 4, mx, my, mr);
+        if (mode === 0) {
+          // Чёрная слизистая плесень
+          mg.addColorStop(0, 'rgba(12, 18, 11, 0.78)');
+          mg.addColorStop(0.5, 'rgba(26, 38, 22, 0.45)');
+          mg.addColorStop(1, 'rgba(0,0,0,0)');
+        } else if (mode === 1) {
+          // Буро-кровавая ржавчина и гниль
+          mg.addColorStop(0, 'rgba(64, 20, 12, 0.62)');
+          mg.addColorStop(0.55, 'rgba(42, 18, 11, 0.35)');
+          mg.addColorStop(1, 'rgba(0,0,0,0)');
+        } else {
+          // Болотный грибок и высолы
+          mg.addColorStop(0, 'rgba(46, 58, 36, 0.55)');
+          mg.addColorStop(1, 'rgba(0,0,0,0)');
+        }
+        cg.fillStyle = mg;
+        cg.beginPath(); cg.arc(mx, my, mr, 0, Math.PI * 2); cg.fill();
+
+        // Мокрый глянцевый след на карте шероховатости
+        const rGrad = rg.createRadialGradient(mx, my, 4, mx, my, mr * 0.9);
+        rGrad.addColorStop(0, 'rgba(48, 48, 48, 0.92)');
+        rGrad.addColorStop(1, 'rgba(220, 220, 220, 0)');
+        rg.fillStyle = rGrad;
+        rg.beginPath(); rg.arc(mx, my, mr * 0.9, 0, Math.PI * 2); rg.fill();
+      }
+
+      // Длинные грязные и бурые подтёки сверху вниз по стене
+      for (let d = 0; d < 42; d++) {
+        const dx = Math.random() * size;
+        const dy = Math.random() * (size * 0.55);
+        const len = 120 + Math.random() * 440;
+        const width = 2 + Math.random() * 7;
+
+        const dripGrad = cg.createLinearGradient(dx, dy, dx, dy + len);
+        dripGrad.addColorStop(0, d % 2 === 0 ? 'rgba(14, 18, 12, 0.72)' : 'rgba(58, 18, 10, 0.65)');
+        dripGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        cg.fillStyle = dripGrad;
+        cg.fillRect(dx, dy, width, len);
+
+        rg.fillStyle = 'rgba(42, 42, 42, 0.75)';
+        rg.fillRect(dx, dy, width + 1, len);
+      }
+
+      // Тёмная сырая полоса гнили у самого пола
+      const bottomGrime = cg.createLinearGradient(0, size * 0.72, 0, size);
+      bottomGrime.addColorStop(0, 'rgba(0,0,0,0)');
+      bottomGrime.addColorStop(1, 'rgba(10, 14, 9, 0.85)');
+      cg.fillStyle = bottomGrime;
+      cg.fillRect(0, size * 0.72, size, size * 0.28);
+    };
+
+    paintGrimeLayers(null);
+
+    const maxAniso = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 4;
+    const buildTex = (canvas, isColor) => {
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(repeatX, repeatY);
+      tex.anisotropy = maxAniso;
+      if (isColor && THREE.sRGBEncoding) tex.encoding = THREE.sRGBEncoding;
+      return tex;
+    };
+
+    const mapTex = buildTex(colorCanvas, true);
+    const bumpTex = buildTex(bumpCanvas, false);
+    const roughTex = buildTex(roughCanvas, false);
+
+    // Подгружаем structure.jpg из репозитория и накладываем поверх грязь/плесень/подтёки
+    const structImg = new Image();
+    structImg.onload = () => {
+      paintGrimeLayers(structImg);
+      mapTex.needsUpdate = true;
+      bumpTex.needsUpdate = true;
+      roughTex.needsUpdate = true;
+    };
+    structImg.src = 'structure.jpg';
+
+    return { map: mapTex, bumpMap: bumpTex, roughnessMap: roughTex };
   }
-  function makeMetalTexture() {
-    const c = document.createElement('canvas');
-    c.width = c.height = 256;
-    const g = c.getContext('2d');
-    g.fillStyle = '#2b2018'; g.fillRect(0, 0, 256, 256);
-    for (let i = 0; i < 2000; i++) {
+
+  function makeMetalTextureSet() {
+    const size = 512;
+    const colorCanvas = document.createElement('canvas');
+    colorCanvas.width = colorCanvas.height = size;
+    const cg = colorCanvas.getContext('2d');
+
+    const bumpCanvas = document.createElement('canvas');
+    bumpCanvas.width = bumpCanvas.height = size;
+    const bg = bumpCanvas.getContext('2d');
+
+    cg.fillStyle = '#2d2118';
+    cg.fillRect(0, 0, size, size);
+    bg.fillStyle = '#808080';
+    bg.fillRect(0, 0, size, size);
+
+    for (let i = 0; i < 4500; i++) {
+      const x = Math.random() * size;
+      const y = Math.random() * size;
       const v = (Math.random() * 60 - 30) | 0;
-      g.fillStyle = `rgba(${120+v},${90+v},${60+v},0.35)`;
-      g.fillRect(Math.random()*256, Math.random()*256, 2, 2);
+      cg.fillStyle = `rgba(${120 + v},${88 + v},${58 + v},0.32)`;
+      cg.fillRect(x, y, 2, 2);
+
+      const bv = Math.max(0, Math.min(255, 128 + v * 1.5)) | 0;
+      bg.fillStyle = `rgb(${bv},${bv},${bv})`;
+      bg.fillRect(x, y, 2, 2);
     }
-    for (let i = 0; i < 20; i++) {
-      g.fillStyle = `rgba(${100+Math.random()*40},${50+Math.random()*30},${20+Math.random()*20},0.4)`;
-      g.fillRect(Math.random()*256, Math.random()*256, 20 + Math.random()*40, 4 + Math.random()*8);
+
+    for (let i = 0; i < 28; i++) {
+      const rx = Math.random() * size;
+      const ry = Math.random() * size;
+      const rw = 24 + Math.random() * 60;
+      const rh = 6 + Math.random() * 14;
+      cg.fillStyle = `rgba(${115 + Math.random() * 45},${52 + Math.random() * 28},${20 + Math.random() * 16},0.45)`;
+      cg.fillRect(rx, ry, rw, rh);
+      bg.fillStyle = '#606060';
+      bg.fillRect(rx, ry, rw, rh);
     }
-    const tex = new THREE.CanvasTexture(c);
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    return tex;
+
+    const maxAniso = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 4;
+    const map = new THREE.CanvasTexture(colorCanvas);
+    map.wrapS = map.wrapT = THREE.RepeatWrapping;
+    map.anisotropy = maxAniso;
+    if (THREE.sRGBEncoding) map.encoding = THREE.sRGBEncoding;
+
+    const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+    bumpMap.wrapS = bumpMap.wrapT = THREE.RepeatWrapping;
+    bumpMap.anisotropy = maxAniso;
+
+    return { map, bumpMap };
   }
+
   function addWallBox(cx, cy, cz, w, h, d, mat) {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
     mesh.position.set(cx, cy, cz);
@@ -2179,11 +2529,50 @@ window.Episode1 = (() => {
   }
 
   function buildLevel() {
-    const conc = new THREE.MeshStandardMaterial({ map: makeConcreteTexture(3), roughness: 0.95, metalness: 0.05 });
-    const floorMat = new THREE.MeshStandardMaterial({ map: makeConcreteTexture(6), roughness: 0.98, metalness: 0.02, color: 0x8a8a80 });
-    const ceilMat = new THREE.MeshStandardMaterial({ color: 0x1a1a18, roughness: 1.0 });
-    const metal = new THREE.MeshStandardMaterial({ map: makeMetalTexture(), roughness: 0.55, metalness: 0.75 });
-    const rustMetal = new THREE.MeshStandardMaterial({ map: makeMetalTexture(), roughness: 0.85, metalness: 0.35, color: 0x9a7a60 });
+    const wallTex = makeGrimyBasementSet(4, 2);
+    const floorTex = makeGrimyBasementSet(7, 7);
+    const metalTex = makeMetalTextureSet();
+
+    const conc = new THREE.MeshStandardMaterial({
+      map: wallTex.map,
+      bumpMap: wallTex.bumpMap,
+      bumpScale: 0.055,
+      roughnessMap: wallTex.roughnessMap,
+      roughness: 0.88,
+      metalness: 0.07
+    });
+    const floorMat = new THREE.MeshStandardMaterial({
+      map: floorTex.map,
+      bumpMap: floorTex.bumpMap,
+      bumpScale: 0.06,
+      roughnessMap: floorTex.roughnessMap,
+      roughness: 0.85,
+      metalness: 0.06,
+      color: 0x7c8074
+    });
+    const ceilMat = new THREE.MeshStandardMaterial({
+      map: wallTex.map,
+      bumpMap: wallTex.bumpMap,
+      bumpScale: 0.04,
+      roughness: 0.96,
+      metalness: 0.03,
+      color: 0x22251f
+    });
+    const metal = new THREE.MeshStandardMaterial({
+      map: metalTex.map,
+      bumpMap: metalTex.bumpMap,
+      bumpScale: 0.035,
+      roughness: 0.52,
+      metalness: 0.78
+    });
+    const rustMetal = new THREE.MeshStandardMaterial({
+      map: metalTex.map,
+      bumpMap: metalTex.bumpMap,
+      bumpScale: 0.045,
+      roughness: 0.84,
+      metalness: 0.36,
+      color: 0x9e7d62
+    });
     const WALL_H = 3.0, wallTh = 0.3;
 
     addWallBox(0, -0.1, 5, 7, 0.2, 8, floorMat);
@@ -2214,6 +2603,11 @@ window.Episode1 = (() => {
     addWallBox(10, WALL_H/2, -30, 16, WALL_H, wallTh, conc);
     addWallBox(2.15, WALL_H/2, -14.5, wallTh, WALL_H, 5, conc);
     addWallBox(2.15, WALL_H/2, -26, wallTh, WALL_H, 8, conc);
+
+    const pipeMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 42, 12), rustMetal);
+    pipeMesh.rotation.x = Math.PI / 2;
+    pipeMesh.position.set(-1.92, 2.55, -20);
+    epScene.add(pipeMesh);
 
     const gateGroup = new THREE.Group();
     const gateMesh = new THREE.Mesh(new THREE.BoxGeometry(3.8, 3.0, 0.25), metal);
@@ -2518,8 +2912,16 @@ window.Episode1 = (() => {
     player.pos.z += player.vel.z * dt;
     resolveCollisions(player.pos, PR);
 
+    const horizSpeed = Math.hypot(player.vel.x, player.vel.z);
+    if (horizSpeed > 0.25 && !REDUCE_MOTION) {
+      bobTimer += dt * (sprint ? 13 : 8.5);
+    } else {
+      bobTimer = 0;
+    }
+    const bobOffset = horizSpeed > 0.25 && !REDUCE_MOTION ? Math.sin(bobTimer) * 0.032 : 0;
+
     epCamera.position.copy(player.pos);
-    epCamera.position.y = EYE;
+    epCamera.position.y = EYE + bobOffset;
     epCamera.rotation.order = 'YXZ';
     epCamera.rotation.y = player.yaw;
     epCamera.rotation.x = player.pitch;
@@ -2855,6 +3257,8 @@ function openEpisodeStartscreen() {
 document.getElementById('btn-enter-ep1').addEventListener('click', openEpisodeStartscreen);
 document.getElementById('btn-hud-ep1').addEventListener('click', openEpisodeStartscreen);
 document.getElementById('ep1-start-go').addEventListener('click', () => {
+  document.getElementById('intro-screen').classList.add("hidden");
+  fadeOutIntroBgm();
   document.getElementById('ep1-startscreen').style.display = 'none';
   window.Episode1.init();
   window.Episode1.start();
@@ -2863,8 +3267,44 @@ document.getElementById('ep1-start-cancel').addEventListener('click', () => {
   document.getElementById('ep1-startscreen').style.display = 'none';
 });
 
+const introBgm = document.getElementById("intro-bgm");
+
+function tryPlayIntroBgm() {
+  if (!introBgm) return;
+  introBgm.volume = 0.72;
+  const p = introBgm.play();
+  if (p && typeof p.catch === "function") {
+    p.catch(() => {});
+  }
+}
+
+function fadeOutIntroBgm() {
+  if (!introBgm) return;
+  const step = 0.05;
+  const timer = setInterval(() => {
+    if (!introBgm || introBgm.volume <= step) {
+      clearInterval(timer);
+      if (introBgm) {
+        introBgm.volume = 0;
+        introBgm.pause();
+      }
+      return;
+    }
+    introBgm.volume = Math.max(0, introBgm.volume - step);
+  }, 55);
+}
+
+// Автозапуск при первом касании/клике на прелоадере (и мгновенный старт, если браузер разрешит)
+tryPlayIntroBgm();
+document.getElementById("intro-screen").addEventListener("pointerdown", () => {
+  if (!document.getElementById("intro-screen").classList.contains("hidden")) {
+    tryPlayIntroBgm();
+  }
+}, { once: true });
+
 document.getElementById("btn-enter-house").addEventListener("click", () => {
   document.getElementById("intro-screen").classList.add("hidden");
+  fadeOutIntroBgm();
   audioEngine.init();
   const sBtn = document.getElementById("btn-toggle-sound");
   sBtn.textContent = "ЗВУК: ВКЛ";
@@ -2884,20 +3324,6 @@ document.getElementById("btn-regen-room").addEventListener("click", () => {
   applyRoomTexture(currentRoomIndex);
   updateRoomHUD();
 });
-
-document.getElementById("btn-intro-upload").addEventListener("click", () => {
-  setPhotosFeedback("");
-  renderPhotoSlotsModal();
-  openModalEl(document.getElementById("photos-modal"));
-});
-document.getElementById("btn-open-photos").addEventListener("click", () => {
-  setPhotosFeedback("");
-  renderPhotoSlotsModal();
-  openModalEl(document.getElementById("photos-modal"));
-});
-document.getElementById("btn-close-photos").addEventListener("click", () => closeModalEl(document.getElementById("photos-modal")));
-document.getElementById("btn-select-bulk").addEventListener("click", () => document.getElementById("bulk-file-input").click());
-document.getElementById("bulk-file-input").addEventListener("change", (e) => { if (e.target.files) handleBulkFiles(e.target.files); });
 
 document.getElementById("btn-open-puzzle").addEventListener("click", openPuzzleModal);
 document.getElementById("btn-close-puzzle").addEventListener("click", () => closeModalEl(document.getElementById("puzzle-modal")));
@@ -2943,23 +3369,11 @@ document.getElementById("btn-reset-progress").addEventListener("click", () => {
   fBtn.textContent = "РЕЖИМ: КВЕСТ";
   fBtn.classList.remove("active");
   fBtn.setAttribute("aria-pressed", "false");
-  if (tapeVideo) { tapeVideo.pause(); tapeVideo.currentTime = 0; tapeVideo.classList.remove("playing"); }
+  if (tapeVideo) { tapeVideo.pause(); tapeVideo.currentTime = 0; if (tapeVideoWrap) tapeVideoWrap.classList.remove("playing"); }
   closeModalEl(document.getElementById("final-modal"));
   applyRoomTexture(0);
   updateRoomHUD();
   saveProgress();
-});
-
-window.addEventListener("dragover", (e) => e.preventDefault());
-window.addEventListener("drop", (e) => {
-  e.preventDefault();
-  if (window.Episode1 && window.Episode1.isActive()) return;
-  if (e.dataTransfer && e.dataTransfer.files.length) {
-    setPhotosFeedback("");
-    renderPhotoSlotsModal();
-    openModalEl(document.getElementById("photos-modal"));
-    handleBulkFiles(e.dataTransfer.files);
-  }
 });
 
 document.addEventListener("visibilitychange", () => {
@@ -2993,7 +3407,6 @@ tryAutoLoadImages();
 applyRoomTexture(currentRoomIndex);
 buildDepthNav();
 updateRoomHUD();
-renderPhotoSlotsModal();
 ensureFlashlightSprite();
 
 const fBtnInit = document.getElementById("btn-toggle-flashlight");
