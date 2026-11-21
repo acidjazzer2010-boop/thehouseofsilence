@@ -88,11 +88,27 @@
 </div>
 
 <div class="modal-backdrop" id="final-modal" role="dialog" aria-modal="true" aria-labelledby="final-title">
-  <div class="modal-card">
-    <div class="modal-tag">АРХИВ ЗАКРЫТ</div>
+  <div class="modal-card" style="max-width:620px;">
+    <div class="modal-tag" id="final-ending-tag">АРХИВ ЗАКРЫТ // ВЫБОР ИСХОДА</div>
     <h3 class="modal-title" id="final-title">Дело № 404-06</h3>
-    <p class="modal-body">Вы прошли все основные и тайные сектора особняка. Дом отпустил вас... на время.</p>
-    <div style="display:flex; gap:8px; margin-top:16px;">
+    <p class="modal-body" id="final-summary-note">
+      Вы собрали нити воспоминаний, скрытых записей и сырых коридоров подвала. Выберите, как завершить этот цикл — или откройте все три исхода.
+    </p>
+
+    <div id="ending-selector-row" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:14px;">
+      <button class="hud-btn" id="btn-ending-loop" type="button">I. ПЕТЛЯ ВИНЫ</button>
+      <button class="hud-btn" id="btn-ending-archive" type="button">II. АРХИВ / ЭКСПОНАТ</button>
+      <button class="hud-btn" id="btn-ending-break" type="button">III. ПРОБУЖДЕНИЕ</button>
+    </div>
+
+    <div class="puzzle-interactive" id="ending-story-box" style="margin-bottom:12px;">
+      <div id="ending-subtitle" style="font-size:11px; letter-spacing:2px; color:var(--amber-glow); margin-bottom:8px;"></div>
+      <p id="ending-narrative" style="font-size:12px; line-height:1.65; color:#c8cfc4;"></p>
+    </div>
+
+    <div class="puzzle-feedback" id="endings-unlocked-status" style="margin-bottom:14px;">Открыто концовок: 0 / 3</div>
+
+    <div style="display:flex; gap:8px; margin-top:12px;">
       <button class="btn" id="btn-reset-progress">СБРОСИТЬ ПРОГРЕСС</button>
       <button class="btn btn-primary" id="btn-close-final" style="flex:1">ЗАКРЫТЬ</button>
     </div>
