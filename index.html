@@ -63,7 +63,7 @@
     display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
     padding: 0 24px 54px; text-align: center;
     overflow: hidden;
-    transition: opacity 0.85s ease, visibility 0.85s ease;
+    transition: opacity 2.1s cubic-bezier(0.22, 1, 0.36, 1), visibility 2.1s ease;
   }
   #intro-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
 
@@ -528,6 +528,7 @@
 
 <audio id="intro-bgm" loop preload="metadata">
   <source src="Abandoned%20Victims.ogg" type="audio/ogg">
+  <source src="Abandoned%20Victims.mp3" type="audio/mpeg">
 </audio>
 
 <div id="intro-screen">
@@ -687,81 +688,87 @@ const ROOMS = [
   {
     id: 0, code: "СЕКТОР 01 // TAPEROOM", fileName: "Taperoom.jpg",
     title: "Прихожая с катушечным диктофоном",
-    desc: "Сырые обои отслаиваются от гнилой штукатурки. В центре на покосившемся столе стоит ржавый бобинный диктофон. Справа — тёмный проём.",
+    desc: "Сырые обои отслаиваются от гнилой штукатурки. На гниющем полу брошены мокрые домашние тапочки, рядом — ржавый бобинный диктофон.",
     portal: { x: 0.62, y: 0.48, label: "Проём в Gallery" },
     artifact: { x: 0.41, y: 0.42, label: "Катушечный диктофон" },
+    clueProp: { x: 0.34, y: 0.68, label: "Мокрые тапочки у порога", clueText: "Часть 1/2 частоты: +42 Гц (базовый тон 400 Гц на раме в Gallery)" },
     shadowSpots: [{ x: 0.59, y: 0.52, scale: 1.05 }, { x: 0.67, y: 0.55, scale: 0.90 }],
     palette: { wall: "#18201b", floor: "#0d110e", light: "#6c8074" },
     reverbDecay: 3.5, solved: false, solvedOnce: false, tapePlaying: false, tapeFinished: false,
-    puzzleTitle: "Бобинный диктофон «ЭХО-4»",
-    puzzleDesc: "Осмотрите сырую штукатурку слева лучом фонаря — на стене нацарапана несущая частота плёнки.",
+    puzzleTitle: "Бобинный диктофон «ЭХО-4» (2-составный)",
+    puzzleDesc: "Шаг 1: осмотрите мокрые тапочки у порога (добавка +42 Гц). Шаг 2: сверьте базовую отметку 400 Гц в Gallery и выставьте итоговую частоту.",
     puzzleType: "frequency", targetFreq: 442
   },
   {
     id: 1, code: "СЕКТОР 02 // GALLERY", fileName: "Gallery.jpg",
     title: "Галерея с пустыми рамами и цепями",
-    desc: "Вытянутая анфилада с облезлыми стенами, пустыми рамами и тяжёлыми цепями.",
+    desc: "Вытянутая анфилада с облезлыми стенами, осколками рамок и тяжёлыми цепями.",
     portal: { x: 0.50, y: 0.46, label: "Подъём в Attic" },
     artifact: { x: 0.31, y: 0.44, label: "Узел с кодовым замком" },
+    clueProp: { x: 0.68, y: 0.52, label: "Осколок разбитой рамки", clueText: "Знаки I и IV на осколке рамки; знаки VII и IX — на заляпанной простыне в Attic (400 Гц — метка плёнки)" },
     shadowSpots: [{ x: 0.45, y: 0.52, scale: 0.85 }, { x: 0.55, y: 0.50, scale: 0.92 }],
     palette: { wall: "#1c221b", floor: "#121510", light: "#7a8c76" },
     reverbDecay: 4.0, solved: false, solvedOnce: false,
-    puzzleTitle: "Четырёхдисковый замок смотрителя",
-    puzzleDesc: "Посветите фонариком на глубокие царапины на правой стене под рамами — там вырезаны 4 римских знака.",
+    puzzleTitle: "Четырёхдисковый замок смотрителя (2-составный)",
+    puzzleDesc: "Первая пара римских знаков (I, IV) спрятана на осколке рамки здесь, вторая пара (VII, IX) — на заляпанной простыне в Attic.",
     puzzleType: "roman_code", targetCode: ["I", "IV", "VII", "IX"]
   },
   {
     id: 2, code: "СЕКТОР 03 // ATTIC", fileName: "attic.jpg",
     title: "Чердак с заляпанными простынями",
-    desc: "Под гниющими стропилами стоят сундуки и мебель под заляпанными простынями.",
+    desc: "Под гниющими стропилами стоят сундуки и мебель под заляпанными простынями и старыми пледами.",
     portal: { x: 0.50, y: 0.45, label: "Люк в Surgeryroom" },
     artifact: { x: 0.14, y: 0.72, label: "Кованый сундук с противовесами" },
+    clueProp: { x: 0.52, y: 0.58, label: "Заляпанный плед на кресле", clueText: "Знаки VII и IX для Gallery; для весов: на пледе вышито «6 кг слева», а в Surgeryroom на бутылке — «6 кг справа»" },
     shadowSpots: [{ x: 0.42, y: 0.48, scale: 0.82 }, { x: 0.73, y: 0.50, scale: 0.95 }],
     palette: { wall: "#211c16", floor: "#14110d", light: "#9c896e" },
     reverbDecay: 3.2, solved: false, solvedOnce: false,
-    puzzleTitle: "Рычажные весы чердачного люка",
-    puzzleDesc: "Осветите заляпанную простыню на центральном кресле — на ткани проступает распределение гирь для левой (Л) и правой (П) чаш.",
+    puzzleTitle: "Рычажные весы чердачного люка (2-составный)",
+    puzzleDesc: "Левая чаша (6 кг) указана на заляпанном пледе здесь, а правая (6 кг) — на этикетке бутылки в Surgeryroom.",
     puzzleType: "weights"
   },
   {
     id: 3, code: "СЕКТОР 04 // SURGERYROOM", fileName: "Surgeryroom.jpg",
     title: "Заброшенная операционная",
-    desc: "Потрескавшийся кафель, ржавые ширмы и операционный стол.",
+    desc: "Потрескавшийся кафель, пустые склянки и бутылки, ржавые ширмы и операционный стол.",
     portal: { x: 0.64, y: 0.49, label: "Гермошлюз в Bunker" },
     artifact: { x: 0.48, y: 0.54, label: "Хирургический стол и дозатор" },
+    clueProp: { x: 0.24, y: 0.64, label: "Мутная бутылка с осадком", clueText: "Правая чаша весов Attic = 6 кг; для дозатора: колба А = 3 (здесь), колба B = 1 (на оборванном проводе в Bunker)" },
     shadowSpots: [{ x: 0.26, y: 0.53, scale: 1.02 }, { x: 0.64, y: 0.51, scale: 0.88 }],
     palette: { wall: "#172420", floor: "#0e1412", light: "#779c8e" },
     reverbDecay: 4.5, solved: false, solvedOnce: false,
-    puzzleTitle: "Дозатор инфузионной стойки №9",
-    puzzleDesc: "Осмотрите треснувший кафель за операционным столом — там процарапана пропорция для колб А и B.",
+    puzzleTitle: "Дозатор инфузионной стойки №9 (2-составный)",
+    puzzleDesc: "Доза колбы А = 3 читается на склянке/кафеле здесь, а доза колбы B = 1 привязана к оборванному проводу в Bunker.",
     puzzleType: "dosage", targetA: 3, targetB: 1
   },
   {
     id: 4, code: "СЕКТОР 05 // BUNKER", fileName: "Bunker.jpg",
     title: "Подземный бункер связи",
-    desc: "Массивная ржавая гермодверь, аварийный маяк и полевой телефон.",
+    desc: "Массивная ржавая гермодверь, оборванные провода, аварийный маяк и полевой телефон.",
     portal: { x: 0.90, y: 0.52, label: "Секретный шлюз: Архив" },
     artifact: { x: 0.33, y: 0.56, label: "Полевой телефон и гермовентиль" },
+    clueProp: { x: 0.64, y: 0.38, label: "Оборванный провод под потолком", clueText: "Колба B = 1; обороты штурвала: первые 3 поворота вправо (R, R, R) здесь, последние 2 влево (L, L) — на заклинившем ключе в Archive" },
     shadowSpots: [{ x: 0.87, y: 0.54, scale: 0.96 }, { x: 0.76, y: 0.55, scale: 0.85 }],
     palette: { wall: "#1b1917", floor: "#0f0d0c", light: "#c93b2b" },
     reverbDecay: 5.2, solved: false, solvedOnce: false,
-    puzzleTitle: "Штурвал гермошлюза и аварийный передатчик",
-    puzzleDesc: "На ржавой гермодвери прямо над маховиком выбита последовательность оборотов вправо (R) и влево (L).",
+    puzzleTitle: "Штурвал гермошлюза и передатчик (2-составный)",
+    puzzleDesc: "Начало серии (R, R, R) у штурвала здесь, завершение (L, L) — на ржавом ключе у затопленного стеллажа в Archive.",
     puzzleType: "valve", targetSequence: ["R", "R", "R", "L", "L"]
   },
-  /* ==== 4 СЕКРЕТНЫЕ КОМНАТЫ (ОТКРЫВАЮТСЯ ТОЛЬКО ПОСЛЕ РЕШЕНИЯ КОМНАТ 1–5) ==== */
+  /* ==== 4 СЕКРЕТНЫЕ КОМНАТЫ (2- И 3-СОСТАВНЫЕ КВЕСТЫ ПОСЛЕ ПРОХОЖДЕНИЯ 1–5) ==== */
   {
     id: 5, code: "СЕКРЕТ 01 // ARCHIVE", fileName: "Archive_secret1.gif",
     isSecret: true, isAnimatedGif: true,
     title: "Тайник I: Затопленный архив",
-    desc: "Полузатопленное хранилище дел № 404. Вода рябит под мерцающей решёткой потолка, а на сырой штукатурке справа процарапано предостережение.",
+    desc: "Полузатопленное хранилище дел № 404. У стеллажа — ржавый ключ и всплывшие папки, а на сырой штукатурке справа процарапано предостережение.",
     portal: { x: 0.50, y: 0.46, label: "Проход в Тайник II: Котельная" },
     artifact: { x: 0.78, y: 0.56, label: "Водомерный замок стеллажа" },
+    clueProp: { x: 0.22, y: 0.64, label: "Ржавый ключ в всплывших бумагах", clueText: "Финал штурвала Bunker: L, L; ключ к архиву: первое слово «НЕ» на всплывшей папке, второе «СМОТРИ» — на стене" },
     shadowSpots: [{ x: 0.48, y: 0.50, scale: 0.95 }, { x: 0.25, y: 0.54, scale: 0.88 }],
     palette: { wall: "#141d17", floor: "#080d0a", light: "#658f74" },
     reverbDecay: 5.4, solved: false, solvedOnce: false,
-    puzzleTitle: "Шифр затопленного архива",
-    puzzleDesc: "Наведите луч фонаря на правую сырую стену над водой — в штукатурке вырезаны два слова предостережения.",
+    puzzleTitle: "Шифр затопленного архива (2-составный)",
+    puzzleDesc: "Сложите два слова: «НЕ» (отметка на бумагах у ржавого ключа) и «СМОТРИ» (на сырой стене над водой).",
     puzzleType: "text_code",
     placeholder: "Два слова со стены...",
     targetWord: "НЕ СМОТРИ"
@@ -770,14 +777,15 @@ const ROOMS = [
     id: 6, code: "СЕКРЕТ 02 // FURNACE", fileName: "Furnace_secret1.jpg",
     isSecret: true,
     title: "Тайник II: Заброшенная котельная",
-    desc: "Чёрная от копоти топка со старыми манометрами. В толстом слое золы перед чугунной дверцей кто-то вывел трёхзначный номер.",
+    desc: "Чёрная от копоти топка со старыми манометрами и лопнувшими стеклянными колбами в золе.",
     portal: { x: 0.68, y: 0.46, label: "Лаз в Тайник III: Камера маятника" },
     artifact: { x: 0.34, y: 0.54, label: "Топочный засов котла" },
+    clueProp: { x: 0.56, y: 0.74, label: "Лопнувшая склянка в золе", clueText: "3-составный код: [6] на горлышке склянки здесь, [1] на оборванном проводе в Bunker, [8] в золе перед топкой" },
     shadowSpots: [{ x: 0.66, y: 0.52, scale: 1.0 }, { x: 0.82, y: 0.54, scale: 0.9 }],
     palette: { wall: "#1f1712", floor: "#0d0907", light: "#c27838" },
     reverbDecay: 4.8, solved: false, solvedOnce: false,
-    puzzleTitle: "Термозамок топочной дверцы",
-    puzzleDesc: "Осветите слой серой золы на полу перед топкой — там процарапаны три цифры.",
+    puzzleTitle: "Термозамок топочной дверцы (3-составный)",
+    puzzleDesc: "Соберите 3 цифры: [6] на лопнувшей склянке в котельной, [1] на проводе в Bunker и [8] в золе перед топкой.",
     puzzleType: "pin_digits",
     targetPin: [6, 1, 8]
   },
@@ -785,14 +793,15 @@ const ROOMS = [
     id: 7, code: "СЕКРЕТ 03 // GORECHAMBER", fileName: "Gorechamber_secret1.jpg",
     isSecret: true,
     title: "Тайник III: Камера с маятником",
-    desc: "Сырой каземат с ржавыми кандалами на стенах. Под массивным лезвием маятника в каменных плитах пола выбиты четыре римских числа.",
+    desc: "Сырой каземат с ржавыми кандалами, порванными ремнями и четырьмя римскими знаками на каменной плите пола.",
     portal: { x: 0.54, y: 0.45, label: "Переход в Тайник IV: Зеркальный изолятор" },
     artifact: { x: 0.16, y: 0.46, label: "Цепной стопор маятника" },
+    clueProp: { x: 0.74, y: 0.66, label: "Порванный кожаный ремень у стены", clueText: "3-составный ключ: [I, III] на ремне и кандалах здесь, [IX] на осколке рамки в Gallery, [X] под лезвием маятника" },
     shadowSpots: [{ x: 0.55, y: 0.52, scale: 0.96 }, { x: 0.84, y: 0.54, scale: 0.88 }],
     palette: { wall: "#1c2019", floor: "#0d100c", light: "#85967e" },
     reverbDecay: 5.6, solved: false, solvedOnce: false,
-    puzzleTitle: "Римский замок каземата",
-    puzzleDesc: "Посветите на каменную плиту пола прямо под лезвием маятника — там вырезаны 4 римских знака.",
+    puzzleTitle: "Римский замок каземата (3-составный)",
+    puzzleDesc: "Соберите 4 знака из 3 источников: [I, III] на порванном ремне у стены, [IX] на рамке в Gallery и [X] на плите под маятником.",
     puzzleType: "roman_code_extended",
     targetCode: ["I", "III", "IX", "X"]
   },
@@ -800,14 +809,15 @@ const ROOMS = [
     id: 8, code: "СЕКРЕТ 04 // MIRROROOM", fileName: "Mirroroom_secret1.jpg",
     isSecret: true,
     title: "Тайник IV: Зеркальный изолятор",
-    desc: "Круглая камера с треснувшими зеркалами и ржавой клеткой в центре. В проломе потолочной штукатурки нацарапаны две цифры — одна из них перевёрнута в отражении.",
+    desc: "Круглая камера с треснувшими зеркалами, ржавой клеткой, грязными тапочками у порога и двумя цифрами в проломе потолка.",
     portal: { x: 0.62, y: 0.48, label: "Спуск в Процедурную аномалию" },
     artifact: { x: 0.62, y: 0.55, label: "Засов заколоченной двери" },
+    clueProp: { x: 0.36, y: 0.76, label: "Осколок зеркала у ржавой клетки", clueText: "2-составный шифр: [9] в проломе потолка, [4] в отражении осколка зеркала у клетки" },
     shadowSpots: [{ x: 0.28, y: 0.52, scale: 0.92 }, { x: 0.80, y: 0.52, scale: 0.92 }],
     palette: { wall: "#1c1c18", floor: "#0d0c0a", light: "#b59d78" },
     reverbDecay: 5.0, solved: false, solvedOnce: false,
-    puzzleTitle: "Зеркальный шифр изолятора",
-    puzzleDesc: "Поднимите луч фонаря на обвалившуюся штукатурку потолка над клеткой — прочитайте обе нацарапанные цифры (сверху вниз).",
+    puzzleTitle: "Зеркальный шифр изолятора (2-составный)",
+    puzzleDesc: "Первая цифра [9] видна в проломе потолка, вторая [4] — в осколке зеркала у ржавой клетки.",
     puzzleType: "pin_digits",
     targetPin: [9, 4]
   },
@@ -1910,6 +1920,10 @@ function render2DOverlay(w, h, room, blackFade, time, dt) {
   });
   drawMarker2D(offsetX + room.artifact.x * scaleX, offsetY + room.artifact.y * scaleY,
     room.artifact.label, room.solved ? "#528c63" : "#bd7d3b", time);
+  if (room.clueProp) {
+    drawMarker2D(offsetX + room.clueProp.x * scaleX, offsetY + room.clueProp.y * scaleY,
+      room.clueProp.label, "#8c7d65", time);
+  }
   const canPass = room.solved || freeMode;
   drawMarker2D(offsetX + room.portal.x * scaleX, offsetY + room.portal.y * scaleY,
     room.portal.label, canPass ? "#528c63" : "#8f3222", time);
@@ -2115,6 +2129,18 @@ glCanvas.addEventListener("click", (e) => {
   const artX = t.offsetX + room.artifact.x * t.scaleX;
   const artY = t.offsetY + room.artifact.y * t.scaleY;
   if (Math.hypot(e.clientX - artX, e.clientY - artY) < 90) { openPuzzleModal(); return; }
+
+  if (room.clueProp) {
+    const cpX = t.offsetX + room.clueProp.x * t.scaleX;
+    const cpY = t.offsetY + room.clueProp.y * t.scaleY;
+    if (Math.hypot(e.clientX - cpX, e.clientY - cpY) < 90) {
+      audioEngine.playTick();
+      openPuzzleModal();
+      const fb = document.getElementById("modal-feedback");
+      if (fb) fb.textContent = `УЛИКА: ${room.clueProp.clueText}`;
+      return;
+    }
+  }
 
   const portX = t.offsetX + room.portal.x * t.scaleX;
   const portY = t.offsetY + room.portal.y * t.scaleY;
@@ -2353,12 +2379,56 @@ function openPuzzleModal() {
   openModalEl(modal);
 }
 
+function triggerLockHapticFeedback() {
+  if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+    try {
+      // Двойной тяжёлый импульс лязга замка на мобильных устройствах
+      navigator.vibrate([75, 55, 130]);
+    } catch (e) {}
+  }
+}
+
+function playMechanismUnlockClank() {
+  if (!audioEngine.ctx || !audioEngine.enabled) return;
+  const now = audioEngine.ctx.currentTime;
+
+  // Металлический лязг засова и пружины
+  [0, 0.14, 0.29].forEach((offset, idx) => {
+    const t = now + offset;
+    const osc = audioEngine.ctx.createOscillator();
+    osc.type = idx === 1 ? "square" : "sawtooth";
+    const startFreq = idx === 0 ? 195 : (idx === 1 ? 132 : 86);
+    osc.frequency.setValueAtTime(startFreq, t);
+    osc.frequency.exponentialRampToValueAtTime(idx === 2 ? 34 : 58, t + 0.16);
+
+    const bp = audioEngine.ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.setValueAtTime(idx === 0 ? 1150 : 680, t);
+    bp.Q.value = 6.5;
+
+    const g = audioEngine.ctx.createGain();
+    g.gain.setValueAtTime(0.001, t);
+    g.gain.linearRampToValueAtTime(idx === 2 ? 0.55 : 0.42, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0005, t + 0.19);
+
+    osc.connect(bp);
+    bp.connect(g);
+    g.connect(audioEngine.dryGain);
+    g.connect(audioEngine.convolver);
+    osc.start(t);
+    osc.stop(t + 0.21);
+  });
+
+  audioEngine.playSteelChains(0);
+}
+
 function solveCurrentRoom(msg) {
   const room = ROOMS[currentRoomIndex];
   const alreadySolvedOnce = Boolean(room.solvedOnce);
   room.solved = true;
   room.solvedOnce = true;
-  audioEngine.playSteelChains();
+  playMechanismUnlockClank();
+  triggerLockHapticFeedback();
   document.getElementById("modal-feedback").textContent = msg;
   updateRoomHUD();
   saveProgress();
@@ -2390,7 +2460,7 @@ window.Episode1 = (() => {
   const interactables = [];
   const gateDoor = { mesh: null, opening: 0, isOpening: false, baseY: 0, wall: null };
   const entity = { active: false, mesh: null, pos: new THREE.Vector3(), speed: ENTITY_SPEED, caught: false };
-  const state = { hasHandle: false, handleInstalled: false, powerOn: false, gateOpen: false, gameOver: false, won: false };
+  const state = { hasHandle: false, handleInstalled: false, powerOn: false, gateOpen: false, gameOver: false, won: false, wireChecked: false, bottleChecked: false };
 
   let elHud, elCrosshair, elPrompt, elObjective, elInventory, elWarning, elHint;
   let elOverlay, elOverlayTitle, elOverlayText;
@@ -2754,9 +2824,46 @@ window.Episode1 = (() => {
     handleGroup.add(handleGlow);
     epScene.add(handleGroup);
 
+    const wireMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.018, 0.018, 1.35, 6),
+      new THREE.MeshStandardMaterial({ color: 0x181615, roughness: 0.75 })
+    );
+    wireMesh.position.set(14.5, 2.35, -24.5);
+    wireMesh.rotation.z = 0.28;
+    epScene.add(wireMesh);
+
+    const bottleMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.075, 0.28, 10),
+      new THREE.MeshStandardMaterial({ color: 0x2c4232, roughness: 0.3, transparent: true, opacity: 0.85 })
+    );
+    bottleMesh.position.set(13.8, 0.14, -26.5);
+    epScene.add(bottleMesh);
+
+    interactables.push({
+      id: 'basement_wire', mesh: wireMesh,
+      getPrompt: () => state.wireChecked ? 'ПРОВОД ОСМОТРЕН (ЗВЕНО 1/3)' : 'ОСМОТРЕТЬ ОБОРВАННЫЙ ПРОВОД',
+      canInteract: () => !state.wireChecked,
+      onInteract: () => {
+        state.wireChecked = true;
+        audioEngine.playTick();
+        updateObjective();
+      }
+    });
+
+    interactables.push({
+      id: 'basement_bottle', mesh: bottleMesh,
+      getPrompt: () => state.bottleChecked ? 'БУТЫЛКА ОСМОТРЕНА (ЗВЕНО 2/3)' : 'ОСМОТРЕТЬ МУТНУЮ БУТЫЛКУ',
+      canInteract: () => !state.bottleChecked,
+      onInteract: () => {
+        state.bottleChecked = true;
+        audioEngine.playDrip();
+        updateObjective();
+      }
+    });
+
     interactables.push({
       id: 'handle', mesh: handleGroup,
-      getPrompt: () => state.hasHandle || state.handleInstalled ? null : 'ВЗЯТЬ РУКОЯТКУ',
+      getPrompt: () => state.hasHandle || state.handleInstalled ? null : 'ВЗЯТЬ РУКОЯТКУ (ЗВЕНО 3/3)',
       canInteract: () => !state.hasHandle && !state.handleInstalled,
       onInteract: () => {
         state.hasHandle = true;
@@ -2891,7 +2998,9 @@ window.Episode1 = (() => {
   function openGate() {
     if (gateDoor.isOpening) return;
     gateDoor.isOpening = true; gateDoor.opening = 0;
-    audioEngine.playSteelChains();
+    if (typeof playMechanismUnlockClank === "function") playMechanismUnlockClank();
+    else audioEngine.playSteelChains();
+    if (typeof triggerLockHapticFeedback === "function") triggerLockHapticFeedback();
     audioEngine.playSubterraneanRumble();
     gateDoor.wall.enabled = false;
     state.gateOpen = true;
@@ -3087,6 +3196,8 @@ window.Episode1 = (() => {
   function resetState() {
     state.hasHandle = false;
     state.handleInstalled = false;
+    state.wireChecked = false;
+    state.bottleChecked = false;
     state.powerOn = false;
     state.gateOpen = false;
     state.gameOver = false;
