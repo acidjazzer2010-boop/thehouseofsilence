@@ -67,7 +67,7 @@
   }
   #intro-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
 
-  #intro-gif-bg {
+  #intro-title-img {
     position: absolute;
     left: 50%;
     top: 50%;
@@ -79,13 +79,13 @@
     min-width: 100%;
     min-height: 100%;
     object-fit: contain;
-    filter: contrast(1.12) brightness(0.78) saturate(0.72);
+    filter: contrast(1.14) brightness(0.82) saturate(0.74);
     z-index: 1;
     pointer-events: none;
   }
 
   @media (max-aspect-ratio: 4/3) {
-    #intro-gif-bg {
+    #intro-title-img {
       transform: translate(-50%, -50%) scale(1);
       width: 100vw;
       height: auto;
@@ -94,18 +94,29 @@
     }
   }
 
+  #intro-fog-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    opacity: 0.94;
+  }
+
   #intro-scrim {
     position: absolute; inset: 0;
     background:
-      linear-gradient(180deg, rgba(1,2,1,0.52) 0%, rgba(1,2,1,0.12) 42%, rgba(1,2,1,0.72) 76%, rgba(0,0,0,0.97) 100%),
-      radial-gradient(circle at 50% 45%, transparent 35%, rgba(0,0,0,0.86) 100%);
-    z-index: 2;
+      linear-gradient(180deg, rgba(1,2,1,0.46) 0%, rgba(1,2,1,0.08) 42%, rgba(1,2,1,0.68) 76%, rgba(0,0,0,0.96) 100%),
+      radial-gradient(circle at 50% 45%, transparent 38%, rgba(0,0,0,0.84) 100%);
+    z-index: 3;
     pointer-events: none;
   }
 
   .intro-footer-panel {
     position: relative;
-    z-index: 3;
+    z-index: 4;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -518,7 +529,8 @@
 <audio id="intro-bgm" src="Abandoned%20Victims.mp3" loop preload="auto"></audio>
 
 <div id="intro-screen">
-  <img id="intro-gif-bg" src="title_l.gif" alt="Особняк // Безмолвие">
+  <img id="intro-title-img" src="title.jpg" alt="Особняк // Безмолвие">
+  <canvas id="intro-fog-canvas" aria-hidden="true"></canvas>
   <div id="intro-scrim" aria-hidden="true"></div>
   <div class="intro-footer-panel">
     <div class="intro-actions">
@@ -3400,6 +3412,174 @@ function fadeOutIntroBgm() {
     introBgm.volume = Math.max(0, introBgm.volume - step);
   }, 55);
 }
+
+
+/* ============================================================
+   ФОТОРЕАЛИСТИЧНЫЙ МНОГОСЛОЙНЫЙ ТУМАН ПОВЕРХ TITLE.JPG
+   Ползёт между буквами, обволакивает тени и подсвечивается изнутри
+============================================================ */
+const introFogCanvas = document.getElementById("intro-fog-canvas");
+const introFogCtx = introFogCanvas ? introFogCanvas.getContext("2d") : null;
+
+// Оффскрин-буфер низкого разрешения для плавного FBM-шума без просадки FPS
+const fogNoiseCanvas = document.createElement("canvas");
+fogNoiseCanvas.width = 256;
+fogNoiseCanvas.height = 144;
+const fogNoiseCtx = fogNoiseCanvas.getContext("2d");
+const fogNoiseImg = fogNoiseCtx.createImageData(256, 144);
+
+// Плавная детерминированная решётка градиентов / значений
+const GRID_W = 32;
+const GRID_H = 18;
+const baseGrid = new Float32Array(GRID_W * GRID_H);
+for (let i = 0; i < baseGrid.length; i++) {
+  baseGrid[i] = Math.random();
+}
+
+function samplePeriodicValue(gx, gy, w, h) {
+  const xi = ((Math.floor(gx) % w) + w) % w;
+  const yi = ((Math.floor(gy) % h) + h) % h;
+  const xf = gx - Math.floor(gx);
+  const yf = gy - Math.floor(gy);
+  const u = xf * xf * (3 - 2 * xf);
+  const v = yf * yf * (3 - 2 * yf);
+
+  const x1 = (xi + 1) % w;
+  const y1 = (yi + 1) % h;
+
+  const v00 = baseGrid[yi * w + xi];
+  const v10 = baseGrid[yi * w + x1];
+  const v01 = baseGrid[y1 * w + xi];
+  const v11 = baseGrid[y1 * w + x1];
+
+  const a = v00 + (v10 - v00) * u;
+  const b = v01 + (v11 - v01) * u;
+  return a + (b - a) * v;
+}
+
+function fbmFog(nx, ny, t) {
+  // Доменное искажение (domain warping) — создаёт живые завихрения тумана между буквами
+  const warpX = (samplePeriodicValue(nx * 5.0 + t * 0.045, ny * 4.0 - t * 0.02, GRID_W, GRID_H) - 0.5) * 1.45;
+  const warpY = (samplePeriodicValue(nx * 4.5 - t * 0.03, ny * 5.0 + t * 0.038, GRID_W, GRID_H) - 0.5) * 1.25;
+
+  let sum = 0;
+  let amp = 0.55;
+  let freq = 4.2;
+  let norm = 0;
+
+  for (let oct = 0; oct < 4; oct++) {
+    const sx = (nx + warpX * (0.28 + oct * 0.08)) * freq + t * (0.06 + oct * 0.025) * (oct % 2 === 0 ? 1 : -0.7);
+    const sy = (ny + warpY * (0.24 + oct * 0.07)) * freq + Math.sin(t * 0.03 + oct) * 0.35;
+    sum += samplePeriodicValue(sx, sy, GRID_W, GRID_H) * amp;
+    norm += amp;
+    amp *= 0.5;
+    freq *= 2.05;
+  }
+  return sum / norm;
+}
+
+const fogWisps = Array.from({ length: 22 }, (_, i) => ({
+  x: Math.random(),
+  y: 0.22 + Math.random() * 0.58,
+  rx: 0.14 + Math.random() * 0.22,
+  ry: 0.035 + Math.random() * 0.075,
+  vx: (0.008 + Math.random() * 0.014) * (i % 2 === 0 ? 1 : -1),
+  phase: Math.random() * Math.PI * 2,
+  alpha: 0.05 + Math.random() * 0.09,
+  tint: i % 3 === 0 ? "185, 196, 178" : (i % 3 === 1 ? "158, 168, 152" : "195, 145, 112")
+}));
+
+let lastFogTime = performance.now();
+
+function resizeIntroFog() {
+  if (!introFogCanvas || !introFogCtx) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  introFogCanvas.width = Math.floor(window.innerWidth * dpr);
+  introFogCanvas.height = Math.floor(window.innerHeight * dpr);
+  introFogCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+window.addEventListener("resize", resizeIntroFog);
+resizeIntroFog();
+
+function renderIntroFog(now) {
+  const introEl = document.getElementById("intro-screen");
+  if (!introEl || introEl.classList.contains("hidden") || !introFogCanvas || !introFogCtx) {
+    lastFogTime = now;
+    requestAnimationFrame(renderIntroFog);
+    return;
+  }
+
+  const dtSec = Math.min(0.08, (now - lastFogTime) / 1000);
+  lastFogTime = now;
+  const t = now * 0.001;
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+
+  // Обновляем FBM-поле тумана с доменным искажением
+  const data = fogNoiseImg.data;
+  const nw = fogNoiseCanvas.width;
+  const nh = fogNoiseCanvas.height;
+
+  for (let y = 0; y < nh; y++) {
+    const ny = y / nh;
+    // Плотнее всего в средней полосе, где находятся буквы заголовка, и у земли
+    const bandWeight = 0.55 + 0.45 * Math.exp(-Math.pow((ny - 0.52) / 0.28, 2));
+    for (let x = 0; x < nw; x++) {
+      const nx = x / nw;
+      const nVal = fbmFog(nx, ny, t);
+      const shaped = Math.pow(Math.max(0, (nVal - 0.34) / 0.58), 1.65);
+      const alphaByte = Math.min(255, Math.floor(shaped * bandWeight * 175));
+
+      const idx = (y * nw + x) * 4;
+      // Холодно-серебристый туман с лёгким тёплым/болотным оттенком внутри облачных масс
+      data[idx]     = 176 + Math.floor(shaped * 24);
+      data[idx + 1] = 184 + Math.floor(shaped * 20);
+      data[idx + 2] = 172 + Math.floor(shaped * 14);
+      data[idx + 3] = alphaByte;
+    }
+  }
+  fogNoiseCtx.putImageData(fogNoiseImg, 0, 0);
+
+  introFogCtx.clearRect(0, 0, w, h);
+
+  // Слой 1: мягко интерполированный объёмный FBM-туман
+  introFogCtx.save();
+  introFogCtx.filter = "blur(10px)";
+  introFogCtx.globalAlpha = 0.86;
+  introFogCtx.drawImage(fogNoiseCanvas, 0, 0, w, h);
+  introFogCtx.restore();
+
+  // Слой 2: тонкие ползущие клочья дымки, просачивающиеся сквозь просветы букв
+  introFogCtx.save();
+  for (let i = 0; i < fogWisps.length; i++) {
+    const sp = fogWisps[i];
+    sp.x += sp.vx * dtSec;
+    if (sp.x > 1.25) sp.x = -0.25;
+    if (sp.x < -0.25) sp.x = 1.25;
+
+    const cx = sp.x * w;
+    const cy = (sp.y + Math.sin(t * 0.55 + sp.phase) * 0.025) * h;
+    const radX = sp.rx * w;
+    const radY = Math.max(24, sp.ry * h);
+
+    const grad = introFogCtx.createRadialGradient(cx, cy, radY * 0.08, cx, cy, radX);
+    const pulseAlpha = sp.alpha * (0.75 + 0.25 * Math.sin(t * 0.9 + sp.phase));
+    grad.addColorStop(0, `rgba(${sp.tint}, ${pulseAlpha.toFixed(3)})`);
+    grad.addColorStop(0.55, `rgba(${sp.tint}, ${(pulseAlpha * 0.42).toFixed(3)})`);
+    grad.addColorStop(1, `rgba(${sp.tint}, 0)`);
+
+    introFogCtx.fillStyle = grad;
+    introFogCtx.beginPath();
+    introFogCtx.ellipse(cx, cy, radX, radY, Math.sin(t * 0.2 + sp.phase) * 0.06, 0, Math.PI * 2);
+    introFogCtx.fill();
+  }
+  introFogCtx.restore();
+
+  requestAnimationFrame(renderIntroFog);
+}
+
+requestAnimationFrame(renderIntroFog);
 
 armAndLoadIntroBgm();
 
