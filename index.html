@@ -526,7 +526,10 @@
 <canvas id="fx-canvas" aria-hidden="true"></canvas>
 <div class="vignette-overlay" aria-hidden="true"></div>
 
-<audio id="intro-bgm" src="Abandoned%20Victims.mp3" loop preload="auto"></audio>
+<audio id="intro-bgm" loop preload="metadata">
+  <source src="Abandoned%20Victims.ogg" type="audio/ogg">
+  <source src="Abandoned%20Victims.mp3" type="audio/mpeg">
+</audio>
 
 <div id="intro-screen">
   <img id="intro-title-img" src="title.jpg" alt="Особняк // Безмолвие">
@@ -871,9 +874,18 @@ class DarkAmbientAudio {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) return;
     this.ctx = new AudioCtx();
+    // Мягкий компрессор защищает от жёстких пиков после увеличения громкости на +50%
+    this.compressor = this.ctx.createDynamicsCompressor();
+    this.compressor.threshold.value = -10;
+    this.compressor.knee.value = 18;
+    this.compressor.ratio.value = 4;
+    this.compressor.attack.value = 0.005;
+    this.compressor.release.value = 0.18;
+
     this.master = this.ctx.createGain();
-    this.master.gain.value = 0.92;
-    this.master.connect(this.ctx.destination);
+    this.master.gain.value = 1.38; // +50% к базовой громкости 0.92
+    this.master.connect(this.compressor);
+    this.compressor.connect(this.ctx.destination);
     this.dryGain = this.ctx.createGain();
     this.dryGain.gain.value = 0.65;
     this.dryGain.connect(this.master);
@@ -949,7 +961,7 @@ class DarkAmbientAudio {
   toggle() {
     if (!this.ctx) { this.init(); return true; }
     this.enabled = !this.enabled;
-    if (this.enabled) { this.ctx.resume(); this.master.gain.setTargetAtTime(0.92, this.ctx.currentTime, 0.2); }
+    if (this.enabled) { this.ctx.resume(); this.master.gain.setTargetAtTime(1.38, this.ctx.currentTime, 0.2); }
     else { this.master.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.2); }
     return this.enabled;
   }
@@ -963,8 +975,8 @@ class DarkAmbientAudio {
     const now = this.ctx.currentTime, curr = this.master.gain.value;
     this.master.gain.cancelScheduledValues(now);
     this.master.gain.setValueAtTime(curr, now);
-    this.master.gain.linearRampToValueAtTime(0.45, now + 0.1);
-    this.master.gain.linearRampToValueAtTime(this.enabled ? 0.92 : 0.0001, now + 2.5);
+    this.master.gain.linearRampToValueAtTime(0.68, now + 0.1);
+    this.master.gain.linearRampToValueAtTime(this.enabled ? 1.38 : 0.0001, now + 2.5);
   }
   playHeartbeatPulse(intensity = 0.55) {
     if (!this.ctx || !this.enabled) return;
@@ -3359,19 +3371,47 @@ document.getElementById('ep1-start-cancel').addEventListener('click', () => {
 
 const introBgm = document.getElementById("intro-bgm");
 let introBgmStarted = false;
+let introProceduralMixActive = false;
+
+// Подмешиваем генерацию DarkAmbientAudio к тихому/короткому лупу, чтобы атмосфера звучала сразу без ожидания OGG
+function startIntroProceduralLayer() {
+  if (introProceduralMixActive) return;
+  audioEngine.init();
+  if (!audioEngine.ctx || !audioEngine.enabled) return;
+
+  introProceduralMixActive = true;
+  if (audioEngine.master) {
+    // Делаем процедурный слой на экране входа приглушённым подложкой под луп
+    audioEngine.master.gain.setTargetAtTime(0.42, audioEngine.ctx.currentTime, 0.25);
+  }
+  audioEngine.playHeartbeatPulse(0.45);
+  setTimeout(() => {
+    if (!document.getElementById("intro-screen").classList.contains("hidden") && audioEngine.enabled) {
+      audioEngine.playWhisper();
+    }
+  }, 600);
+}
+
+function stopIntroProceduralLayer() {
+  introProceduralMixActive = false;
+  if (audioEngine.ctx && audioEngine.master) {
+    audioEngine.master.gain.setTargetAtTime(
+      audioEngine.enabled ? 1.38 : 0.0001,
+      audioEngine.ctx.currentTime,
+      0.25
+    );
+  }
+}
 
 function armAndLoadIntroBgm() {
   if (!introBgm) return;
-  introBgm.preload = "auto";
+  introBgm.preload = "metadata";
   introBgm.loop = true;
-  introBgm.volume = 0.72;
-  try {
-    introBgm.load();
-  } catch (e) {}
+  introBgm.volume = 0.56; // тихий/комфортный луп, подмешиваемый к генерации
 
   const attemptPlay = () => {
     if (!introBgm || document.getElementById("intro-screen").classList.contains("hidden")) return;
-    introBgm.volume = 0.72;
+    introBgm.volume = 0.56;
     const p = introBgm.play();
     if (p && typeof p.then === "function") {
       p.then(() => { introBgmStarted = true; }).catch(() => {});
@@ -3384,6 +3424,7 @@ function armAndLoadIntroBgm() {
 
   const unlockOnInteraction = () => {
     if (document.getElementById("intro-screen").classList.contains("hidden")) return;
+    startIntroProceduralLayer();
     attemptPlay();
     if (introBgmStarted || !introBgm.paused) {
       window.removeEventListener("pointerdown", unlockOnInteraction);
@@ -3398,6 +3439,7 @@ function armAndLoadIntroBgm() {
 }
 
 function fadeOutIntroBgm() {
+  stopIntroProceduralLayer();
   if (!introBgm) return;
   const step = 0.05;
   const timer = setInterval(() => {
