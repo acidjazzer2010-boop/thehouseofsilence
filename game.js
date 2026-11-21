@@ -769,13 +769,46 @@ const panicState = {
   lastTriggeredAt: -PANIC_COOLDOWN_MS, intensity: 0, dread: 0
 };
 
+const ENDINGS = {
+  loop: {
+    id: "loop",
+    btnId: "btn-ending-loop",
+    tag: "КОНЦОВКА I // ЗАМКНУТЫЙ КРУГ ПАМЯТИ",
+    subtitle: "Вы сами оставили эти следы, пытаясь забыть ту ночь",
+    text: "Мокрые тапочки у порога, царапины на штукатурке и голос на плёнке принадлежат вам. Вы уже пытались сбежать из этого дома раньше — и сами спрятали ключи, чтобы не встретиться с тем, что сделали. Дверь щёлкает, но за ней снова тянется знакомый сырой коридор, а счётчик попыток начинает тикать заново."
+  },
+  archive: {
+    id: "archive",
+    btnId: "btn-ending-archive",
+    tag: "КОНЦОВКА II // АРХИВ НАБЛЮДЕНИЯ",
+    subtitle: "Особняк не держит вас — он записывает каждый ваш срыв",
+    text: "Каждая вспышка паники, каждый взгляд в темноту и каждый открытый тайник фиксировались стенами. Вы понимаете, что особняк работает как жуткий архив-установка, где комнаты считывают человеческий страх. Выход не выводит на улицу: вы остаётесь внутри системы — уже не жертвой, а новым наблюдателем за следующим вошедшим."
+  },
+  break: {
+    id: "break",
+    btnId: "btn-ending-break",
+    tag: "КОНЦОВКА III // ПРОБУЖДЕНИЕ В ТРЕВОГЕ",
+    subtitle: "Вы вырвались наверх, но эхо дома осталось с вами",
+    text: "Пройдя сквозь сырой подвал и ловушки памяти, вы выталкиваете тяжёлый засов наружу. Холодный воздух бьёт в лицо, особняк остаётся позади — но в тишине по-прежнему слышится глухой пульс, скрип половиц и чьё-то дыхание за спиной. Полного покоя больше не будет."
+  }
+};
+
+let unlockedEndings = [];
+let selectedEndingId = "loop";
+let panicEpisodesCount = 0;
+let basementDescendedOnce = false;
+
 function saveProgress() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       solved: ROOMS.map(r => r.solved),
       solvedOnce: ROOMS.map(r => Boolean(r.solvedOnce)),
       currentRoom: currentRoomIndex,
-      freeMode, flashlightOn
+      freeMode, flashlightOn,
+      unlockedEndings,
+      selectedEndingId,
+      panicEpisodesCount,
+      basementDescendedOnce
     }));
   } catch (e) {}
 }
@@ -789,7 +822,53 @@ function loadProgress() {
     if (typeof data.currentRoom === "number" && data.currentRoom >= 0 && data.currentRoom < ROOMS.length) currentRoomIndex = data.currentRoom;
     if (typeof data.freeMode === "boolean") freeMode = data.freeMode;
     if (typeof data.flashlightOn === "boolean") flashlightOn = data.flashlightOn;
+    if (Array.isArray(data.unlockedEndings)) unlockedEndings = data.unlockedEndings.filter(id => Boolean(ENDINGS[id]));
+    if (typeof data.selectedEndingId === "string" && ENDINGS[data.selectedEndingId]) selectedEndingId = data.selectedEndingId;
+    if (typeof data.panicEpisodesCount === "number") panicEpisodesCount = data.panicEpisodesCount;
+    if (typeof data.basementDescendedOnce === "boolean") basementDescendedOnce = data.basementDescendedOnce;
   } catch (e) {}
+}
+
+function inferEndingFromRun() {
+  if (basementDescendedOnce) return "break";
+  if (panicEpisodesCount >= 2) return "archive";
+  return "loop";
+}
+
+function renderEndingModal(endingId = null) {
+  const chosenId = endingId && ENDINGS[endingId] ? endingId : selectedEndingId;
+  selectedEndingId = chosenId;
+  const info = ENDINGS[chosenId];
+
+  if (!unlockedEndings.includes(chosenId)) {
+    unlockedEndings.push(chosenId);
+  }
+  saveProgress();
+
+  const tagEl = document.getElementById("final-ending-tag");
+  const subEl = document.getElementById("ending-subtitle");
+  const narEl = document.getElementById("ending-narrative");
+  const stEl  = document.getElementById("endings-unlocked-status");
+
+  if (tagEl) tagEl.textContent = info.tag;
+  if (subEl) subEl.textContent = info.subtitle;
+  if (narEl) narEl.textContent = info.text;
+  if (stEl)  stEl.textContent = `Открыто концовок: ${unlockedEndings.length} / 3 (срывов паники: ${panicEpisodesCount}, спуск в подвал: ${basementDescendedOnce ? "да" : "нет"})`;
+
+  Object.values(ENDINGS).forEach(item => {
+    const b = document.getElementById(item.btnId);
+    if (!b) return;
+    const isSel = item.id === chosenId;
+    const isUnl = unlockedEndings.includes(item.id);
+    b.classList.toggle("active", isSel);
+    b.textContent = `${item.id === "loop" ? "I. ПЕТЛЯ ВИНЫ" : item.id === "archive" ? "II. АРХИВ / ЭКСПОНАТ" : "III. ПРОБУЖДЕНИЕ"}${isUnl ? " ✓" : ""}`;
+  });
+}
+
+function openFinalModalWithSmartDefault() {
+  const inferred = inferEndingFromRun();
+  renderEndingModal(inferred);
+  openModalEl(document.getElementById("final-modal"));
 }
 function resetProgress() {
   try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
@@ -1514,6 +1593,8 @@ function triggerPanicEpisode(now = performance.now()) {
   panicState.lastTriggeredAt = now;
   panicState.intensity = 1.0;
   panicState.dread = 0;
+  panicEpisodesCount += 1;
+  saveProgress();
   if (audioEngine.enabled) audioEngine.playPanicBurst();
   spawnShadowEntity(true);
 }
@@ -1763,7 +1844,7 @@ function solveCurrentRoom(msg) {
   updateRoomHUD();
   saveProgress();
   if (!alreadySolvedOnce && ROOMS.every(r => r.solvedOnce)) {
-    setTimeout(() => openModalEl(document.getElementById("final-modal")), 1400);
+    setTimeout(() => openFinalModalWithSmartDefault(), 1400);
   }
 }
 
@@ -2726,6 +2807,8 @@ window.Episode1 = (() => {
     updateInventory();
 
     if (!isTouchDevice()) glCanvas.requestPointerLock?.();
+    basementDescendedOnce = true;
+    saveProgress();
     if (!started) { started = true; audioEngine.playSubterraneanRumble(); }
     audioEngine.playFootsteps();
   }
@@ -3121,11 +3204,19 @@ document.getElementById("btn-prev-room").addEventListener("click", () =>
 document.getElementById("btn-next-room").addEventListener("click", () =>
   attemptRoomTransition((currentRoomIndex + 1) % ROOMS.length));
 
+document.getElementById("btn-ending-loop").addEventListener("click", () => renderEndingModal("loop"));
+document.getElementById("btn-ending-archive").addEventListener("click", () => renderEndingModal("archive"));
+document.getElementById("btn-ending-break").addEventListener("click", () => renderEndingModal("break"));
+
 document.getElementById("btn-close-final").addEventListener("click", () => closeModalEl(document.getElementById("final-modal")));
 
 document.getElementById("btn-reset-progress").addEventListener("click", () => {
   resetProgress();
   ROOMS.forEach(r => { r.solved = false; r.solvedOnce = false; r.tapePlaying = false; r.tapeFinished = false; });
+  unlockedEndings = [];
+  selectedEndingId = "loop";
+  panicEpisodesCount = 0;
+  basementDescendedOnce = false;
   currentRoomIndex = 0;
   freeMode = false;
   const fBtn = document.getElementById("btn-toggle-freemode");
