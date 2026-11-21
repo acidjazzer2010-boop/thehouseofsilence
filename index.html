@@ -68,12 +68,30 @@
   #intro-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
 
   #intro-gif-bg {
-    position: absolute; inset: 0;
-    width: 100%; height: 100%;
-    object-fit: cover;
-    filter: contrast(1.12) brightness(0.76) saturate(0.72);
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(0.92);
+    max-width: 100vw;
+    max-height: 100vh;
+    width: auto;
+    height: auto;
+    min-width: 100%;
+    min-height: 100%;
+    object-fit: contain;
+    filter: contrast(1.12) brightness(0.78) saturate(0.72);
     z-index: 1;
     pointer-events: none;
+  }
+
+  @media (max-aspect-ratio: 4/3) {
+    #intro-gif-bg {
+      transform: translate(-50%, -50%) scale(1);
+      width: 100vw;
+      height: auto;
+      min-width: 0;
+      min-height: 0;
+    }
   }
 
   #intro-scrim {
@@ -3328,14 +3346,43 @@ document.getElementById('ep1-start-cancel').addEventListener('click', () => {
 });
 
 const introBgm = document.getElementById("intro-bgm");
+let introBgmStarted = false;
 
-function tryPlayIntroBgm() {
+function armAndLoadIntroBgm() {
   if (!introBgm) return;
+  introBgm.preload = "auto";
+  introBgm.loop = true;
   introBgm.volume = 0.72;
-  const p = introBgm.play();
-  if (p && typeof p.catch === "function") {
-    p.catch(() => {});
-  }
+  try {
+    introBgm.load();
+  } catch (e) {}
+
+  const attemptPlay = () => {
+    if (!introBgm || document.getElementById("intro-screen").classList.contains("hidden")) return;
+    introBgm.volume = 0.72;
+    const p = introBgm.play();
+    if (p && typeof p.then === "function") {
+      p.then(() => { introBgmStarted = true; }).catch(() => {});
+    }
+  };
+
+  attemptPlay();
+  window.addEventListener("DOMContentLoaded", attemptPlay, { once: true });
+  window.addEventListener("load", attemptPlay, { once: true });
+
+  const unlockOnInteraction = () => {
+    if (document.getElementById("intro-screen").classList.contains("hidden")) return;
+    attemptPlay();
+    if (introBgmStarted || !introBgm.paused) {
+      window.removeEventListener("pointerdown", unlockOnInteraction);
+      window.removeEventListener("keydown", unlockOnInteraction);
+      window.removeEventListener("touchstart", unlockOnInteraction);
+    }
+  };
+
+  window.addEventListener("pointerdown", unlockOnInteraction, { passive: true });
+  window.addEventListener("keydown", unlockOnInteraction, { passive: true });
+  window.addEventListener("touchstart", unlockOnInteraction, { passive: true });
 }
 
 function fadeOutIntroBgm() {
@@ -3354,13 +3401,7 @@ function fadeOutIntroBgm() {
   }, 55);
 }
 
-// Автозапуск при первом касании/клике на прелоадере (и мгновенный старт, если браузер разрешит)
-tryPlayIntroBgm();
-document.getElementById("intro-screen").addEventListener("pointerdown", () => {
-  if (!document.getElementById("intro-screen").classList.contains("hidden")) {
-    tryPlayIntroBgm();
-  }
-}, { once: true });
+armAndLoadIntroBgm();
 
 document.getElementById("btn-enter-house").addEventListener("click", () => {
   document.getElementById("intro-screen").classList.add("hidden");
