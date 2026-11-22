@@ -2076,11 +2076,11 @@ window.addEventListener("wheel", (e) => {
 
 window.addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
-    }
   if (k === "f" || k === "а") document.getElementById("btn-toggle-flashlight").click();
   if (k === "h" || k === "р") triggerHallucinationNow();
   if (e.key === "Escape") {
-    });
+    document.querySelectorAll(".modal-backdrop.open").forEach(m => closeModalEl(m));
+  }
 
 /* ============================================================
    ПАНИКА 2.5D
