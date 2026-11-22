@@ -116,11 +116,18 @@
   </div>
 </div>
 
-<div id="dev-360-hud" aria-hidden="true">
-  <div class="dev-badge">DEV MODE // КАМЕРА С МАЯТНИКОМ (360° ОБЗОР + PBR)</div>
-  <div class="dev-telemetry" id="dev-360-telemetry">УГОЛ: 0° · НАКЛОН: 0° · МАЯТНИК: 0.0°</div>
+<div id="dev-360-hud">
+  <div class="dev-badge">DEV MODE // КАМЕРА С МАЯТНИКОМ (2 СОСТОЯНИЯ КОМНАТЫ)</div>
+  <div class="dev-telemetry" id="dev-360-telemetry">СОСТОЯНИЕ I: КАЧАНИЕ · УГОЛ: 0° · НАКЛОН: 0° · МАЯТНИК: 0.0°</div>
+  <div class="dev-state-note" id="dev-360-state-note">
+    Состояние I: маятник качается. Нажмите [E] или кнопку ниже, чтобы зафиксировать его и сдвинуть комнату.
+  </div>
+  <div style="display:flex; gap:8px; margin-top:4px; pointer-events:auto;">
+    <button class="hud-btn" id="btn-dev-lock-pendulum" type="button">[E] ЗАФИКСИРОВАТЬ МАЯТНИК</button>
+    <button class="hud-btn" id="btn-dev-exit-360" type="button">ВЫЙТИ [Shift+D]</button>
+  </div>
   <div class="dev-controls-hint">
-    Зажмите ЛКМ / палец или жмите <strong style="color:var(--amber-glow);">← → ↑ ↓</strong> для осмотра всех стен, углов, потолка и пола · <strong style="color:var(--amber-glow);">Shift+D</strong> — выход
+    Зажмите ЛКМ / палец или жмите <strong style="color:var(--amber-glow);">← → ↑ ↓</strong> для обзора всех стен, потолка и пола
   </div>
 </div>
 

@@ -889,17 +889,24 @@ scene.add(proceduralDebrisGroup);
 const proceduralTextureCache = {};
 
 /* ============================================================
-   DEV MODE: 360° ФОТОРЕАЛИСТИЧНАЯ КОМНАТА С МАЯТНИКОМ (СЕКТОР 08 // GORECHAMBER)
-   Полноценный 360° осмотр углов, стен, потолка и пола с PBR-материалами и God Rays
+   DEV MODE: 360° КАМЕРА С МАЯТНИКОМ — ВАРИАНТ 5 (ДВА СОСТОЯНИЯ)
+   Состояние I (до фиксации): маятник качается, на стене нет печати сдвига.
+   Состояние II (после фиксации [E]): лезвие замирает под углом,
+   проявляется надпись-печать «СДВИГ АКТИВЕН» и включается багровый отсвет.
 ============================================================ */
 const dev360 = {
   active: false,
+  locked: false,
+  lockBlend: 0,
   scene: null,
   camera: null,
   flashLight: null,
   flashTarget: null,
   godRayMat: null,
+  shiftGlowLight: null,
+  hiddenSealMesh: null,
   pendulumPivot: null,
+  pendulumBlade: null,
   shadowFigure: null,
   shadowAngle: Math.PI,
   yaw: 0,
@@ -933,11 +940,9 @@ function createPBRChamberMaps(surfaceKind = "wall") {
   bg.fillStyle = "#808080";
   bg.fillRect(0, 0, size, size);
 
-  // По умолчанию матовая сырость, а в лужах и потёках — глянцевая влажность (темнее в roughnessMap)
   rg.fillStyle = surfaceKind === "floor" ? "#9a9a9a" : "#dcdcdc";
   rg.fillRect(0, 0, size, size);
 
-  // Каменная кладка и трещины
   const step = surfaceKind === "floor" ? 128 : 170;
   cg.strokeStyle = "rgba(6, 8, 6, 0.85)";
   cg.lineWidth = 4;
@@ -954,7 +959,6 @@ function createPBRChamberMaps(surfaceKind = "wall") {
     }
   }
 
-  // Микрорельеф и поры камня
   for (let i = 0; i < 18000; i++) {
     const x = Math.random() * size;
     const y = Math.random() * size;
@@ -967,7 +971,6 @@ function createPBRChamberMaps(surfaceKind = "wall") {
     bg.fillRect(x, y, 2, 2);
   }
 
-  // Плесень, ржавчина и влажные пятна
   for (let i = 0; i < 26; i++) {
     const mx = Math.random() * size;
     const my = Math.random() * size;
@@ -988,7 +991,6 @@ function createPBRChamberMaps(surfaceKind = "wall") {
     cg.fillStyle = mg;
     cg.beginPath(); cg.arc(mx, my, mr, 0, Math.PI * 2); cg.fill();
 
-    // Мокрый участок на карте шероховатости
     const rGrad = rg.createRadialGradient(mx, my, 4, mx, my, mr * 0.9);
     rGrad.addColorStop(0, "rgba(38, 38, 38, 0.85)");
     rGrad.addColorStop(1, "rgba(180, 180, 180, 0)");
@@ -996,7 +998,6 @@ function createPBRChamberMaps(surfaceKind = "wall") {
     rg.beginPath(); rg.arc(mx, my, mr * 0.9, 0, Math.PI * 2); rg.fill();
   }
 
-  // Вертикальные сырые подтёки
   if (surfaceKind === "wall") {
     for (let d = 0; d < 34; d++) {
       const dx = Math.random() * size;
@@ -1112,7 +1113,6 @@ function buildDev360PendulumScene() {
   eastWall.rotation.y = -Math.PI / 2;
   s.add(eastWall);
 
-  // Решётка на потолке + объёмные лучи света (God Rays) с эффектом Френеля
   const grateGroup = new THREE.Group();
   for (let i = -3; i <= 3; i++) {
     const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 2.2, 8), rustMat);
@@ -1165,7 +1165,6 @@ function buildDev360PendulumScene() {
   s.add(rayCone);
   dev360.godRayMat = rayMat;
 
-  // Раскачивающийся маятник
   const pivot = new THREE.Group();
   pivot.position.set(0, H - 0.1, -2.5);
   const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 3.0, 10), rustMat);
@@ -1177,8 +1176,8 @@ function buildDev360PendulumScene() {
   pivot.add(blade);
   s.add(pivot);
   dev360.pendulumPivot = pivot;
+  dev360.pendulumBlade = blade;
 
-  // Каменная плита под маятником со знаком [X]
   const slabCanvas = document.createElement("canvas");
   slabCanvas.width = 512; slabCanvas.height = 512;
   const sg = slabCanvas.getContext("2d");
@@ -1198,7 +1197,6 @@ function buildDev360PendulumScene() {
   slabMesh.position.set(0, 0.04, -2.5);
   s.add(slabMesh);
 
-  // Ремённая подсказка [I · III] на правой стене
   const strapCanvas = document.createElement("canvas");
   strapCanvas.width = 512; strapCanvas.height = 256;
   const stg = strapCanvas.getContext("2d");
@@ -1218,12 +1216,36 @@ function buildDev360PendulumScene() {
   strapMesh.rotation.y = -Math.PI / 2;
   s.add(strapMesh);
 
-  // Цепной стопор на левой стене
   const leverBox = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.75, 0.5), rustMat);
   leverBox.position.set(-4.42, 1.45, -0.6);
   s.add(leverBox);
 
-  // Тёмная фигура за спиной
+  // Скрытая метка на северной стене — проявляется только во II состоянии (после фиксации маятника)
+  const sealCanvas = document.createElement("canvas");
+  sealCanvas.width = 512; sealCanvas.height = 256;
+  const slg = sealCanvas.getContext("2d");
+  slg.fillStyle = "rgba(18, 8, 7, 0.92)"; slg.fillRect(0, 0, 512, 256);
+  slg.strokeStyle = "#8f3222"; slg.lineWidth = 4; slg.strokeRect(12, 12, 488, 232);
+  slg.font = "bold 46px 'Courier New', monospace";
+  slg.fillStyle = "#e67c6a";
+  slg.textAlign = "center";
+  slg.fillText("СДВИГ АКТИВЕН", 256, 108);
+  slg.font = "22px 'Courier New', monospace";
+  slg.fillStyle = "#d0cbc0";
+  slg.fillText("МАЯТНИК ЗАФИКСИРОВАН · ЗНАК IV ПРОЯВЛЕН", 256, 162);
+  const sealMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.7, 0.85),
+    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(sealCanvas), transparent: true, opacity: 0.0 })
+  );
+  sealMesh.position.set(0, 1.65, -4.46);
+  s.add(sealMesh);
+  dev360.hiddenSealMesh = sealMesh;
+
+  const shiftGlow = new THREE.PointLight(0x8f3222, 0.0, 9.0);
+  shiftGlow.position.set(0, 1.4, -3.6);
+  s.add(shiftGlow);
+  dev360.shiftGlowLight = shiftGlow;
+
   const fig = build3DShadowEntity();
   fig.position.set(2.8, 1.15, 3.3);
   fig.userData.shadowMat.opacity = 0.88;
@@ -1231,7 +1253,6 @@ function buildDev360PendulumScene() {
   s.add(fig);
   dev360.shadowFigure = fig;
 
-  // Освещение сцены
   s.add(new THREE.AmbientLight(0x161d17, 0.48));
   const ceilSpot = new THREE.PointLight(0x7c9682, 0.9, 11);
   ceilSpot.position.set(0, H - 0.35, -1.5);
@@ -1248,6 +1269,26 @@ function buildDev360PendulumScene() {
   dev360.camera = cam;
   dev360.flashLight = flash;
   dev360.flashTarget = flashTarget;
+}
+
+function toggleDev360PendulumLock() {
+  if (!dev360.active) return;
+  dev360.locked = !dev360.locked;
+  const btn = document.getElementById("btn-dev-lock-pendulum");
+  const note = document.getElementById("dev-360-state-note");
+  if (btn) {
+    btn.textContent = dev360.locked ? "[E] СНЯТЬ ФИКСАЦИЮ МАЯТНИКА" : "[E] ЗАФИКСИРОВАТЬ МАЯТНИК";
+    btn.classList.toggle("active", dev360.locked);
+  }
+  if (note) {
+    note.textContent = dev360.locked
+      ? "Состояние II (Сдвиг): маятник замер под углом, проявилась надпись на стене и багровый отсвет."
+      : "Состояние I (Качание): лезвие снова раскачивается, отметка сдвига скрыта.";
+  }
+  if (audioEngine.enabled) {
+    audioEngine.playSteelChains(0);
+    audioEngine.playSubterraneanRumble();
+  }
 }
 
 function toggleDev360Mode(forceState = null) {
@@ -1312,14 +1353,33 @@ function renderDev360Frame(time, dt) {
     dev360.godRayMat.uniforms.uIntensity.value = flashlightOn ? 0.24 : 0.12;
   }
 
-  const swingAngle = Math.sin(tSec * 1.65) * 0.62;
+  const targetBlend = dev360.locked ? 1.0 : 0.0;
+  dev360.lockBlend += (targetBlend - dev360.lockBlend) * Math.min(1, 0.08 * dt);
+
+  const freeSwing = Math.sin(tSec * 1.65) * 0.62;
+  const lockedAngle = -0.44;
+  const swingAngle = freeSwing * (1 - dev360.lockBlend) + lockedAngle * dev360.lockBlend;
+
   if (dev360.pendulumPivot) {
     dev360.pendulumPivot.rotation.z = swingAngle;
-    const dir = swingAngle >= 0 ? 1 : -1;
-    if (dir !== dev360.lastSwingDir) {
-      dev360.lastSwingDir = dir;
-      if (audioEngine.enabled) audioEngine.playWoodCreak();
+    if (dev360.pendulumBlade) {
+      const jitterAmp = (1 - dev360.lockBlend * 0.85) * 0.018;
+      dev360.pendulumBlade.rotation.y = Math.sin(tSec * 7.5) * jitterAmp;
     }
+    if (!dev360.locked) {
+      const dir = freeSwing >= 0 ? 1 : -1;
+      if (dir !== dev360.lastSwingDir) {
+        dev360.lastSwingDir = dir;
+        if (audioEngine.enabled) audioEngine.playWoodCreak();
+      }
+    }
+  }
+
+  if (dev360.hiddenSealMesh) {
+    dev360.hiddenSealMesh.material.opacity = dev360.lockBlend * 0.95;
+  }
+  if (dev360.shiftGlowLight) {
+    dev360.shiftGlowLight.intensity = dev360.lockBlend * (1.35 + 0.25 * Math.sin(tSec * 3.2));
   }
 
   if (dev360.shadowFigure) {
@@ -1350,7 +1410,8 @@ function renderDev360Frame(time, dt) {
     const degYaw = Math.round((((-dev360.yaw * 180 / Math.PI) % 360) + 360) % 360);
     const degPitch = Math.round(dev360.pitch * 180 / Math.PI);
     const degSwing = (swingAngle * 180 / Math.PI).toFixed(1);
-    telEl.textContent = `УГОЛ: ${degYaw}° · НАКЛОН: ${degPitch}° · МАЯТНИК: ${degSwing}°`;
+    const modeLabel = dev360.locked ? "СОСТОЯНИЕ II: ЗАФИКСИРОВАН" : "СОСТОЯНИЕ I: КАЧАНИЕ";
+    telEl.textContent = `${modeLabel} · УГОЛ: ${degYaw}° · НАКЛОН: ${degPitch}° · МАЯТНИК: ${degSwing}°`;
   }
 
   renderer.render(dev360.scene, dev360.camera);
@@ -2252,7 +2313,14 @@ window.addEventListener("keydown", (e) => {
     toggleDev360Mode();
     return;
   }
-  if (dev360.active) dev360.keysHeld[k] = true;
+  if (dev360.active) {
+    dev360.keysHeld[k] = true;
+    if (k === "e" || k === "у") {
+      e.preventDefault();
+      toggleDev360PendulumLock();
+      return;
+    }
+  }
   if (k === "f" || k === "а") document.getElementById("btn-toggle-flashlight").click();
   if (e.key === "Escape") {
     if (dev360.active) toggleDev360Mode(false);
@@ -3855,6 +3923,8 @@ document.getElementById("btn-regen-room").addEventListener("click", () => {
 });
 
 document.getElementById("btn-dev-pendulum").addEventListener("click", () => toggleDev360Mode());
+document.getElementById("btn-dev-lock-pendulum").addEventListener("click", () => toggleDev360PendulumLock());
+document.getElementById("btn-dev-exit-360").addEventListener("click", () => toggleDev360Mode(false));
 document.getElementById("btn-open-puzzle").addEventListener("click", openPuzzleModal);
 document.getElementById("btn-close-puzzle").addEventListener("click", () => closeModalEl(document.getElementById("puzzle-modal")));
 
