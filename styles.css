@@ -510,42 +510,42 @@
     #ending-selector-row { grid-template-columns: 1fr !important; }
   }
 
-  /* ============================================================
-     РЕЖИМ РАЗРАБОТЧИКА: 360° ПРОСТРАНСТВЕННЫЙ ОСМОТР КОМНАТЫ С МАЯТНИКОМ
-  ============================================================ */
-  #dev-360-hud {
-    position: fixed;
-    top: 66px;
-    left: 22px;
-    z-index: 15;
-    display: none;
-    flex-direction: column;
-    gap: 5px;
-    background: rgba(5, 7, 5, 0.88);
-    border-left: 3px solid var(--amber-glow);
-    border-top: 1px solid var(--border-dim);
-    border-right: 1px solid var(--border-dim);
-    border-bottom: 1px solid var(--border-dim);
-    padding: 10px 14px;
-    pointer-events: none;
-    max-width: 440px;
-  }
-  #dev-360-hud.visible {
-    display: flex;
-  }
-  .dev-badge {
-    font-size: 10px;
-    letter-spacing: 2px;
-    color: var(--amber-glow);
-    font-weight: bold;
-  }
-  .dev-telemetry {
-    font-size: 11px;
-    letter-spacing: 1.5px;
-    color: #9bb89e;
-  }
-  .dev-controls-hint {
-    font-size: 10px;
-    line-height: 1.45;
-    color: #9da69a;
-  }
+/* ============================================================
+   DEV MODE: 360° КАМЕРА С МАЯТНИКОМ
+============================================================ */
+#dev-360-hud {
+  position: fixed;
+  top: 66px;
+  left: 22px;
+  z-index: 15;
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: rgba(5, 7, 5, 0.9);
+  border-left: 3px solid var(--amber-glow);
+  border-top: 1px solid var(--border-dim);
+  border-right: 1px solid var(--border-dim);
+  border-bottom: 1px solid var(--border-dim);
+  padding: 10px 14px;
+  pointer-events: none;
+  max-width: 450px;
+}
+#dev-360-hud.visible {
+  display: flex;
+}
+.dev-badge {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--amber-glow);
+  font-weight: bold;
+}
+.dev-telemetry {
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: #9bb89e;
+}
+.dev-controls-hint {
+  font-size: 10px;
+  line-height: 1.45;
+  color: #9da69a;
+}

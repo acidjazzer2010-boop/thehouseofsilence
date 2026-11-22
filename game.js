@@ -889,9 +889,8 @@ scene.add(proceduralDebrisGroup);
 const proceduralTextureCache = {};
 
 /* ============================================================
-   РЕЖИМ РАЗРАБОТЧИКА: 360° ЖИВАЯ КОМНАТА С МАЯТНИКОМ (ЛОКАЦИЯ #7)
-   Позволяет вращать камеру на все 360° по горизонтали и смотреть вверх/вниз,
-   осматривать углы, улики и живой маятник перед масштабированием на весь дом.
+   DEV MODE: 360° ФОТОРЕАЛИСТИЧНАЯ КОМНАТА С МАЯТНИКОМ (СЕКТОР 08 // GORECHAMBER)
+   Полноценный 360° осмотр углов, стен, потолка и пола с PBR-материалами и God Rays
 ============================================================ */
 const dev360 = {
   active: false,
@@ -899,115 +898,192 @@ const dev360 = {
   camera: null,
   flashLight: null,
   flashTarget: null,
+  godRayMat: null,
   pendulumPivot: null,
-  pendulumBlade: null,
   shadowFigure: null,
-  shadowAngle: Math.PI, // стоит за спиной игрока
+  shadowAngle: Math.PI,
   yaw: 0,
-  pitch: -0.05,
+  pitch: -0.04,
   targetYaw: 0,
-  targetPitch: -0.05,
+  targetPitch: -0.04,
   dragging: false,
   lastX: 0,
   lastY: 0,
-  lastSwingSide: 0,
-  wallHotspots: [],
+  lastSwingDir: 0,
   keysHeld: Object.create(null)
 };
 
-function makeDungeonSurfaceTexture(type = "wall") {
+function createPBRChamberMaps(surfaceKind = "wall") {
   const size = 1024;
-  const c = document.createElement("canvas");
-  c.width = c.height = size;
-  const g = c.getContext("2d");
+  const colorC = document.createElement("canvas");
+  colorC.width = colorC.height = size;
+  const cg = colorC.getContext("2d");
 
-  g.fillStyle = type === "floor" ? "#141714" : (type === "ceiling" ? "#0d100d" : "#1f241d");
-  g.fillRect(0, 0, size, size);
+  const bumpC = document.createElement("canvas");
+  bumpC.width = bumpC.height = size;
+  const bg = bumpC.getContext("2d");
 
-  // Каменная кладка / плиты
-  const step = type === "floor" ? 128 : 170;
-  g.strokeStyle = "rgba(6, 8, 6, 0.78)";
-  g.lineWidth = 4;
+  const roughC = document.createElement("canvas");
+  roughC.width = roughC.height = size;
+  const rg = roughC.getContext("2d");
+
+  cg.fillStyle = surfaceKind === "floor" ? "#171a16" : (surfaceKind === "ceiling" ? "#0d100d" : "#222720");
+  cg.fillRect(0, 0, size, size);
+
+  bg.fillStyle = "#808080";
+  bg.fillRect(0, 0, size, size);
+
+  // По умолчанию матовая сырость, а в лужах и потёках — глянцевая влажность (темнее в roughnessMap)
+  rg.fillStyle = surfaceKind === "floor" ? "#9a9a9a" : "#dcdcdc";
+  rg.fillRect(0, 0, size, size);
+
+  // Каменная кладка и трещины
+  const step = surfaceKind === "floor" ? 128 : 170;
+  cg.strokeStyle = "rgba(6, 8, 6, 0.85)";
+  cg.lineWidth = 4;
+  bg.strokeStyle = "#181818";
+  bg.lineWidth = 5;
+
   for (let y = 0; y < size; y += step) {
-    g.beginPath(); g.moveTo(0, y); g.lineTo(size, y); g.stroke();
-    const rowShift = ((y / step) % 2) * (step * 0.5);
-    for (let x = rowShift; x < size; x += step) {
-      g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + step); g.stroke();
+    cg.beginPath(); cg.moveTo(0, y); cg.lineTo(size, y); cg.stroke();
+    bg.beginPath(); bg.moveTo(0, y); bg.lineTo(size, y); bg.stroke();
+    const offset = ((y / step) % 2) * (step * 0.5);
+    for (let x = offset; x < size; x += step) {
+      cg.beginPath(); cg.moveTo(x, y); cg.lineTo(x, y + step); cg.stroke();
+      bg.beginPath(); bg.moveTo(x, y); bg.lineTo(x, y + step); bg.stroke();
     }
   }
 
-  // Зернистость сырого камня
-  for (let i = 0; i < 16000; i++) {
+  // Микрорельеф и поры камня
+  for (let i = 0; i < 18000; i++) {
     const x = Math.random() * size;
     const y = Math.random() * size;
-    const d = (Math.random() - 0.5) * 38;
-    g.fillStyle = `rgba(${72 + d}, ${78 + d}, ${66 + d}, 0.22)`;
-    g.fillRect(x, y, 2, 2);
+    const d = (Math.random() - 0.5) * 36;
+    cg.fillStyle = `rgba(${78 + d}, ${84 + d}, ${72 + d}, 0.22)`;
+    cg.fillRect(x, y, 2, 2);
+
+    const bv = Math.max(0, Math.min(255, 128 + d * 2)) | 0;
+    bg.fillStyle = `rgb(${bv},${bv},${bv})`;
+    bg.fillRect(x, y, 2, 2);
   }
 
-  // Пятна чёрной плесени и бурой ржавчины
-  for (let i = 0; i < 24; i++) {
+  // Плесень, ржавчина и влажные пятна
+  for (let i = 0; i < 26; i++) {
     const mx = Math.random() * size;
     const my = Math.random() * size;
-    const mr = 35 + Math.random() * 130;
-    const mg = g.createRadialGradient(mx, my, 4, mx, my, mr);
-    if (i % 3 === 0) {
-      mg.addColorStop(0, "rgba(10, 14, 10, 0.82)");
+    const mr = 35 + Math.random() * 135;
+    const mode = i % 3;
+
+    const mg = cg.createRadialGradient(mx, my, 4, mx, my, mr);
+    if (mode === 0) {
+      mg.addColorStop(0, "rgba(9, 13, 9, 0.84)");
       mg.addColorStop(1, "rgba(0,0,0,0)");
-    } else if (i % 3 === 1) {
-      mg.addColorStop(0, "rgba(74, 24, 14, 0.52)");
+    } else if (mode === 1) {
+      mg.addColorStop(0, "rgba(78, 25, 14, 0.55)");
       mg.addColorStop(1, "rgba(0,0,0,0)");
     } else {
-      mg.addColorStop(0, "rgba(38, 52, 34, 0.45)");
+      mg.addColorStop(0, "rgba(42, 56, 37, 0.48)");
       mg.addColorStop(1, "rgba(0,0,0,0)");
     }
-    g.fillStyle = mg;
-    g.beginPath(); g.arc(mx, my, mr, 0, Math.PI * 2); g.fill();
+    cg.fillStyle = mg;
+    cg.beginPath(); cg.arc(mx, my, mr, 0, Math.PI * 2); cg.fill();
+
+    // Мокрый участок на карте шероховатости
+    const rGrad = rg.createRadialGradient(mx, my, 4, mx, my, mr * 0.9);
+    rGrad.addColorStop(0, "rgba(38, 38, 38, 0.85)");
+    rGrad.addColorStop(1, "rgba(180, 180, 180, 0)");
+    rg.fillStyle = rGrad;
+    rg.beginPath(); rg.arc(mx, my, mr * 0.9, 0, Math.PI * 2); rg.fill();
   }
 
-  // Подтёки влаги
-  if (type === "wall") {
-    for (let d = 0; d < 32; d++) {
+  // Вертикальные сырые подтёки
+  if (surfaceKind === "wall") {
+    for (let d = 0; d < 34; d++) {
       const dx = Math.random() * size;
-      const dy = Math.random() * (size * 0.5);
+      const dy = Math.random() * (size * 0.55);
       const len = 120 + Math.random() * 380;
-      const dg = g.createLinearGradient(dx, dy, dx, dy + len);
-      dg.addColorStop(0, "rgba(12, 16, 11, 0.72)");
+      const w = 2 + Math.random() * 6;
+      const dg = cg.createLinearGradient(dx, dy, dx, dy + len);
+      dg.addColorStop(0, d % 2 === 0 ? "rgba(12, 16, 11, 0.74)" : "rgba(62, 20, 12, 0.58)");
       dg.addColorStop(1, "rgba(0,0,0,0)");
-      g.fillStyle = dg;
-      g.fillRect(dx, dy, 3 + Math.random() * 5, len);
+      cg.fillStyle = dg;
+      cg.fillRect(dx, dy, w, len);
     }
   }
 
-  const tex = new THREE.CanvasTexture(c);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(2, 2);
-  return tex;
+  const maxAniso = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 4;
+  const wrapTex = (canvas, isColor) => {
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(2, 2);
+    tex.anisotropy = maxAniso;
+    if (isColor && THREE.sRGBEncoding) tex.encoding = THREE.sRGBEncoding;
+    return tex;
+  };
+
+  return {
+    map: wrapTex(colorC, true),
+    bumpMap: wrapTex(bumpC, false),
+    roughnessMap: wrapTex(roughC, false)
+  };
 }
 
 function buildDev360PendulumScene() {
   if (dev360.scene) return;
   const s = new THREE.Scene();
   s.background = new THREE.Color(0x020302);
-  s.fog = new THREE.FogExp2(0x020302, 0.085);
+  s.fog = new THREE.FogExp2(0x020302, 0.08);
 
   const cam = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 60);
   cam.position.set(0, 1.65, 0);
   cam.rotation.order = "YXZ";
   s.add(cam);
 
-  const wallTex = makeDungeonSurfaceTexture("wall");
-  const floorTex = makeDungeonSurfaceTexture("floor");
-  const ceilTex = makeDungeonSurfaceTexture("ceiling");
+  const wallMaps = createPBRChamberMaps("wall");
+  const floorMaps = createPBRChamberMaps("floor");
+  const ceilMaps = createPBRChamberMaps("ceiling");
 
-  const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, bumpMap: wallTex, bumpScale: 0.04, roughness: 0.88, metalness: 0.08 });
-  const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, bumpMap: floorTex, bumpScale: 0.05, roughness: 0.72, metalness: 0.15 });
-  const ceilMat = new THREE.MeshStandardMaterial({ map: ceilTex, roughness: 0.94 });
-  const rustMat = new THREE.MeshStandardMaterial({ color: 0x4b2a1d, roughness: 0.65, metalness: 0.72 });
-  const bladeMat = new THREE.MeshStandardMaterial({ color: 0x8b948e, roughness: 0.28, metalness: 0.88 });
+  const wallMat = new THREE.MeshStandardMaterial({
+    map: wallMaps.map,
+    bumpMap: wallMaps.bumpMap,
+    bumpScale: 0.045,
+    roughnessMap: wallMaps.roughnessMap,
+    roughness: 0.86,
+    metalness: 0.08
+  });
+
+  const floorMat = new THREE.MeshStandardMaterial({
+    map: floorMaps.map,
+    bumpMap: floorMaps.bumpMap,
+    bumpScale: 0.05,
+    roughnessMap: floorMaps.roughnessMap,
+    roughness: 0.58,
+    metalness: 0.16
+  });
+
+  const ceilMat = new THREE.MeshStandardMaterial({
+    map: ceilMaps.map,
+    bumpMap: ceilMaps.bumpMap,
+    bumpScale: 0.035,
+    roughness: 0.94
+  });
+
+  const rustMat = new THREE.MeshStandardMaterial({
+    color: 0x4c2b1d,
+    bumpMap: wallMaps.bumpMap,
+    bumpScale: 0.03,
+    roughness: 0.64,
+    metalness: 0.75
+  });
+
+  const bladeMat = new THREE.MeshStandardMaterial({
+    color: 0x9aa39d,
+    roughness: 0.24,
+    metalness: 0.9
+  });
 
   const W = 9.0, H = 4.4, D = 9.0;
-  // Пол и потолок
+
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, D), floorMat);
   floor.rotation.x = -Math.PI / 2;
   s.add(floor);
@@ -1017,7 +1093,6 @@ function buildDev360PendulumScene() {
   ceil.position.y = H;
   s.add(ceil);
 
-  // 4 стены вокруг игрока
   const northWall = new THREE.Mesh(new THREE.PlaneGeometry(W, H), wallMat);
   northWall.position.set(0, H / 2, -D / 2);
   s.add(northWall);
@@ -1037,7 +1112,7 @@ function buildDev360PendulumScene() {
   eastWall.rotation.y = -Math.PI / 2;
   s.add(eastWall);
 
-  // Решётка в потолке, сквозь которую падает холодный тусклый свет
+  // Решётка на потолке + объёмные лучи света (God Rays) с эффектом Френеля
   const grateGroup = new THREE.Group();
   for (let i = -3; i <= 3; i++) {
     const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 2.2, 8), rustMat);
@@ -1047,7 +1122,50 @@ function buildDev360PendulumScene() {
   }
   s.add(grateGroup);
 
-  // Огромный раскачивающийся маятник с серповидным лезвием перед игроком
+  const rayMat = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+    uniforms: {
+      uTime: { value: 0 },
+      uIntensity: { value: 0.22 },
+      uColor: { value: new THREE.Color(0x8fa894) }
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      varying vec3 vNormalView;
+      varying vec3 vViewDir;
+      void main() {
+        vUv = uv;
+        vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+        vNormalView = normalize(normalMatrix * normal);
+        vViewDir = normalize(-mvPos.xyz);
+        gl_Position = projectionMatrix * mvPos;
+      }
+    `,
+    fragmentShader: `
+      varying vec2 vUv;
+      varying vec3 vNormalView;
+      varying vec3 vViewDir;
+      uniform float uTime;
+      uniform float uIntensity;
+      uniform vec3 uColor;
+      void main() {
+        float fresnel = pow(abs(dot(vNormalView, vViewDir)), 1.6);
+        float vert = smoothstep(0.0, 0.22, vUv.y) * smoothstep(1.0, 0.15, vUv.y);
+        float horiz = smoothstep(0.0, 0.25, vUv.x) * smoothstep(1.0, 0.75, vUv.x);
+        float pulse = 0.8 + 0.2 * sin(uTime * 0.9 + vUv.x * 12.0);
+        gl_FragColor = vec4(uColor, fresnel * vert * horiz * pulse * uIntensity);
+      }
+    `
+  });
+  const rayCone = new THREE.Mesh(new THREE.ConeGeometry(1.45, 4.1, 24, 1, true), rayMat);
+  rayCone.position.set(0, H - 2.05, -1.6);
+  s.add(rayCone);
+  dev360.godRayMat = rayMat;
+
+  // Раскачивающийся маятник
   const pivot = new THREE.Group();
   pivot.position.set(0, H - 0.1, -2.5);
   const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 3.0, 10), rustMat);
@@ -1059,30 +1177,28 @@ function buildDev360PendulumScene() {
   pivot.add(blade);
   s.add(pivot);
   dev360.pendulumPivot = pivot;
-  dev360.pendulumBlade = blade;
 
-  // Каменная плита под маятником с выбитым знаком [X]
+  // Каменная плита под маятником со знаком [X]
   const slabCanvas = document.createElement("canvas");
   slabCanvas.width = 512; slabCanvas.height = 512;
   const sg = slabCanvas.getContext("2d");
   sg.fillStyle = "#1a1e19"; sg.fillRect(0, 0, 512, 512);
   sg.strokeStyle = "#080a08"; sg.lineWidth = 8; sg.strokeRect(10, 10, 492, 492);
   sg.font = "bold 110px 'Courier New', monospace";
-  sg.fillStyle = "rgba(195, 180, 155, 0.72)";
+  sg.fillStyle = "rgba(195, 180, 155, 0.74)";
   sg.textAlign = "center";
   sg.fillText("X", 256, 285);
   sg.font = "22px 'Courier New', monospace";
-  sg.fillStyle = "rgba(189, 125, 59, 0.75)";
+  sg.fillStyle = "rgba(189, 125, 59, 0.78)";
   sg.fillText("ПОД ЛЕЗВИЕМ МАЯТНИКА", 256, 355);
-  const slabTex = new THREE.CanvasTexture(slabCanvas);
   const slabMesh = new THREE.Mesh(
     new THREE.BoxGeometry(1.6, 0.08, 1.6),
-    new THREE.MeshStandardMaterial({ map: slabTex, roughness: 0.85 })
+    new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(slabCanvas), roughness: 0.85 })
   );
   slabMesh.position.set(0, 0.04, -2.5);
   s.add(slabMesh);
 
-  // Ржавые кандалы и порванный кожаный ремень на правой стене с уликой [I, III]
+  // Ремённая подсказка [I · III] на правой стене
   const strapCanvas = document.createElement("canvas");
   strapCanvas.width = 512; strapCanvas.height = 256;
   const stg = strapCanvas.getContext("2d");
@@ -1094,21 +1210,20 @@ function buildDev360PendulumScene() {
   stg.font = "20px 'Courier New', monospace";
   stg.fillStyle = "#bd7d3b";
   stg.fillText("ВЫРЕЗАНО НА РЕМНЕ У КАНДАЛОВ", 256, 185);
-  const strapTex = new THREE.CanvasTexture(strapCanvas);
   const strapMesh = new THREE.Mesh(
     new THREE.BoxGeometry(1.1, 0.55, 0.06),
-    new THREE.MeshStandardMaterial({ map: strapTex, roughness: 0.9 })
+    new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(strapCanvas), roughness: 0.9 })
   );
   strapMesh.position.set(4.42, 1.45, 0.4);
   strapMesh.rotation.y = -Math.PI / 2;
   s.add(strapMesh);
 
-  // Цепной стопор маятника на левой стене
+  // Цепной стопор на левой стене
   const leverBox = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.75, 0.5), rustMat);
   leverBox.position.set(-4.42, 1.45, -0.6);
   s.add(leverBox);
 
-  // Тёмная фигура-наблюдатель в дальнем углу за спиной (смещается, когда игрок отворачивается)
+  // Тёмная фигура за спиной
   const fig = build3DShadowEntity();
   fig.position.set(2.8, 1.15, 3.3);
   fig.userData.shadowMat.opacity = 0.88;
@@ -1116,13 +1231,13 @@ function buildDev360PendulumScene() {
   s.add(fig);
   dev360.shadowFigure = fig;
 
-  // Освещение: слабый холодный свет из потолка + динамический фонарь в руке игрока
-  s.add(new THREE.AmbientLight(0x161d17, 0.45));
-  const ceilSpot = new THREE.PointLight(0x7c9682, 0.85, 11);
+  // Освещение сцены
+  s.add(new THREE.AmbientLight(0x161d17, 0.48));
+  const ceilSpot = new THREE.PointLight(0x7c9682, 0.9, 11);
   ceilSpot.position.set(0, H - 0.35, -1.5);
   s.add(ceilSpot);
 
-  const flash = new THREE.SpotLight(0xffe6bd, 3.4, 16, Math.PI * 0.22, 0.55, 1.1);
+  const flash = new THREE.SpotLight(0xffe6bd, 3.5, 16, Math.PI * 0.22, 0.55, 1.1);
   const flashTarget = new THREE.Object3D();
   flashTarget.position.set(0, 0, -1);
   cam.add(flash);
@@ -1139,7 +1254,6 @@ function toggleDev360Mode(forceState = null) {
   const next = forceState !== null ? Boolean(forceState) : !dev360.active;
   if (next === dev360.active) return;
 
-  // Переводим текущую комнату на локацию #7 (Камера с маятником) для синхронизации с интерфейсом
   if (next) {
     currentRoomIndex = 7;
     applyRoomTexture(7);
@@ -1170,7 +1284,6 @@ function toggleDev360Mode(forceState = null) {
 function renderDev360Frame(time, dt) {
   if (!dev360.scene || !dev360.camera) return;
 
-  // Поворот клавишами стрелок или A/D при тесте
   const rotSpeed = 0.032 * dt;
   if (dev360.keysHeld["arrowleft"] || dev360.keysHeld["a"] || dev360.keysHeld["ф"]) dev360.targetYaw += rotSpeed;
   if (dev360.keysHeld["arrowright"] || dev360.keysHeld["d"] || dev360.keysHeld["в"]) dev360.targetYaw -= rotSpeed;
@@ -1183,7 +1296,6 @@ function renderDev360Frame(time, dt) {
   dev360.pitch += (dev360.targetPitch - dev360.pitch) * smooth;
 
   const tSec = time * 0.001;
-  // Лёгкое дыхание камеры и покачивание маятника
   dev360.camera.position.set(
     Math.sin(tSec * 0.9) * 0.03,
     1.65 + Math.sin(tSec * 1.8) * 0.02,
@@ -1192,36 +1304,35 @@ function renderDev360Frame(time, dt) {
   dev360.camera.rotation.y = dev360.yaw;
   dev360.camera.rotation.x = dev360.pitch;
 
-  // Луч фонаря следует за курсором внутри 360° поля зрения
   dev360.flashLight.intensity = flashlightOn ? 3.5 : 0.25;
   dev360.flashTarget.position.set(pointer.normX * 0.48, -pointer.normY * 0.36, -1.0);
 
-  // Раскачивание маятника и свист лезвия при прохождении нижней точки
+  if (dev360.godRayMat) {
+    dev360.godRayMat.uniforms.uTime.value = tSec;
+    dev360.godRayMat.uniforms.uIntensity.value = flashlightOn ? 0.24 : 0.12;
+  }
+
   const swingAngle = Math.sin(tSec * 1.65) * 0.62;
   if (dev360.pendulumPivot) {
     dev360.pendulumPivot.rotation.z = swingAngle;
-    const side = swingAngle >= 0 ? 1 : -1;
-    if (side !== dev360.lastSwingSide) {
-      dev360.lastSwingSide = side;
+    const dir = swingAngle >= 0 ? 1 : -1;
+    if (dir !== dev360.lastSwingDir) {
+      dev360.lastSwingDir = dir;
       if (audioEngine.enabled) audioEngine.playWoodCreak();
     }
   }
 
-  // Тень в углу: когда игрок смотрит прямо на неё, она отступает в тень; когда отворачивается — подбирается ближе
   if (dev360.shadowFigure) {
     const sx = Math.sin(dev360.shadowAngle) * 3.4;
     const sz = Math.cos(dev360.shadowAngle) * 3.4;
     dev360.shadowFigure.position.set(sx, 1.15, sz);
     dev360.shadowFigure.lookAt(0, 1.15, 0);
 
-    const lookDirX = -Math.sin(dev360.yaw);
-    const lookDirZ = -Math.cos(dev360.yaw);
-    const toShadowX = sx / 3.4;
-    const toShadowZ = sz / 3.4;
-    const dot = lookDirX * toShadowX + lookDirZ * toShadowZ;
+    const lookX = -Math.sin(dev360.yaw);
+    const lookZ = -Math.cos(dev360.yaw);
+    const dot = lookX * (sx / 3.4) + lookZ * (sz / 3.4);
 
     if (dot > 0.78 && flashlightOn) {
-      // Игрок навёл взгляд/фонарь — фигура исчезает и перебегает в другой угол за спиной
       dev360.shadowFigure.userData.shadowMat.opacity *= 0.86;
       dev360.shadowFigure.userData.eyeMat.opacity *= 0.82;
       if (dev360.shadowFigure.userData.shadowMat.opacity < 0.05) {
@@ -2072,10 +2183,8 @@ window.addEventListener("pointermove", (e) => {
   if (window.Episode1 && window.Episode1.isActive()) return;
   pointer.targetX = e.clientX; pointer.targetY = e.clientY;
   if (dev360.active && dev360.dragging) {
-    const dx = e.clientX - dev360.lastX;
-    const dy = e.clientY - dev360.lastY;
-    dev360.targetYaw -= dx * 0.0055;
-    dev360.targetPitch -= dy * 0.0045;
+    dev360.targetYaw -= (e.clientX - dev360.lastX) * 0.0055;
+    dev360.targetPitch -= (e.clientY - dev360.lastY) * 0.0045;
     dev360.lastX = e.clientX;
     dev360.lastY = e.clientY;
   }
