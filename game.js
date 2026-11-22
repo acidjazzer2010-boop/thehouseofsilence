@@ -2846,7 +2846,7 @@ glCanvas.addEventListener("webglcontextrestored", () => {
     }
   }
 
-  // Фоновая предзагрузка ассетов без блокировки прогресс-бара
+  // Загрузка треков, картинок и текстур в течение 15 секунд
   try {
     const imageAssets = ["title.jpg"];
     if (Array.isArray(typeof ROOMS !== "undefined" ? ROOMS : null)) {
@@ -2862,11 +2862,13 @@ glCanvas.addEventListener("webglcontextrestored", () => {
     ["tape.mp4", "Chamber_cutscene.mp4", "Abandoned%20Victims.mp3", "Abandoned%20Victims.ogg"].forEach(src => {
       const isAudio = src.includes("Abandoned");
       const el = document.createElement(isAudio ? "audio" : "video");
-      el.preload = "metadata";
+      el.preload = "auto";
       el.src = src;
     });
   } catch (e) {}
 
+  const totalDurationMs = 15000;
+  const startMs = performance.now();
   let currentPct = 0;
   let finished = false;
 
@@ -2874,20 +2876,21 @@ glCanvas.addEventListener("webglcontextrestored", () => {
     currentPct = Math.max(currentPct, Math.min(100, Math.round(pct)));
     if (barFillEl) barFillEl.style.width = currentPct + "%";
     if (statusEl) {
-      if (currentPct < 35) statusEl.textContent = `Загрузка текстур и комнат... ${currentPct}%`;
-      else if (currentPct < 75) statusEl.textContent = `Подготовка аудио и кат-сцен... ${currentPct}%`;
-      else if (currentPct < 100) statusEl.textContent = `Открытие архива... ${currentPct}%`;
-      else statusEl.textContent = "Готово · 100%";
+      if (currentPct < 30) statusEl.textContent = `Загрузка картинок и текстур... ${currentPct}%`;
+      else if (currentPct < 65) statusEl.textContent = `Загрузка звуковых треков... ${currentPct}%`;
+      else if (currentPct < 100) statusEl.textContent = `Сборка сцен и теней... ${currentPct}%`;
+      else statusEl.textContent = "Загрузка завершена · 100%";
     }
   }
 
-  function finishPreloader() {
+  function startSlowFadeToTitle() {
     if (finished) return;
     finished = true;
-    clearInterval(stepInterval);
-    clearTimeout(hardSafetyTimer);
+    clearInterval(tickTimer);
+    clearTimeout(hardTimer);
     applyProgress(100);
 
+    // Медленное затемнение прелоадера и плавный переход к экрану названия игры
     preloaderEl.classList.add("done");
     if (introEl) introEl.classList.remove("hidden");
 
@@ -2896,20 +2899,20 @@ glCanvas.addEventListener("webglcontextrestored", () => {
         try { preloaderVid.pause(); } catch (e) {}
       }
       preloaderEl.style.display = "none";
-    }, 850);
+    }, 2250);
   }
 
-  // Надёжный таймер шагов каждые 80мс (работает даже при лагах rAF или медленной сети)
-  const stepInterval = setInterval(() => {
+  const tickTimer = setInterval(() => {
     if (finished) return;
-    applyProgress(currentPct + 6);
-    if (currentPct >= 100) {
-      finishPreloader();
+    const elapsed = performance.now() - startMs;
+    const pct = (elapsed / totalDurationMs) * 100;
+    applyProgress(pct);
+    if (elapsed >= totalDurationMs) {
+      startSlowFadeToTitle();
     }
-  }, 80);
+  }, 100);
 
-  // Жёсткий предохранитель: не дольше 2.2 сек на экране прелоадера
-  const hardSafetyTimer = setTimeout(finishPreloader, 2200);
+  const hardTimer = setTimeout(startSlowFadeToTitle, totalDurationMs + 250);
 })();
 
 /* ============================================================

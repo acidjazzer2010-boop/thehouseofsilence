@@ -362,7 +362,7 @@
     align-items: center;
     padding: 0 24px 52px;
     overflow: hidden;
-    transition: opacity 0.9s ease, visibility 0.9s ease;
+    transition: opacity 2.2s cubic-bezier(0.22, 1, 0.36, 1), visibility 2.2s ease;
   }
   #preloader-screen.done {
     opacity: 0;
@@ -454,10 +454,20 @@
     pointer-events: auto;
   }
   #chamber-cutscene-video {
-    width: 100vw;
-    height: 100vh;
-    object-fit: cover;
+    width: 86vw;
+    height: 86vh;
+    max-width: 1440px;
+    max-height: 860px;
+    object-fit: contain;
+    border: 1px solid rgba(120, 138, 115, 0.28);
+    box-shadow: 0 0 90px rgba(0, 0, 0, 0.98), inset 0 0 40px rgba(0,0,0,0.85);
     background: #000;
+  }
+  @media (max-width: 900px) {
+    #chamber-cutscene-video {
+      width: 96vw;
+      height: 68vh;
+    }
   }
 
   /* ============================================================
