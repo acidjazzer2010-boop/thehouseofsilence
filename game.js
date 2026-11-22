@@ -2827,7 +2827,24 @@ glCanvas.addEventListener("webglcontextrestored", () => {
   const preloaderVid = document.getElementById("preloader-video");
   const barFillEl = document.getElementById("preloader-bar-fill");
   const statusEl = document.getElementById("preloader-status");
+  const titleEl = document.getElementById("preloader-title");
   const introEl = document.getElementById("intro-screen");
+
+  function fitPreloaderTitle() {
+    if (!titleEl) return;
+    const avail = Math.max(200, window.innerWidth * 0.86);
+    let size = Math.min(30, Math.max(12, Math.floor(window.innerWidth * 0.032)));
+    titleEl.style.fontSize = size + "px";
+    titleEl.style.letterSpacing = size > 18 ? "4px" : "2px";
+    while (size > 11 && titleEl.scrollWidth > avail) {
+      size -= 1;
+      titleEl.style.fontSize = size + "px";
+      titleEl.style.letterSpacing = size > 16 ? "3px" : "1px";
+    }
+  }
+
+  fitPreloaderTitle();
+  window.addEventListener("resize", fitPreloaderTitle);
 
   if (!preloaderEl) {
     if (introEl) introEl.classList.remove("hidden");
@@ -2848,62 +2865,70 @@ glCanvas.addEventListener("webglcontextrestored", () => {
     }
   }
 
-  // Фоновая предзагрузка ассетов
-  const imageAssets = ["title.jpg"];
-  ROOMS.forEach(r => {
-    if (!r.isProceduralRoom && r.fileName) imageAssets.push(r.fileName);
-    if (r.hallucinationFileName) imageAssets.push(r.hallucinationFileName);
-  });
-  imageAssets.forEach(src => {
-    const img = new Image();
-    img.src = src;
-  });
+  // Фоновая предзагрузка ассетов без блокировки прогресс-бара
+  try {
+    const imageAssets = ["title.jpg"];
+    if (Array.isArray(typeof ROOMS !== "undefined" ? ROOMS : null)) {
+      ROOMS.forEach(r => {
+        if (!r.isProceduralRoom && r.fileName) imageAssets.push(r.fileName);
+        if (r.hallucinationFileName) imageAssets.push(r.hallucinationFileName);
+      });
+    }
+    imageAssets.forEach(src => {
+      const img = new Image();
+      img.src = src;
+    });
+    ["tape.mp4", "Chamber_cutscene.mp4", "Abandoned%20Victims.mp3", "Abandoned%20Victims.ogg"].forEach(src => {
+      const isAudio = src.includes("Abandoned");
+      const el = document.createElement(isAudio ? "audio" : "video");
+      el.preload = "metadata";
+      el.src = src;
+    });
+  } catch (e) {}
 
-  ["tape.mp4", "Chamber_cutscene.mp4", "Abandoned%20Victims.mp3", "Abandoned%20Victims.ogg"].forEach(src => {
-    const isAudio = src.includes("Abandoned");
-    const el = document.createElement(isAudio ? "audio" : "video");
-    el.preload = "metadata";
-    el.src = src;
-  });
-
-  let progress = 0;
+  let currentPct = 0;
   let finished = false;
-  const startTime = performance.now();
-  const durationMs = 2000;
 
-  function tickPreloader(now) {
-    if (finished) return;
-    const elapsed = now - startTime;
-    progress = Math.min(100, Math.round((elapsed / durationMs) * 100));
-
-    if (barFillEl) barFillEl.style.width = `${progress}%`;
+  function applyProgress(pct) {
+    currentPct = Math.max(currentPct, Math.min(100, Math.round(pct)));
+    if (barFillEl) barFillEl.style.width = currentPct + "%";
     if (statusEl) {
-      if (progress < 35) statusEl.textContent = `Загрузка текстур и комнат... ${progress}%`;
-      else if (progress < 75) statusEl.textContent = `Подготовка аудио и кат-сцен... ${progress}%`;
-      else statusEl.textContent = `Открытие архива... ${progress}%`;
+      if (currentPct < 35) statusEl.textContent = `Загрузка текстур и комнат... ${currentPct}%`;
+      else if (currentPct < 75) statusEl.textContent = `Подготовка аудио и кат-сцен... ${currentPct}%`;
+      else if (currentPct < 100) statusEl.textContent = `Открытие архива... ${currentPct}%`;
+      else statusEl.textContent = "Готово · 100%";
     }
-
-    if (elapsed >= durationMs) {
-      finished = true;
-      if (barFillEl) barFillEl.style.width = "100%";
-      if (statusEl) statusEl.textContent = "Готово · 100%";
-
-      preloaderEl.classList.add("done");
-      if (introEl) introEl.classList.remove("hidden");
-
-      setTimeout(() => {
-        if (preloaderVid && !preloaderVid.paused) {
-          try { preloaderVid.pause(); } catch (e) {}
-        }
-        preloaderEl.style.display = "none";
-      }, 900);
-      return;
-    }
-
-    requestAnimationFrame(tickPreloader);
   }
 
-  requestAnimationFrame(tickPreloader);
+  function finishPreloader() {
+    if (finished) return;
+    finished = true;
+    clearInterval(stepInterval);
+    clearTimeout(hardSafetyTimer);
+    applyProgress(100);
+
+    preloaderEl.classList.add("done");
+    if (introEl) introEl.classList.remove("hidden");
+
+    setTimeout(() => {
+      if (preloaderVid && !preloaderVid.paused) {
+        try { preloaderVid.pause(); } catch (e) {}
+      }
+      preloaderEl.style.display = "none";
+    }, 850);
+  }
+
+  // Надёжный таймер шагов каждые 80мс (работает даже при лагах rAF или медленной сети)
+  const stepInterval = setInterval(() => {
+    if (finished) return;
+    applyProgress(currentPct + 6);
+    if (currentPct >= 100) {
+      finishPreloader();
+    }
+  }, 80);
+
+  // Жёсткий предохранитель: не дольше 2.2 сек на экране прелоадера
+  const hardSafetyTimer = setTimeout(finishPreloader, 2200);
 })();
 
 /* ============================================================
