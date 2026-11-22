@@ -87,8 +87,8 @@ const ROOMS = [
   },
   /* ==== 4 СЕКРЕТНЫЕ КОМНАТЫ (2- И 3-СОСТАВНЫЕ КВЕСТЫ ПОСЛЕ ПРОХОЖДЕНИЯ 1–5) ==== */
   {
-    id: 5, code: "СЕКРЕТ 01 // ARCHIVE", fileName: "Archive_secret1.jpg",
-    isSecret: true,
+    id: 5, code: "СЕКРЕТ 01 // ARCHIVE", fileName: "Archive_secret1.gif",
+    isSecret: true, isAnimatedGif: true,
     title: "Тайник I: Затопленный архив",
     desc: "Полузатопленное хранилище дел № 404. У стеллажа — ржавый ключ и всплывшие папки, а на сырой штукатурке справа процарапано предостережение.",
     portal: { x: 0.50, y: 0.46, label: "Проход в Тайник II: Котельная" },
@@ -105,6 +105,7 @@ const ROOMS = [
   },
   {
     id: 6, code: "СЕКРЕТ 02 // FURNACE", fileName: "Furnace_secret1.jpg",
+    hallucinationFileName: "Furnace_secret2.jpg",
     isSecret: true,
     title: "Тайник II: Заброшенная котельная",
     desc: "Чёрная от копоти топка со старыми манометрами и лопнувшими стеклянными колбами в золе.",
@@ -121,6 +122,7 @@ const ROOMS = [
   },
   {
     id: 7, code: "СЕКРЕТ 03 // GORECHAMBER", fileName: "Gorechamber_secret1.jpg",
+    hallucinationFileName: "Gorechamber_secret2.jpg",
     isSecret: true,
     title: "Тайник III: Камера с маятником",
     desc: "Сырой каземат с ржавыми кандалами, порванными ремнями и четырьмя римскими знаками на каменной плите пола.",
@@ -1395,8 +1397,212 @@ let currentRoomIndex = 0;
 let freeMode = false;
 let flashlightOn = true;
 const roomTextures = {};
+const roomHallucinationTextures = {};
 const roomImageDims = {};
 const roomTickFlags = {};
+
+/* ============================================================
+   СИСТЕМА ГАЛЛЮЦИНАЦИЙ (ОКРОВАВЛЕННЫЙ МЕДВЕДЬ В КОМНАТАХ)
+   - Срабатывает в комнатах с hallucinationFileName (Gorechamber_secret2.jpg, Furnace_secret2.jpg и др.)
+   - Случайная пауза между приступами: 60, 75 или 105 секунд
+   - Учащённое сердцебиение + 2–3 вспышки света/тьмы -> подмена на *_secret2.jpg на 10–15 сек -> возврат через 2–3 вспышки
+============================================================ */
+const HALLUCINATION_DELAYS_MS = [60000, 75000, 105000];
+const hallucinationState = {
+  roomIdx: -1,
+  phase: "idle", // "idle" | "flash_in" | "active" | "flash_out"
+  nextTriggerAt: 0,
+  phaseStartedAt: 0,
+  holdDurationMs: 12000,
+  flashSeqMs: [0, 140, 290, 460, 620],
+  flashAlpha: 0,
+  heartbeatTimer: null
+};
+
+function scheduleNextHallucination(roomIdx, customDelayMs = null) {
+  const room = ROOMS[roomIdx];
+  if (!room || !room.hallucinationFileName) {
+    hallucinationState.roomIdx = -1;
+    hallucinationState.phase = "idle";
+    hallucinationState.nextTriggerAt = 0;
+    hallucinationState.flashAlpha = 0;
+    return;
+  }
+  const delay = customDelayMs !== null
+    ? customDelayMs
+    : HALLUCINATION_DELAYS_MS[Math.floor(Math.random() * HALLUCINATION_DELAYS_MS.length)];
+  hallucinationState.roomIdx = roomIdx;
+  hallucinationState.phase = "idle";
+  hallucinationState.nextTriggerAt = performance.now() + delay;
+  hallucinationState.flashAlpha = 0;
+}
+
+function stopHallucinationHeartbeat() {
+  if (hallucinationState.heartbeatTimer) {
+    clearInterval(hallucinationState.heartbeatTimer);
+    hallucinationState.heartbeatTimer = null;
+  }
+}
+
+function startHallucinationHeartbeat() {
+  stopHallucinationHeartbeat();
+  if (audioEngine.enabled) audioEngine.playHeartbeatPulse(1.0);
+  hallucinationState.heartbeatTimer = setInterval(() => {
+    if (document.hidden || hallucinationState.phase === "idle") {
+      stopHallucinationHeartbeat();
+      return;
+    }
+    if (audioEngine.enabled) audioEngine.playHeartbeatPulse(1.0);
+  }, 540); // учащённый пульс ~110 уд/мин
+}
+
+function triggerHallucinationNow(now = performance.now()) {
+  const room = ROOMS[currentRoomIndex];
+  if (!room || !room.hallucinationFileName) return;
+  if (hallucinationState.phase !== "idle") return;
+
+  const flashCount = Math.random() < 0.5 ? 2 : 3;
+  hallucinationState.roomIdx = currentRoomIndex;
+  hallucinationState.phase = "flash_in";
+  hallucinationState.phaseStartedAt = now;
+  hallucinationState.holdDurationMs = 10000 + Math.floor(Math.random() * 5001); // 10–15 секунд
+  hallucinationState.flashSeqMs = flashCount === 2 ? [0, 150, 320, 490] : [0, 130, 270, 420, 580, 740];
+
+  startHallucinationHeartbeat();
+  if (audioEngine.enabled) audioEngine.playWhisper();
+}
+
+function createHallucinationFallbackTexture(room) {
+  // Резервная процедура на случай, если *_secret2.jpg ещё не загружен в корень репозитория
+  const base = roomTextures[room.id] || proceduralTextureCache[room.id];
+  const c = document.createElement("canvas");
+  c.width = 1600;
+  c.height = 900;
+  const g = c.getContext("2d");
+
+  if (base && base.image) {
+    try { g.drawImage(base.image, 0, 0, 1600, 900); } catch (e) {}
+  } else {
+    g.fillStyle = "#111310";
+    g.fillRect(0, 0, 1600, 900);
+  }
+
+  // Силуэт окровавленного плюшевого медведя на полу в центре-слева
+  const bx = 680, by = 690;
+  const vig = g.createRadialGradient(bx, by, 20, bx, by, 280);
+  vig.addColorStop(0, "rgba(65, 10, 8, 0.42)");
+  vig.addColorStop(1, "rgba(0, 0, 0, 0)");
+  g.fillStyle = vig;
+  g.fillRect(bx - 280, by - 280, 560, 560);
+
+  g.fillStyle = "#3c2a1d";
+  g.beginPath(); g.ellipse(bx, by + 25, 58, 72, 0.08, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(bx - 6, by - 62, 46, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(bx - 42, by - 96, 17, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(bx + 30, by - 94, 17, 0, Math.PI * 2); g.fill();
+  // Лапы
+  g.beginPath(); g.ellipse(bx - 56, by + 18, 22, 34, 0.5, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(bx + 54, by + 22, 22, 34, -0.45, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(bx - 36, by + 84, 24, 30, -0.3, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(bx + 42, by + 82, 24, 30, 0.35, 0, Math.PI * 2); g.fill();
+  // Пятна крови на морде и груди
+  g.fillStyle = "rgba(115, 10, 10, 0.86)";
+  g.beginPath(); g.ellipse(bx - 4, by - 36, 26, 20, 0.1, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(bx + 4, by + 12, 32, 36, -0.1, 0, Math.PI * 2); g.fill();
+  // Пустые тёмные глаза
+  g.fillStyle = "#060505";
+  g.beginPath(); g.arc(bx - 20, by - 66, 7, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(bx + 10, by - 64, 7, 0, Math.PI * 2); g.fill();
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function updateHallucinationSystem(time) {
+  const room = ROOMS[currentRoomIndex];
+  if (!room || !room.hallucinationFileName || transition.active) {
+    hallucinationState.flashAlpha = 0;
+    return;
+  }
+
+  if (hallucinationState.roomIdx !== currentRoomIndex) {
+    scheduleNextHallucination(currentRoomIndex);
+    return;
+  }
+
+  const seq = hallucinationState.flashSeqMs;
+  const totalFlashDur = seq[seq.length - 1] + 130;
+
+  if (hallucinationState.phase === "idle") {
+    hallucinationState.flashAlpha = 0;
+    if (hallucinationState.nextTriggerAt > 0 && time >= hallucinationState.nextTriggerAt) {
+      triggerHallucinationNow(time);
+    }
+  } else if (hallucinationState.phase === "flash_in") {
+    const elapsed = time - hallucinationState.phaseStartedAt;
+    let activePulse = 0;
+    for (let i = 0; i < seq.length; i += 2) {
+      const start = seq[i];
+      const end = (seq[i + 1] || start + 120) + 50;
+      if (elapsed >= start && elapsed <= end) {
+        activePulse = 1;
+        break;
+      }
+    }
+    hallucinationState.flashAlpha = activePulse ? 0.92 : 0.0;
+
+    // На пике второй вспышки незаметно подменяем кадр комнаты на *_secret2.jpg
+    if (elapsed >= (seq[2] || 260) && !hallucinationState.swappedToAlt) {
+      hallucinationState.swappedToAlt = true;
+      applyRoomTexture(currentRoomIndex, true);
+    }
+
+    if (elapsed >= totalFlashDur) {
+      hallucinationState.phase = "active";
+      hallucinationState.phaseStartedAt = time;
+      hallucinationState.flashAlpha = 0;
+      applyRoomTexture(currentRoomIndex, true);
+    }
+  } else if (hallucinationState.phase === "active") {
+    hallucinationState.flashAlpha = 0;
+    if (time - hallucinationState.phaseStartedAt >= hallucinationState.holdDurationMs) {
+      const flashCount = Math.random() < 0.5 ? 2 : 3;
+      hallucinationState.phase = "flash_out";
+      hallucinationState.phaseStartedAt = time;
+      hallucinationState.flashSeqMs = flashCount === 2 ? [0, 150, 320, 490] : [0, 130, 270, 420, 580, 740];
+    }
+  } else if (hallucinationState.phase === "flash_out") {
+    const elapsed = time - hallucinationState.phaseStartedAt;
+    let activePulse = 0;
+    for (let i = 0; i < seq.length; i += 2) {
+      const start = seq[i];
+      const end = (seq[i + 1] || start + 120) + 50;
+      if (elapsed >= start && elapsed <= end) {
+        activePulse = 1;
+        break;
+      }
+    }
+    hallucinationState.flashAlpha = activePulse ? 0.92 : 0.0;
+
+    // На второй вспышке возвращаем исходный кадр *_secret1.jpg
+    if (elapsed >= (seq[2] || 260) && hallucinationState.swappedToAlt) {
+      hallucinationState.swappedToAlt = false;
+      applyRoomTexture(currentRoomIndex, false);
+    }
+
+    if (elapsed >= totalFlashDur) {
+      hallucinationState.flashAlpha = 0;
+      hallucinationState.swappedToAlt = false;
+      applyRoomTexture(currentRoomIndex, false);
+      stopHallucinationHeartbeat();
+      scheduleNextHallucination(currentRoomIndex);
+    }
+  }
+}
 
 const pointer = {
   x: window.innerWidth * 0.5, y: window.innerHeight * 0.5,
@@ -1746,12 +1952,10 @@ function generateRandomHorrorRoom(roomObj) {
   roomImageDims[anomIdx] = { w: 1600, h: 900 };
 }
 
-function applyRoomTexture(idx) {
+function applyRoomTexture(idx, useHallucination = false) {
   const room = ROOMS[idx];
   if (room.isProceduralRoom && !roomTextures[idx]) generateRandomHorrorRoom(room);
 
-  // Анимированная GIF-комната (Archive_secret1.gif) отображается через нативный <img>,
-  // чтобы браузер воспроизводил все кадры анимации
   if (room.isAnimatedGif && gifRoomLayer) {
     if (gifRoomLayer.getAttribute("src") !== room.fileName) {
       gifRoomLayer.src = room.fileName;
@@ -1761,7 +1965,12 @@ function applyRoomTexture(idx) {
     gifRoomLayer.classList.remove("visible");
   }
 
-  if (roomTextures[idx]) {
+  if (useHallucination && room.hallucinationFileName) {
+    if (!roomHallucinationTextures[idx]) {
+      roomHallucinationTextures[idx] = createHallucinationFallbackTexture(room);
+    }
+    roomPlaneMat.map = roomHallucinationTextures[idx];
+  } else if (roomTextures[idx]) {
     roomPlaneMat.map = roomTextures[idx];
   } else {
     if (!proceduralTextureCache[idx]) proceduralTextureCache[idx] = createProceduralTexture(room);
@@ -1774,9 +1983,36 @@ function tryAutoLoadImages() {
   ROOMS.forEach((room, idx) => {
     if (room.isProceduralRoom) return;
     const img = new Image();
-    img.onload = () => createTextureFromImageSource(img, idx);
+    img.onload = () => {
+      createTextureFromImageSource(img, idx);
+      // Если *_secret2.jpg не загружен из файла, пересобираем fallback поверх реального кадра комнаты
+      if (room.hallucinationFileName && !roomHallucinationTextures[idx]._fromRealFile) {
+        roomHallucinationTextures[idx] = createHallucinationFallbackTexture(room);
+      }
+    };
     img.onerror = () => { if (idx === currentRoomIndex) applyRoomTexture(idx); };
     img.src = room.fileName;
+
+    if (room.hallucinationFileName) {
+      const hImg = new Image();
+      hImg.onload = () => {
+        const w = hImg.naturalWidth || hImg.width;
+        const h = hImg.naturalHeight || hImg.height;
+        if (!w || !h) return;
+        const tex = new THREE.Texture(hImg);
+        tex.minFilter = THREE.LinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        tex.generateMipmaps = false;
+        tex.needsUpdate = true;
+        tex._fromRealFile = true;
+        if (roomHallucinationTextures[idx]) roomHallucinationTextures[idx].dispose();
+        roomHallucinationTextures[idx] = tex;
+        if (idx === currentRoomIndex && (hallucinationState.phase === "active" || hallucinationState.swappedToAlt)) {
+          applyRoomTexture(idx, true);
+        }
+      };
+      hImg.src = room.hallucinationFileName;
+    }
   });
 }
 
@@ -1898,8 +2134,11 @@ function animate(time) {
       if (transition.progress >= 1) {
         currentRoomIndex = transition.targetRoom;
         entityState.visible = false;
+        stopHallucinationHeartbeat();
+        hallucinationState.swappedToAlt = false;
+        scheduleNextHallucination(currentRoomIndex);
         if (ROOMS[currentRoomIndex].isProceduralRoom) generateRandomHorrorRoom(ROOMS[currentRoomIndex]);
-        applyRoomTexture(currentRoomIndex);
+        applyRoomTexture(currentRoomIndex, false);
         updateRoomHUD();
         syncTapeVideo();
         if (audioEngine.ctx) audioEngine.updateCavernReverb(ROOMS[currentRoomIndex].reverbDecay);
@@ -1974,6 +2213,7 @@ function animate(time) {
   refractionLensMesh.position.y = -1.1 + Math.cos(tSec * 0.38) * 0.18;
 
 
+  updateHallucinationSystem(time);
   updateDiscoveryTicks(w, h);
   renderer.render(scene, camera);
   render2DOverlay(w, h, room, blackFade, time, dt);
@@ -2038,6 +2278,16 @@ function render2DOverlay(w, h, room, blackFade, time, dt) {
     alarmGrad.addColorStop(0, "rgba(143, 50, 34, 0)");
     alarmGrad.addColorStop(1, `rgba(143, 50, 34, ${alarmAlpha.toFixed(3)})`);
     fxCtx.fillStyle = alarmGrad; fxCtx.fillRect(0, 0, w, h);
+  }
+  if (hallucinationState.flashAlpha > 0.01) {
+    // Резкая белёсо-холодная вспышка галлюцинации с красной виньеткой
+    fxCtx.fillStyle = `rgba(215, 224, 212, ${(hallucinationState.flashAlpha * 0.72).toFixed(3)})`;
+    fxCtx.fillRect(0, 0, w, h);
+    const hGrad = fxCtx.createRadialGradient(w * 0.5, h * 0.5, Math.min(w, h) * 0.12, w * 0.5, h * 0.5, Math.max(w, h) * 0.75);
+    hGrad.addColorStop(0, "rgba(120, 14, 12, 0)");
+    hGrad.addColorStop(1, `rgba(120, 14, 12, ${(hallucinationState.flashAlpha * 0.65).toFixed(3)})`);
+    fxCtx.fillStyle = hGrad;
+    fxCtx.fillRect(0, 0, w, h);
   }
   if (blackFade > 0.01) {
     fxCtx.fillStyle = `rgba(1, 2, 1, ${blackFade})`;
@@ -2284,6 +2534,7 @@ window.addEventListener("keydown", (e) => {
     }
   }
   if (k === "f" || k === "а") document.getElementById("btn-toggle-flashlight").click();
+  if (k === "h" || k === "р") triggerHallucinationNow();
   if (e.key === "Escape") {
     if (dev360.active) toggleDev360Mode(false);
     document.querySelectorAll(".modal-backdrop.open").forEach(m => closeModalEl(m));
