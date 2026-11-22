@@ -889,6 +889,365 @@ scene.add(proceduralDebrisGroup);
 const proceduralTextureCache = {};
 
 /* ============================================================
+   РЕЖИМ РАЗРАБОТЧИКА: 360° ЖИВАЯ КОМНАТА С МАЯТНИКОМ (ЛОКАЦИЯ #7)
+   Позволяет вращать камеру на все 360° по горизонтали и смотреть вверх/вниз,
+   осматривать углы, улики и живой маятник перед масштабированием на весь дом.
+============================================================ */
+const dev360 = {
+  active: false,
+  scene: null,
+  camera: null,
+  flashLight: null,
+  flashTarget: null,
+  pendulumPivot: null,
+  pendulumBlade: null,
+  shadowFigure: null,
+  shadowAngle: Math.PI, // стоит за спиной игрока
+  yaw: 0,
+  pitch: -0.05,
+  targetYaw: 0,
+  targetPitch: -0.05,
+  dragging: false,
+  lastX: 0,
+  lastY: 0,
+  lastSwingSide: 0,
+  wallHotspots: [],
+  keysHeld: Object.create(null)
+};
+
+function makeDungeonSurfaceTexture(type = "wall") {
+  const size = 1024;
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  const g = c.getContext("2d");
+
+  g.fillStyle = type === "floor" ? "#141714" : (type === "ceiling" ? "#0d100d" : "#1f241d");
+  g.fillRect(0, 0, size, size);
+
+  // Каменная кладка / плиты
+  const step = type === "floor" ? 128 : 170;
+  g.strokeStyle = "rgba(6, 8, 6, 0.78)";
+  g.lineWidth = 4;
+  for (let y = 0; y < size; y += step) {
+    g.beginPath(); g.moveTo(0, y); g.lineTo(size, y); g.stroke();
+    const rowShift = ((y / step) % 2) * (step * 0.5);
+    for (let x = rowShift; x < size; x += step) {
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + step); g.stroke();
+    }
+  }
+
+  // Зернистость сырого камня
+  for (let i = 0; i < 16000; i++) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    const d = (Math.random() - 0.5) * 38;
+    g.fillStyle = `rgba(${72 + d}, ${78 + d}, ${66 + d}, 0.22)`;
+    g.fillRect(x, y, 2, 2);
+  }
+
+  // Пятна чёрной плесени и бурой ржавчины
+  for (let i = 0; i < 24; i++) {
+    const mx = Math.random() * size;
+    const my = Math.random() * size;
+    const mr = 35 + Math.random() * 130;
+    const mg = g.createRadialGradient(mx, my, 4, mx, my, mr);
+    if (i % 3 === 0) {
+      mg.addColorStop(0, "rgba(10, 14, 10, 0.82)");
+      mg.addColorStop(1, "rgba(0,0,0,0)");
+    } else if (i % 3 === 1) {
+      mg.addColorStop(0, "rgba(74, 24, 14, 0.52)");
+      mg.addColorStop(1, "rgba(0,0,0,0)");
+    } else {
+      mg.addColorStop(0, "rgba(38, 52, 34, 0.45)");
+      mg.addColorStop(1, "rgba(0,0,0,0)");
+    }
+    g.fillStyle = mg;
+    g.beginPath(); g.arc(mx, my, mr, 0, Math.PI * 2); g.fill();
+  }
+
+  // Подтёки влаги
+  if (type === "wall") {
+    for (let d = 0; d < 32; d++) {
+      const dx = Math.random() * size;
+      const dy = Math.random() * (size * 0.5);
+      const len = 120 + Math.random() * 380;
+      const dg = g.createLinearGradient(dx, dy, dx, dy + len);
+      dg.addColorStop(0, "rgba(12, 16, 11, 0.72)");
+      dg.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = dg;
+      g.fillRect(dx, dy, 3 + Math.random() * 5, len);
+    }
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(2, 2);
+  return tex;
+}
+
+function buildDev360PendulumScene() {
+  if (dev360.scene) return;
+  const s = new THREE.Scene();
+  s.background = new THREE.Color(0x020302);
+  s.fog = new THREE.FogExp2(0x020302, 0.085);
+
+  const cam = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 60);
+  cam.position.set(0, 1.65, 0);
+  cam.rotation.order = "YXZ";
+  s.add(cam);
+
+  const wallTex = makeDungeonSurfaceTexture("wall");
+  const floorTex = makeDungeonSurfaceTexture("floor");
+  const ceilTex = makeDungeonSurfaceTexture("ceiling");
+
+  const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, bumpMap: wallTex, bumpScale: 0.04, roughness: 0.88, metalness: 0.08 });
+  const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, bumpMap: floorTex, bumpScale: 0.05, roughness: 0.72, metalness: 0.15 });
+  const ceilMat = new THREE.MeshStandardMaterial({ map: ceilTex, roughness: 0.94 });
+  const rustMat = new THREE.MeshStandardMaterial({ color: 0x4b2a1d, roughness: 0.65, metalness: 0.72 });
+  const bladeMat = new THREE.MeshStandardMaterial({ color: 0x8b948e, roughness: 0.28, metalness: 0.88 });
+
+  const W = 9.0, H = 4.4, D = 9.0;
+  // Пол и потолок
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, D), floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  s.add(floor);
+
+  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W, D), ceilMat);
+  ceil.rotation.x = Math.PI / 2;
+  ceil.position.y = H;
+  s.add(ceil);
+
+  // 4 стены вокруг игрока
+  const northWall = new THREE.Mesh(new THREE.PlaneGeometry(W, H), wallMat);
+  northWall.position.set(0, H / 2, -D / 2);
+  s.add(northWall);
+
+  const southWall = new THREE.Mesh(new THREE.PlaneGeometry(W, H), wallMat);
+  southWall.position.set(0, H / 2, D / 2);
+  southWall.rotation.y = Math.PI;
+  s.add(southWall);
+
+  const westWall = new THREE.Mesh(new THREE.PlaneGeometry(D, H), wallMat);
+  westWall.position.set(-W / 2, H / 2, 0);
+  westWall.rotation.y = Math.PI / 2;
+  s.add(westWall);
+
+  const eastWall = new THREE.Mesh(new THREE.PlaneGeometry(D, H), wallMat);
+  eastWall.position.set(W / 2, H / 2, 0);
+  eastWall.rotation.y = -Math.PI / 2;
+  s.add(eastWall);
+
+  // Решётка в потолке, сквозь которую падает холодный тусклый свет
+  const grateGroup = new THREE.Group();
+  for (let i = -3; i <= 3; i++) {
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 2.2, 8), rustMat);
+    bar.rotation.z = Math.PI / 2;
+    bar.position.set(0, H - 0.05, i * 0.28);
+    grateGroup.add(bar);
+  }
+  s.add(grateGroup);
+
+  // Огромный раскачивающийся маятник с серповидным лезвием перед игроком
+  const pivot = new THREE.Group();
+  pivot.position.set(0, H - 0.1, -2.5);
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 3.0, 10), rustMat);
+  rod.position.y = -1.5;
+  pivot.add(rod);
+
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.34, 0.03), bladeMat);
+  blade.position.y = -3.0;
+  pivot.add(blade);
+  s.add(pivot);
+  dev360.pendulumPivot = pivot;
+  dev360.pendulumBlade = blade;
+
+  // Каменная плита под маятником с выбитым знаком [X]
+  const slabCanvas = document.createElement("canvas");
+  slabCanvas.width = 512; slabCanvas.height = 512;
+  const sg = slabCanvas.getContext("2d");
+  sg.fillStyle = "#1a1e19"; sg.fillRect(0, 0, 512, 512);
+  sg.strokeStyle = "#080a08"; sg.lineWidth = 8; sg.strokeRect(10, 10, 492, 492);
+  sg.font = "bold 110px 'Courier New', monospace";
+  sg.fillStyle = "rgba(195, 180, 155, 0.72)";
+  sg.textAlign = "center";
+  sg.fillText("X", 256, 285);
+  sg.font = "22px 'Courier New', monospace";
+  sg.fillStyle = "rgba(189, 125, 59, 0.75)";
+  sg.fillText("ПОД ЛЕЗВИЕМ МАЯТНИКА", 256, 355);
+  const slabTex = new THREE.CanvasTexture(slabCanvas);
+  const slabMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(1.6, 0.08, 1.6),
+    new THREE.MeshStandardMaterial({ map: slabTex, roughness: 0.85 })
+  );
+  slabMesh.position.set(0, 0.04, -2.5);
+  s.add(slabMesh);
+
+  // Ржавые кандалы и порванный кожаный ремень на правой стене с уликой [I, III]
+  const strapCanvas = document.createElement("canvas");
+  strapCanvas.width = 512; strapCanvas.height = 256;
+  const stg = strapCanvas.getContext("2d");
+  stg.fillStyle = "#2b1911"; stg.fillRect(0, 0, 512, 256);
+  stg.font = "bold 64px 'Courier New', monospace";
+  stg.fillStyle = "#d9c9b2";
+  stg.textAlign = "center";
+  stg.fillText("I  ·  III", 256, 130);
+  stg.font = "20px 'Courier New', monospace";
+  stg.fillStyle = "#bd7d3b";
+  stg.fillText("ВЫРЕЗАНО НА РЕМНЕ У КАНДАЛОВ", 256, 185);
+  const strapTex = new THREE.CanvasTexture(strapCanvas);
+  const strapMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(1.1, 0.55, 0.06),
+    new THREE.MeshStandardMaterial({ map: strapTex, roughness: 0.9 })
+  );
+  strapMesh.position.set(4.42, 1.45, 0.4);
+  strapMesh.rotation.y = -Math.PI / 2;
+  s.add(strapMesh);
+
+  // Цепной стопор маятника на левой стене
+  const leverBox = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.75, 0.5), rustMat);
+  leverBox.position.set(-4.42, 1.45, -0.6);
+  s.add(leverBox);
+
+  // Тёмная фигура-наблюдатель в дальнем углу за спиной (смещается, когда игрок отворачивается)
+  const fig = build3DShadowEntity();
+  fig.position.set(2.8, 1.15, 3.3);
+  fig.userData.shadowMat.opacity = 0.88;
+  fig.userData.eyeMat.opacity = 0.75;
+  s.add(fig);
+  dev360.shadowFigure = fig;
+
+  // Освещение: слабый холодный свет из потолка + динамический фонарь в руке игрока
+  s.add(new THREE.AmbientLight(0x161d17, 0.45));
+  const ceilSpot = new THREE.PointLight(0x7c9682, 0.85, 11);
+  ceilSpot.position.set(0, H - 0.35, -1.5);
+  s.add(ceilSpot);
+
+  const flash = new THREE.SpotLight(0xffe6bd, 3.4, 16, Math.PI * 0.22, 0.55, 1.1);
+  const flashTarget = new THREE.Object3D();
+  flashTarget.position.set(0, 0, -1);
+  cam.add(flash);
+  cam.add(flashTarget);
+  flash.target = flashTarget;
+
+  dev360.scene = s;
+  dev360.camera = cam;
+  dev360.flashLight = flash;
+  dev360.flashTarget = flashTarget;
+}
+
+function toggleDev360Mode(forceState = null) {
+  const next = forceState !== null ? Boolean(forceState) : !dev360.active;
+  if (next === dev360.active) return;
+
+  // Переводим текущую комнату на локацию #7 (Камера с маятником) для синхронизации с интерфейсом
+  if (next) {
+    currentRoomIndex = 7;
+    applyRoomTexture(7);
+    updateRoomHUD();
+    buildDev360PendulumScene();
+    dev360.yaw = 0;
+    dev360.pitch = -0.04;
+    dev360.targetYaw = 0;
+    dev360.targetPitch = -0.04;
+    if (gifRoomLayer) gifRoomLayer.classList.remove("visible");
+  }
+
+  dev360.active = next;
+  const hudEl = document.getElementById("dev-360-hud");
+  const btnEl = document.getElementById("btn-dev-pendulum");
+  if (hudEl) hudEl.classList.toggle("visible", dev360.active);
+  if (btnEl) {
+    btnEl.classList.toggle("active", dev360.active);
+    btnEl.textContent = dev360.active ? "DEV: ВЫЙТИ ИЗ 360°" : "DEV: МАЯТНИК 360°";
+  }
+
+  if (dev360.active && audioEngine.enabled) {
+    audioEngine.playSubterraneanRumble();
+    audioEngine.playSteelChains(0);
+  }
+}
+
+function renderDev360Frame(time, dt) {
+  if (!dev360.scene || !dev360.camera) return;
+
+  // Поворот клавишами стрелок или A/D при тесте
+  const rotSpeed = 0.032 * dt;
+  if (dev360.keysHeld["arrowleft"] || dev360.keysHeld["a"] || dev360.keysHeld["ф"]) dev360.targetYaw += rotSpeed;
+  if (dev360.keysHeld["arrowright"] || dev360.keysHeld["d"] || dev360.keysHeld["в"]) dev360.targetYaw -= rotSpeed;
+  if (dev360.keysHeld["arrowup"] || dev360.keysHeld["w"] || dev360.keysHeld["ц"]) dev360.targetPitch += rotSpeed * 0.75;
+  if (dev360.keysHeld["arrowdown"] || dev360.keysHeld["s"] || dev360.keysHeld["ы"]) dev360.targetPitch -= rotSpeed * 0.75;
+
+  dev360.targetPitch = Math.max(-1.28, Math.min(1.22, dev360.targetPitch));
+  const smooth = 1 - Math.pow(1 - 0.16, dt);
+  dev360.yaw += (dev360.targetYaw - dev360.yaw) * smooth;
+  dev360.pitch += (dev360.targetPitch - dev360.pitch) * smooth;
+
+  const tSec = time * 0.001;
+  // Лёгкое дыхание камеры и покачивание маятника
+  dev360.camera.position.set(
+    Math.sin(tSec * 0.9) * 0.03,
+    1.65 + Math.sin(tSec * 1.8) * 0.02,
+    Math.cos(tSec * 0.7) * 0.03
+  );
+  dev360.camera.rotation.y = dev360.yaw;
+  dev360.camera.rotation.x = dev360.pitch;
+
+  // Луч фонаря следует за курсором внутри 360° поля зрения
+  dev360.flashLight.intensity = flashlightOn ? 3.5 : 0.25;
+  dev360.flashTarget.position.set(pointer.normX * 0.48, -pointer.normY * 0.36, -1.0);
+
+  // Раскачивание маятника и свист лезвия при прохождении нижней точки
+  const swingAngle = Math.sin(tSec * 1.65) * 0.62;
+  if (dev360.pendulumPivot) {
+    dev360.pendulumPivot.rotation.z = swingAngle;
+    const side = swingAngle >= 0 ? 1 : -1;
+    if (side !== dev360.lastSwingSide) {
+      dev360.lastSwingSide = side;
+      if (audioEngine.enabled) audioEngine.playWoodCreak();
+    }
+  }
+
+  // Тень в углу: когда игрок смотрит прямо на неё, она отступает в тень; когда отворачивается — подбирается ближе
+  if (dev360.shadowFigure) {
+    const sx = Math.sin(dev360.shadowAngle) * 3.4;
+    const sz = Math.cos(dev360.shadowAngle) * 3.4;
+    dev360.shadowFigure.position.set(sx, 1.15, sz);
+    dev360.shadowFigure.lookAt(0, 1.15, 0);
+
+    const lookDirX = -Math.sin(dev360.yaw);
+    const lookDirZ = -Math.cos(dev360.yaw);
+    const toShadowX = sx / 3.4;
+    const toShadowZ = sz / 3.4;
+    const dot = lookDirX * toShadowX + lookDirZ * toShadowZ;
+
+    if (dot > 0.78 && flashlightOn) {
+      // Игрок навёл взгляд/фонарь — фигура исчезает и перебегает в другой угол за спиной
+      dev360.shadowFigure.userData.shadowMat.opacity *= 0.86;
+      dev360.shadowFigure.userData.eyeMat.opacity *= 0.82;
+      if (dev360.shadowFigure.userData.shadowMat.opacity < 0.05) {
+        dev360.shadowAngle += Math.PI * (0.75 + Math.random() * 0.5);
+        if (audioEngine.enabled) audioEngine.playStepBehind();
+      }
+    } else {
+      dev360.shadowFigure.userData.shadowMat.opacity = Math.min(0.9, dev360.shadowFigure.userData.shadowMat.opacity + 0.015 * dt);
+      dev360.shadowFigure.userData.eyeMat.opacity = Math.min(0.85, dev360.shadowFigure.userData.eyeMat.opacity + 0.015 * dt);
+    }
+  }
+
+  const telEl = document.getElementById("dev-360-telemetry");
+  if (telEl) {
+    const degYaw = Math.round((((-dev360.yaw * 180 / Math.PI) % 360) + 360) % 360);
+    const degPitch = Math.round(dev360.pitch * 180 / Math.PI);
+    const degSwing = (swingAngle * 180 / Math.PI).toFixed(1);
+    telEl.textContent = `УГОЛ: ${degYaw}° · НАКЛОН: ${degPitch}° · МАЯТНИК: ${degSwing}°`;
+  }
+
+  renderer.render(dev360.scene, dev360.camera);
+  fxCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+}
+
+
+/* ============================================================
    СОСТОЯНИЕ 2.5D
 ============================================================ */
 let currentRoomIndex = 0;
@@ -1064,6 +1423,10 @@ function resizeAll() {
   ensureFlashlightSprite();
   if (window.Episode1 && typeof window.Episode1.onResize === "function") {
     window.Episode1.onResize();
+  }
+  if (dev360.camera) {
+    dev360.camera.aspect = window.innerWidth / window.innerHeight;
+    dev360.camera.updateProjectionMatrix();
   }
 }
 window.addEventListener("resize", resizeAll);
@@ -1335,6 +1698,15 @@ function animate(time) {
 
   if (window.Episode1 && window.Episode1.isActive()) {
     window.Episode1.tick(dtMs / 1000);
+    return;
+  }
+
+  if (dev360.active) {
+    pointer.x += (pointer.targetX - pointer.x) * 0.16;
+    pointer.y += (pointer.targetY - pointer.y) * 0.16;
+    pointer.normX = (pointer.x / window.innerWidth - 0.5) * 2;
+    pointer.normY = (pointer.y / window.innerHeight - 0.5) * 2;
+    renderDev360Frame(time, dt);
     return;
   }
 
@@ -1689,12 +2061,26 @@ document.querySelectorAll(".modal-backdrop").forEach(m => {
 glCanvas.addEventListener("pointerdown", (e) => {
   if (window.Episode1 && window.Episode1.isActive()) return;
   pointer.targetX = e.clientX; pointer.targetY = e.clientY;
+  if (dev360.active) {
+    dev360.dragging = true;
+    dev360.lastX = e.clientX;
+    dev360.lastY = e.clientY;
+  }
 });
 window.addEventListener("pointermove", (e) => {
   if (document.querySelector(".modal-backdrop.open")) return;
   if (window.Episode1 && window.Episode1.isActive()) return;
   pointer.targetX = e.clientX; pointer.targetY = e.clientY;
+  if (dev360.active && dev360.dragging) {
+    const dx = e.clientX - dev360.lastX;
+    const dy = e.clientY - dev360.lastY;
+    dev360.targetYaw -= dx * 0.0055;
+    dev360.targetPitch -= dy * 0.0045;
+    dev360.lastX = e.clientX;
+    dev360.lastY = e.clientY;
+  }
 }, { passive: true });
+window.addEventListener("pointerup", () => { dev360.dragging = false; });
 
 glCanvas.addEventListener("click", (e) => {
   if (window.Episode1 && window.Episode1.isActive()) return;
@@ -1752,8 +2138,20 @@ window.addEventListener("wheel", (e) => {
 window.addEventListener("keydown", (e) => {
   if (window.Episode1 && window.Episode1.isActive()) return;
   const k = e.key.toLowerCase();
+  if (e.shiftKey && (k === "d" || k === "в")) {
+    e.preventDefault();
+    toggleDev360Mode();
+    return;
+  }
+  if (dev360.active) dev360.keysHeld[k] = true;
   if (k === "f" || k === "а") document.getElementById("btn-toggle-flashlight").click();
-  if (e.key === "Escape") document.querySelectorAll(".modal-backdrop.open").forEach(m => closeModalEl(m));
+  if (e.key === "Escape") {
+    if (dev360.active) toggleDev360Mode(false);
+    document.querySelectorAll(".modal-backdrop.open").forEach(m => closeModalEl(m));
+  }
+});
+window.addEventListener("keyup", (e) => {
+  delete dev360.keysHeld[e.key.toLowerCase()];
 });
 
 /* ============================================================
@@ -3347,6 +3745,7 @@ document.getElementById("btn-regen-room").addEventListener("click", () => {
   updateRoomHUD();
 });
 
+document.getElementById("btn-dev-pendulum").addEventListener("click", () => toggleDev360Mode());
 document.getElementById("btn-open-puzzle").addEventListener("click", openPuzzleModal);
 document.getElementById("btn-close-puzzle").addEventListener("click", () => closeModalEl(document.getElementById("puzzle-modal")));
 
