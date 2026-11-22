@@ -1659,9 +1659,6 @@ function animate(time) {
   lastFrameTime = time;
   const dt = dtMs / 16.667;
 
-  return;
-  }
-
   if (panicState.active) {
     const elapsed = time - panicState.startedAt;
     if (elapsed >= panicState.duration) { panicState.active = false; panicState.intensity = 0; }
@@ -2837,105 +2834,76 @@ glCanvas.addEventListener("webglcontextrestored", () => {
     return;
   }
 
-  let finished = false;
-
-  function completePreloader() {
-    if (finished) return;
-    finished = true;
-    if (barFillEl) barFillEl.style.width = "100%";
-    if (statusEl) statusEl.textContent = "Готово · 100%";
-
-    preloaderEl.classList.add("done");
-    if (introEl) introEl.classList.remove("hidden");
-    setTimeout(() => {
-      if (preloaderVid && !preloaderVid.paused) {
-        try { preloaderVid.pause(); } catch (e) {}
-      }
-      preloaderEl.style.display = "none";
-    }, 900);
-  }
+  preloaderEl.style.display = "flex";
+  preloaderEl.classList.remove("done");
+  if (introEl) introEl.classList.add("hidden");
 
   if (preloaderVid) {
     preloaderVid.muted = true;
     preloaderVid.playsInline = true;
-    const tryPlayPreloaderVid = () => {
-      const p = preloaderVid.play();
-      if (p && typeof p.catch === "function") p.catch(() => {});
-    };
-    tryPlayPreloaderVid();
-    preloaderVid.addEventListener("loadeddata", tryPlayPreloaderVid, { once: true });
-    preloaderVid.addEventListener("error", () => {
-      if (statusEl) statusEl.textContent = "Загрузка ассетов...";
-    }, { once: true });
+    preloaderVid.loop = true;
+    const playPromise = preloaderVid.play();
+    if (playPromise && typeof playPromise.catch === "function") {
+      playPromise.catch(() => {});
+    }
   }
 
+  // Фоновая предзагрузка ассетов
   const imageAssets = ["title.jpg"];
   ROOMS.forEach(r => {
     if (!r.isProceduralRoom && r.fileName) imageAssets.push(r.fileName);
     if (r.hallucinationFileName) imageAssets.push(r.hallucinationFileName);
   });
-
-  const mediaAssets = ["tape.mp4", "Chamber_cutscene.mp4", "Abandoned%20Victims.mp3", "Abandoned%20Victims.ogg"];
-  const totalTasks = Math.max(1, imageAssets.length + mediaAssets.length + 1);
-  let completedTasks = 0;
-
-  function stepProgress(label) {
-    if (finished) return;
-    completedTasks = Math.min(totalTasks, completedTasks + 1);
-    const pct = Math.round((completedTasks / totalTasks) * 100);
-    if (barFillEl) barFillEl.style.width = `${pct}%`;
-    if (statusEl) statusEl.textContent = `${label} · ${pct}%`;
-    if (completedTasks >= totalTasks) {
-      setTimeout(completePreloader, 250);
-    }
-  }
-
-  imageAssets.forEach((src) => {
+  imageAssets.forEach(src => {
     const img = new Image();
-    let settled = false;
-    const onDone = () => {
-      if (settled) return;
-      settled = true;
-      stepProgress(`Текстуры: ${src}`);
-    };
-    img.onload = onDone;
-    img.onerror = onDone;
     img.src = src;
-    setTimeout(onDone, 1400);
   });
 
-  mediaAssets.forEach((src) => {
+  ["tape.mp4", "Chamber_cutscene.mp4", "Abandoned%20Victims.mp3", "Abandoned%20Victims.ogg"].forEach(src => {
     const isAudio = src.includes("Abandoned");
     const el = document.createElement(isAudio ? "audio" : "video");
     el.preload = "metadata";
-    let settled = false;
-    const onDone = () => {
-      if (settled) return;
-      settled = true;
-      stepProgress(`Медиа: ${decodeURIComponent(src)}`);
-    };
-    el.addEventListener("loadedmetadata", onDone, { once: true });
-    el.addEventListener("canplay", onDone, { once: true });
-    el.addEventListener("error", onDone, { once: true });
     el.src = src;
-    setTimeout(onDone, 1400);
   });
 
-  setTimeout(() => {
-    ensureFlashlightSprite();
-    ROOMS.forEach((r, idx) => {
-      if (!r.isProceduralRoom && !roomTextures[idx] && !proceduralTextureCache[idx]) {
-        proceduralTextureCache[idx] = createProceduralTexture(r);
-      }
-      if (r.hallucinationFileName && !roomHallucinationTextures[idx]) {
-        roomHallucinationTextures[idx] = createHallucinationFallbackTexture(r);
-      }
-    });
-    stepProgress("Сборка сцен");
-  }, 150);
+  let progress = 0;
+  let finished = false;
+  const startTime = performance.now();
+  const durationMs = 2000;
 
-  // Надёжный выход на главный экран even if external assets stall
-  setTimeout(completePreloader, 2800);
+  function tickPreloader(now) {
+    if (finished) return;
+    const elapsed = now - startTime;
+    progress = Math.min(100, Math.round((elapsed / durationMs) * 100));
+
+    if (barFillEl) barFillEl.style.width = `${progress}%`;
+    if (statusEl) {
+      if (progress < 35) statusEl.textContent = `Загрузка текстур и комнат... ${progress}%`;
+      else if (progress < 75) statusEl.textContent = `Подготовка аудио и кат-сцен... ${progress}%`;
+      else statusEl.textContent = `Открытие архива... ${progress}%`;
+    }
+
+    if (elapsed >= durationMs) {
+      finished = true;
+      if (barFillEl) barFillEl.style.width = "100%";
+      if (statusEl) statusEl.textContent = "Готово · 100%";
+
+      preloaderEl.classList.add("done");
+      if (introEl) introEl.classList.remove("hidden");
+
+      setTimeout(() => {
+        if (preloaderVid && !preloaderVid.paused) {
+          try { preloaderVid.pause(); } catch (e) {}
+        }
+        preloaderEl.style.display = "none";
+      }, 900);
+      return;
+    }
+
+    requestAnimationFrame(tickPreloader);
+  }
+
+  requestAnimationFrame(tickPreloader);
 })();
 
 /* ============================================================
