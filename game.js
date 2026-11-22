@@ -2837,9 +2837,36 @@ glCanvas.addEventListener("webglcontextrestored", () => {
     return;
   }
 
+  let finished = false;
+
+  function completePreloader() {
+    if (finished) return;
+    finished = true;
+    if (barFillEl) barFillEl.style.width = "100%";
+    if (statusEl) statusEl.textContent = "Готово · 100%";
+
+    preloaderEl.classList.add("done");
+    if (introEl) introEl.classList.remove("hidden");
+    setTimeout(() => {
+      if (preloaderVid && !preloaderVid.paused) {
+        try { preloaderVid.pause(); } catch (e) {}
+      }
+      preloaderEl.style.display = "none";
+    }, 900);
+  }
+
   if (preloaderVid) {
-    const pv = preloaderVid.play();
-    if (pv && typeof pv.catch === "function") pv.catch(() => {});
+    preloaderVid.muted = true;
+    preloaderVid.playsInline = true;
+    const tryPlayPreloaderVid = () => {
+      const p = preloaderVid.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    };
+    tryPlayPreloaderVid();
+    preloaderVid.addEventListener("loadeddata", tryPlayPreloaderVid, { once: true });
+    preloaderVid.addEventListener("error", () => {
+      if (statusEl) statusEl.textContent = "Загрузка ассетов...";
+    }, { once: true });
   }
 
   const imageAssets = ["title.jpg"];
@@ -2849,9 +2876,8 @@ glCanvas.addEventListener("webglcontextrestored", () => {
   });
 
   const mediaAssets = ["tape.mp4", "Chamber_cutscene.mp4", "Abandoned%20Victims.mp3", "Abandoned%20Victims.ogg"];
-  const totalTasks = imageAssets.length + mediaAssets.length + 1;
+  const totalTasks = Math.max(1, imageAssets.length + mediaAssets.length + 1);
   let completedTasks = 0;
-  let finished = false;
 
   function stepProgress(label) {
     if (finished) return;
@@ -2860,38 +2886,24 @@ glCanvas.addEventListener("webglcontextrestored", () => {
     if (barFillEl) barFillEl.style.width = `${pct}%`;
     if (statusEl) statusEl.textContent = `${label} · ${pct}%`;
     if (completedTasks >= totalTasks) {
-      completePreloader();
+      setTimeout(completePreloader, 250);
     }
   }
 
-  function completePreloader() {
-    if (finished) return;
-    finished = true;
-    if (barFillEl) barFillEl.style.width = "100%";
-    if (statusEl) statusEl.textContent = "Готово · 100%";
-
-    setTimeout(() => {
-      preloaderEl.classList.add("done");
-      if (introEl) introEl.classList.remove("hidden");
-      setTimeout(() => {
-        if (preloaderVid && !preloaderVid.paused) {
-          try { preloaderVid.pause(); } catch (e) {}
-        }
-        preloaderEl.style.display = "none";
-      }, 950);
-    }, 350);
-  }
-
-  // Предзагрузка картинок и создание текстур комнат
   imageAssets.forEach((src) => {
     const img = new Image();
-    const onDone = () => stepProgress(`Загрузка текстур: ${src}`);
+    let settled = false;
+    const onDone = () => {
+      if (settled) return;
+      settled = true;
+      stepProgress(`Текстуры: ${src}`);
+    };
     img.onload = onDone;
     img.onerror = onDone;
     img.src = src;
+    setTimeout(onDone, 1400);
   });
 
-  // Предзагрузка видео и аудио-треков
   mediaAssets.forEach((src) => {
     const isAudio = src.includes("Abandoned");
     const el = document.createElement(isAudio ? "audio" : "video");
@@ -2900,16 +2912,15 @@ glCanvas.addEventListener("webglcontextrestored", () => {
     const onDone = () => {
       if (settled) return;
       settled = true;
-      stepProgress(`Подготовка звука и кат-сцен: ${decodeURIComponent(src)}`);
+      stepProgress(`Медиа: ${decodeURIComponent(src)}`);
     };
     el.addEventListener("loadedmetadata", onDone, { once: true });
-    el.addEventListener("canplaythrough", onDone, { once: true });
+    el.addEventListener("canplay", onDone, { once: true });
     el.addEventListener("error", onDone, { once: true });
     el.src = src;
-    setTimeout(onDone, 3200);
+    setTimeout(onDone, 1400);
   });
 
-  // Инициализация процедурных текстур и фолбэков
   setTimeout(() => {
     ensureFlashlightSprite();
     ROOMS.forEach((r, idx) => {
@@ -2920,11 +2931,11 @@ glCanvas.addEventListener("webglcontextrestored", () => {
         roomHallucinationTextures[idx] = createHallucinationFallbackTexture(r);
       }
     });
-    stepProgress("Сборка сцен и тумана");
-  }, 180);
+    stepProgress("Сборка сцен");
+  }, 150);
 
-  // Страховочный таймер, чтобы прелоадер никогда не завис при медленном соединении
-  setTimeout(completePreloader, 5200);
+  // Надёжный выход на главный экран even if external assets stall
+  setTimeout(completePreloader, 2800);
 })();
 
 /* ============================================================

@@ -388,16 +388,21 @@
   #preloader-ui {
     position: relative;
     z-index: 3;
-    width: 100%;
-    max-width: 520px;
+    width: 92vw;
+    max-width: 960px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    align-items: center;
+    gap: 14px;
     text-align: center;
   }
   #preloader-title {
-    font-size: 13px;
-    letter-spacing: 4px;
+    font-size: clamp(16px, 3.4vw, 34px);
+    letter-spacing: clamp(2px, 0.7vw, 8px);
+    line-height: 1.25;
+    max-width: 100%;
+    word-break: break-word;
+    overflow-wrap: anywhere;
     color: var(--bone-white);
     text-transform: uppercase;
   }
@@ -415,8 +420,9 @@
     transition: width 0.25s ease;
   }
   #preloader-status {
-    font-size: 11px;
-    letter-spacing: 1.5px;
+    font-size: clamp(11px, 1.8vw, 15px);
+    letter-spacing: clamp(1px, 0.25vw, 3px);
+    max-width: 100%;
     color: var(--amber-glow);
   }
 
