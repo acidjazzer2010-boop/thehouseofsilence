@@ -2021,14 +2021,7 @@ glCanvas.addEventListener("pointerdown", (e) => {
 window.addEventListener("pointermove", (e) => {
   if (document.querySelector(".modal-backdrop.open")) return;
   pointer.targetX = e.clientX; pointer.targetY = e.clientY;
-  if (dev360.active && dev360.dragging) {
-    dev360.targetYaw -= (e.clientX - dev360.lastX) * 0.0055;
-    dev360.targetPitch -= (e.clientY - dev360.lastY) * 0.0045;
-    dev360.lastX = e.clientX;
-    dev360.lastY = e.clientY;
-  }
 }, { passive: true });
-window.addEventListener("pointerup", () => { dev360.dragging = false; });
 
 glCanvas.addEventListener("click", (e) => {
   if (transition.active) return;
@@ -2088,9 +2081,6 @@ window.addEventListener("keydown", (e) => {
   if (k === "h" || k === "р") triggerHallucinationNow();
   if (e.key === "Escape") {
     });
-window.addEventListener("keyup", (e) => {
-  delete dev360.keysHeld[e.key.toLowerCase()];
-});
 
 /* ============================================================
    ПАНИКА 2.5D
@@ -2372,7 +2362,7 @@ function stopChamberCutscene() {
 if (chamberCutsceneVideo) {
   chamberCutsceneVideo.addEventListener("ended", () => {
     stopChamberCutscene();
-    if (!alreadySolvedOnce && ROOMS.every(r => r.solvedOnce)) {
+    if (ROOMS.every(r => r.solvedOnce)) {
       setTimeout(() => openFinalModalWithSmartDefault(), 900);
     }
   });
@@ -2402,22 +2392,6 @@ function solveCurrentRoom(msg) {
 /* ============================================================
    ИНИЦИАЛИЗАЦИЯ UI
 ============================================================ */
-function openEpisodeStartscreen() {
-  document.getElementById('ep1-startscreen').style.display = 'flex';
-}
-document.getElementById('btn-enter-ep1').addEventListener('click', openEpisodeStartscreen);
-document.getElementById('btn-hud-ep1').addEventListener('click', openEpisodeStartscreen);
-document.getElementById('ep1-start-go').addEventListener('click', () => {
-  document.getElementById('intro-screen').classList.add("hidden");
-  fadeOutIntroBgm();
-  document.getElementById('ep1-startscreen').style.display = 'none';
-  window.Episode1.init();
-  window.Episode1.start();
-});
-document.getElementById('ep1-start-cancel').addEventListener('click', () => {
-  document.getElementById('ep1-startscreen').style.display = 'none';
-});
-
 const introBgm = document.getElementById("intro-bgm");
 let introBgmStarted = false;
 let introProceduralMixActive = false;
@@ -2675,16 +2649,22 @@ requestAnimationFrame(renderIntroFog);
 armAndLoadIntroBgm();
 
 document.getElementById("btn-enter-house").addEventListener("click", () => {
-  document.getElementById("intro-screen").classList.add("hidden");
+  const introEl = document.getElementById("intro-screen");
+  const preloaderEl = document.getElementById("preloader-screen");
+  if (preloaderEl) preloaderEl.style.display = "none";
+  if (introEl) introEl.classList.add("hidden");
   fadeOutIntroBgm();
   audioEngine.init();
   const sBtn = document.getElementById("btn-toggle-sound");
-  sBtn.textContent = "ЗВУК: ВКЛ";
-  sBtn.classList.add("active");
-  sBtn.setAttribute("aria-pressed", "true");
+  if (sBtn) {
+    sBtn.textContent = "ЗВУК: ВКЛ";
+    sBtn.classList.add("active");
+    sBtn.setAttribute("aria-pressed", "true");
+  }
   if (tapeVideo) tapeVideo.muted = false;
   syncTapeVideo();
-  setTimeout(() => { spawnShadowEntity(true); audioEngine.playWallScratching(); }, 800);
+  resizeAll();
+  setTimeout(() => { spawnShadowEntity(true); audioEngine.playWallScratching(); }, 600);
 });
 
 document.getElementById("btn-regen-room").addEventListener("click", () => {
