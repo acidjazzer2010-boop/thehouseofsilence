@@ -860,537 +860,6 @@ scene.add(refractionLensMesh);
 const proceduralTextureCache = {};
 
 /* ============================================================
-   DEV MODE: 360° КАМЕРА С МАЯТНИКОМ — ВАРИАНТ 5 (ДВА СОСТОЯНИЯ)
-   Состояние I (до фиксации): маятник качается, на стене нет печати сдвига.
-   Состояние II (после фиксации [E]): лезвие замирает под углом,
-   проявляется надпись-печать «СДВИГ АКТИВЕН» и включается багровый отсвет.
-============================================================ */
-const dev360 = {
-  active: false,
-  locked: false,
-  lockBlend: 0,
-  scene: null,
-  camera: null,
-  flashLight: null,
-  flashTarget: null,
-  godRayMat: null,
-  shiftGlowLight: null,
-  hiddenSealMesh: null,
-  pendulumPivot: null,
-  pendulumBlade: null,
-  shadowFigure: null,
-  shadowAngle: Math.PI,
-  yaw: 0,
-  pitch: -0.04,
-  targetYaw: 0,
-  targetPitch: -0.04,
-  dragging: false,
-  lastX: 0,
-  lastY: 0,
-  lastSwingDir: 0,
-  keysHeld: Object.create(null)
-};
-
-function createPBRChamberMaps(surfaceKind = "wall") {
-  const size = 1024;
-  const colorC = document.createElement("canvas");
-  colorC.width = colorC.height = size;
-  const cg = colorC.getContext("2d");
-
-  const bumpC = document.createElement("canvas");
-  bumpC.width = bumpC.height = size;
-  const bg = bumpC.getContext("2d");
-
-  const roughC = document.createElement("canvas");
-  roughC.width = roughC.height = size;
-  const rg = roughC.getContext("2d");
-
-  cg.fillStyle = surfaceKind === "floor" ? "#171a16" : (surfaceKind === "ceiling" ? "#0d100d" : "#222720");
-  cg.fillRect(0, 0, size, size);
-
-  bg.fillStyle = "#808080";
-  bg.fillRect(0, 0, size, size);
-
-  rg.fillStyle = surfaceKind === "floor" ? "#9a9a9a" : "#dcdcdc";
-  rg.fillRect(0, 0, size, size);
-
-  const step = surfaceKind === "floor" ? 128 : 170;
-  cg.strokeStyle = "rgba(6, 8, 6, 0.85)";
-  cg.lineWidth = 4;
-  bg.strokeStyle = "#181818";
-  bg.lineWidth = 5;
-
-  for (let y = 0; y < size; y += step) {
-    cg.beginPath(); cg.moveTo(0, y); cg.lineTo(size, y); cg.stroke();
-    bg.beginPath(); bg.moveTo(0, y); bg.lineTo(size, y); bg.stroke();
-    const offset = ((y / step) % 2) * (step * 0.5);
-    for (let x = offset; x < size; x += step) {
-      cg.beginPath(); cg.moveTo(x, y); cg.lineTo(x, y + step); cg.stroke();
-      bg.beginPath(); bg.moveTo(x, y); bg.lineTo(x, y + step); bg.stroke();
-    }
-  }
-
-  for (let i = 0; i < 18000; i++) {
-    const x = Math.random() * size;
-    const y = Math.random() * size;
-    const d = (Math.random() - 0.5) * 36;
-    cg.fillStyle = `rgba(${78 + d}, ${84 + d}, ${72 + d}, 0.22)`;
-    cg.fillRect(x, y, 2, 2);
-
-    const bv = Math.max(0, Math.min(255, 128 + d * 2)) | 0;
-    bg.fillStyle = `rgb(${bv},${bv},${bv})`;
-    bg.fillRect(x, y, 2, 2);
-  }
-
-  for (let i = 0; i < 26; i++) {
-    const mx = Math.random() * size;
-    const my = Math.random() * size;
-    const mr = 35 + Math.random() * 135;
-    const mode = i % 3;
-
-    const mg = cg.createRadialGradient(mx, my, 4, mx, my, mr);
-    if (mode === 0) {
-      mg.addColorStop(0, "rgba(9, 13, 9, 0.84)");
-      mg.addColorStop(1, "rgba(0,0,0,0)");
-    } else if (mode === 1) {
-      mg.addColorStop(0, "rgba(78, 25, 14, 0.55)");
-      mg.addColorStop(1, "rgba(0,0,0,0)");
-    } else {
-      mg.addColorStop(0, "rgba(42, 56, 37, 0.48)");
-      mg.addColorStop(1, "rgba(0,0,0,0)");
-    }
-    cg.fillStyle = mg;
-    cg.beginPath(); cg.arc(mx, my, mr, 0, Math.PI * 2); cg.fill();
-
-    const rGrad = rg.createRadialGradient(mx, my, 4, mx, my, mr * 0.9);
-    rGrad.addColorStop(0, "rgba(38, 38, 38, 0.85)");
-    rGrad.addColorStop(1, "rgba(180, 180, 180, 0)");
-    rg.fillStyle = rGrad;
-    rg.beginPath(); rg.arc(mx, my, mr * 0.9, 0, Math.PI * 2); rg.fill();
-  }
-
-  if (surfaceKind === "wall") {
-    for (let d = 0; d < 34; d++) {
-      const dx = Math.random() * size;
-      const dy = Math.random() * (size * 0.55);
-      const len = 120 + Math.random() * 380;
-      const w = 2 + Math.random() * 6;
-      const dg = cg.createLinearGradient(dx, dy, dx, dy + len);
-      dg.addColorStop(0, d % 2 === 0 ? "rgba(12, 16, 11, 0.74)" : "rgba(62, 20, 12, 0.58)");
-      dg.addColorStop(1, "rgba(0,0,0,0)");
-      cg.fillStyle = dg;
-      cg.fillRect(dx, dy, w, len);
-    }
-  }
-
-  const maxAniso = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 4;
-  const wrapTex = (canvas, isColor) => {
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(2, 2);
-    tex.anisotropy = maxAniso;
-    if (isColor && THREE.sRGBEncoding) tex.encoding = THREE.sRGBEncoding;
-    return tex;
-  };
-
-  return {
-    map: wrapTex(colorC, true),
-    bumpMap: wrapTex(bumpC, false),
-    roughnessMap: wrapTex(roughC, false)
-  };
-}
-
-function buildDev360PendulumScene() {
-  if (dev360.scene) return;
-  const s = new THREE.Scene();
-  s.background = new THREE.Color(0x020302);
-  s.fog = new THREE.FogExp2(0x020302, 0.08);
-
-  const cam = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 60);
-  cam.position.set(0, 1.65, 0);
-  cam.rotation.order = "YXZ";
-  s.add(cam);
-
-  const wallMaps = createPBRChamberMaps("wall");
-  const floorMaps = createPBRChamberMaps("floor");
-  const ceilMaps = createPBRChamberMaps("ceiling");
-
-  const wallMat = new THREE.MeshStandardMaterial({
-    map: wallMaps.map,
-    bumpMap: wallMaps.bumpMap,
-    bumpScale: 0.045,
-    roughnessMap: wallMaps.roughnessMap,
-    roughness: 0.86,
-    metalness: 0.08
-  });
-
-  const floorMat = new THREE.MeshStandardMaterial({
-    map: floorMaps.map,
-    bumpMap: floorMaps.bumpMap,
-    bumpScale: 0.05,
-    roughnessMap: floorMaps.roughnessMap,
-    roughness: 0.58,
-    metalness: 0.16
-  });
-
-  const ceilMat = new THREE.MeshStandardMaterial({
-    map: ceilMaps.map,
-    bumpMap: ceilMaps.bumpMap,
-    bumpScale: 0.035,
-    roughness: 0.94
-  });
-
-  const rustMat = new THREE.MeshStandardMaterial({
-    color: 0x4c2b1d,
-    bumpMap: wallMaps.bumpMap,
-    bumpScale: 0.03,
-    roughness: 0.64,
-    metalness: 0.75
-  });
-
-  const bladeMat = new THREE.MeshStandardMaterial({
-    color: 0x9aa39d,
-    roughness: 0.24,
-    metalness: 0.9
-  });
-
-  const W = 9.0, H = 4.4, D = 9.0;
-
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, D), floorMat);
-  floor.rotation.x = -Math.PI / 2;
-  s.add(floor);
-
-  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W, D), ceilMat);
-  ceil.rotation.x = Math.PI / 2;
-  ceil.position.y = H;
-  s.add(ceil);
-
-  const northWall = new THREE.Mesh(new THREE.PlaneGeometry(W, H), wallMat);
-  northWall.position.set(0, H / 2, -D / 2);
-  s.add(northWall);
-
-  const southWall = new THREE.Mesh(new THREE.PlaneGeometry(W, H), wallMat);
-  southWall.position.set(0, H / 2, D / 2);
-  southWall.rotation.y = Math.PI;
-  s.add(southWall);
-
-  const westWall = new THREE.Mesh(new THREE.PlaneGeometry(D, H), wallMat);
-  westWall.position.set(-W / 2, H / 2, 0);
-  westWall.rotation.y = Math.PI / 2;
-  s.add(westWall);
-
-  const eastWall = new THREE.Mesh(new THREE.PlaneGeometry(D, H), wallMat);
-  eastWall.position.set(W / 2, H / 2, 0);
-  eastWall.rotation.y = -Math.PI / 2;
-  s.add(eastWall);
-
-  const grateGroup = new THREE.Group();
-  for (let i = -3; i <= 3; i++) {
-    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 2.2, 8), rustMat);
-    bar.rotation.z = Math.PI / 2;
-    bar.position.set(0, H - 0.05, i * 0.28);
-    grateGroup.add(bar);
-  }
-  s.add(grateGroup);
-
-  const rayMat = new THREE.ShaderMaterial({
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-    side: THREE.DoubleSide,
-    uniforms: {
-      uTime: { value: 0 },
-      uIntensity: { value: 0.22 },
-      uColor: { value: new THREE.Color(0x8fa894) }
-    },
-    vertexShader: `
-      varying vec2 vUv;
-      varying vec3 vNormalView;
-      varying vec3 vViewDir;
-      void main() {
-        vUv = uv;
-        vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-        vNormalView = normalize(normalMatrix * normal);
-        vViewDir = normalize(-mvPos.xyz);
-        gl_Position = projectionMatrix * mvPos;
-      }
-    `,
-    fragmentShader: `
-      varying vec2 vUv;
-      varying vec3 vNormalView;
-      varying vec3 vViewDir;
-      uniform float uTime;
-      uniform float uIntensity;
-      uniform vec3 uColor;
-      void main() {
-        float fresnel = pow(abs(dot(vNormalView, vViewDir)), 1.6);
-        float vert = smoothstep(0.0, 0.22, vUv.y) * smoothstep(1.0, 0.15, vUv.y);
-        float horiz = smoothstep(0.0, 0.25, vUv.x) * smoothstep(1.0, 0.75, vUv.x);
-        float pulse = 0.8 + 0.2 * sin(uTime * 0.9 + vUv.x * 12.0);
-        gl_FragColor = vec4(uColor, fresnel * vert * horiz * pulse * uIntensity);
-      }
-    `
-  });
-  const rayCone = new THREE.Mesh(new THREE.ConeGeometry(1.45, 4.1, 24, 1, true), rayMat);
-  rayCone.position.set(0, H - 2.05, -1.6);
-  s.add(rayCone);
-  dev360.godRayMat = rayMat;
-
-  const pivot = new THREE.Group();
-  pivot.position.set(0, H - 0.1, -2.5);
-  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 3.0, 10), rustMat);
-  rod.position.y = -1.5;
-  pivot.add(rod);
-
-  const blade = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.34, 0.03), bladeMat);
-  blade.position.y = -3.0;
-  pivot.add(blade);
-  s.add(pivot);
-  dev360.pendulumPivot = pivot;
-  dev360.pendulumBlade = blade;
-
-  const slabCanvas = document.createElement("canvas");
-  slabCanvas.width = 512; slabCanvas.height = 512;
-  const sg = slabCanvas.getContext("2d");
-  sg.fillStyle = "#1a1e19"; sg.fillRect(0, 0, 512, 512);
-  sg.strokeStyle = "#080a08"; sg.lineWidth = 8; sg.strokeRect(10, 10, 492, 492);
-  sg.font = "bold 110px 'Courier New', monospace";
-  sg.fillStyle = "rgba(195, 180, 155, 0.74)";
-  sg.textAlign = "center";
-  sg.fillText("X", 256, 285);
-  sg.font = "22px 'Courier New', monospace";
-  sg.fillStyle = "rgba(189, 125, 59, 0.78)";
-  sg.fillText("ПОД ЛЕЗВИЕМ МАЯТНИКА", 256, 355);
-  const slabMesh = new THREE.Mesh(
-    new THREE.BoxGeometry(1.6, 0.08, 1.6),
-    new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(slabCanvas), roughness: 0.85 })
-  );
-  slabMesh.position.set(0, 0.04, -2.5);
-  s.add(slabMesh);
-
-  const strapCanvas = document.createElement("canvas");
-  strapCanvas.width = 512; strapCanvas.height = 256;
-  const stg = strapCanvas.getContext("2d");
-  stg.fillStyle = "#2b1911"; stg.fillRect(0, 0, 512, 256);
-  stg.font = "bold 64px 'Courier New', monospace";
-  stg.fillStyle = "#d9c9b2";
-  stg.textAlign = "center";
-  stg.fillText("I  ·  III", 256, 130);
-  stg.font = "20px 'Courier New', monospace";
-  stg.fillStyle = "#bd7d3b";
-  stg.fillText("ВЫРЕЗАНО НА РЕМНЕ У КАНДАЛОВ", 256, 185);
-  const strapMesh = new THREE.Mesh(
-    new THREE.BoxGeometry(1.1, 0.55, 0.06),
-    new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(strapCanvas), roughness: 0.9 })
-  );
-  strapMesh.position.set(4.42, 1.45, 0.4);
-  strapMesh.rotation.y = -Math.PI / 2;
-  s.add(strapMesh);
-
-  const leverBox = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.75, 0.5), rustMat);
-  leverBox.position.set(-4.42, 1.45, -0.6);
-  s.add(leverBox);
-
-  // Скрытая метка на северной стене — проявляется только во II состоянии (после фиксации маятника)
-  const sealCanvas = document.createElement("canvas");
-  sealCanvas.width = 512; sealCanvas.height = 256;
-  const slg = sealCanvas.getContext("2d");
-  slg.fillStyle = "rgba(18, 8, 7, 0.92)"; slg.fillRect(0, 0, 512, 256);
-  slg.strokeStyle = "#8f3222"; slg.lineWidth = 4; slg.strokeRect(12, 12, 488, 232);
-  slg.font = "bold 46px 'Courier New', monospace";
-  slg.fillStyle = "#e67c6a";
-  slg.textAlign = "center";
-  slg.fillText("СДВИГ АКТИВЕН", 256, 108);
-  slg.font = "22px 'Courier New', monospace";
-  slg.fillStyle = "#d0cbc0";
-  slg.fillText("МАЯТНИК ЗАФИКСИРОВАН · ЗНАК IV ПРОЯВЛЕН", 256, 162);
-  const sealMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.7, 0.85),
-    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(sealCanvas), transparent: true, opacity: 0.0 })
-  );
-  sealMesh.position.set(0, 1.65, -4.46);
-  s.add(sealMesh);
-  dev360.hiddenSealMesh = sealMesh;
-
-  const shiftGlow = new THREE.PointLight(0x8f3222, 0.0, 9.0);
-  shiftGlow.position.set(0, 1.4, -3.6);
-  s.add(shiftGlow);
-  dev360.shiftGlowLight = shiftGlow;
-
-  const fig = build3DShadowEntity();
-  fig.position.set(2.8, 1.15, 3.3);
-  fig.userData.shadowMat.opacity = 0.88;
-  fig.userData.eyeMat.opacity = 0.75;
-  s.add(fig);
-  dev360.shadowFigure = fig;
-
-  s.add(new THREE.AmbientLight(0x161d17, 0.48));
-  const ceilSpot = new THREE.PointLight(0x7c9682, 0.9, 11);
-  ceilSpot.position.set(0, H - 0.35, -1.5);
-  s.add(ceilSpot);
-
-  const flash = new THREE.SpotLight(0xffe6bd, 3.5, 16, Math.PI * 0.22, 0.55, 1.1);
-  const flashTarget = new THREE.Object3D();
-  flashTarget.position.set(0, 0, -1);
-  cam.add(flash);
-  cam.add(flashTarget);
-  flash.target = flashTarget;
-
-  dev360.scene = s;
-  dev360.camera = cam;
-  dev360.flashLight = flash;
-  dev360.flashTarget = flashTarget;
-}
-
-function toggleDev360PendulumLock() {
-  if (!dev360.active) return;
-  dev360.locked = !dev360.locked;
-  const btn = document.getElementById("btn-dev-lock-pendulum");
-  const note = document.getElementById("dev-360-state-note");
-  if (btn) {
-    btn.textContent = dev360.locked ? "[E] СНЯТЬ ФИКСАЦИЮ МАЯТНИКА" : "[E] ЗАФИКСИРОВАТЬ МАЯТНИК";
-    btn.classList.toggle("active", dev360.locked);
-  }
-  if (note) {
-    note.textContent = dev360.locked
-      ? "Состояние II (Сдвиг): маятник замер под углом, проявилась надпись на стене и багровый отсвет."
-      : "Состояние I (Качание): лезвие снова раскачивается, отметка сдвига скрыта.";
-  }
-  if (audioEngine.enabled) {
-    audioEngine.playSteelChains(0);
-    audioEngine.playSubterraneanRumble();
-  }
-}
-
-function toggleDev360Mode(forceState = null) {
-  const next = forceState !== null ? Boolean(forceState) : !dev360.active;
-  if (next === dev360.active) return;
-
-  if (next) {
-    currentRoomIndex = 7;
-    applyRoomTexture(7);
-    updateRoomHUD();
-    buildDev360PendulumScene();
-    dev360.yaw = 0;
-    dev360.pitch = -0.04;
-    dev360.targetYaw = 0;
-    dev360.targetPitch = -0.04;
-    if (gifRoomLayer) gifRoomLayer.classList.remove("visible");
-  }
-
-  dev360.active = next;
-  const hudEl = document.getElementById("dev-360-hud");
-  const btnEl = document.getElementById("btn-dev-pendulum");
-  if (hudEl) hudEl.classList.toggle("visible", dev360.active);
-  if (btnEl) {
-    btnEl.classList.toggle("active", dev360.active);
-    btnEl.textContent = dev360.active ? "DEV: ВЫЙТИ ИЗ 360°" : "DEV: МАЯТНИК 360°";
-  }
-
-  if (dev360.active && audioEngine.enabled) {
-    audioEngine.playSubterraneanRumble();
-    audioEngine.playSteelChains(0);
-  }
-}
-
-function renderDev360Frame(time, dt) {
-  if (!dev360.scene || !dev360.camera) return;
-
-  const rotSpeed = 0.032 * dt;
-  if (dev360.keysHeld["arrowleft"] || dev360.keysHeld["a"] || dev360.keysHeld["ф"]) dev360.targetYaw += rotSpeed;
-  if (dev360.keysHeld["arrowright"] || dev360.keysHeld["d"] || dev360.keysHeld["в"]) dev360.targetYaw -= rotSpeed;
-  if (dev360.keysHeld["arrowup"] || dev360.keysHeld["w"] || dev360.keysHeld["ц"]) dev360.targetPitch += rotSpeed * 0.75;
-  if (dev360.keysHeld["arrowdown"] || dev360.keysHeld["s"] || dev360.keysHeld["ы"]) dev360.targetPitch -= rotSpeed * 0.75;
-
-  dev360.targetPitch = Math.max(-1.28, Math.min(1.22, dev360.targetPitch));
-  const smooth = 1 - Math.pow(1 - 0.16, dt);
-  dev360.yaw += (dev360.targetYaw - dev360.yaw) * smooth;
-  dev360.pitch += (dev360.targetPitch - dev360.pitch) * smooth;
-
-  const tSec = time * 0.001;
-  dev360.camera.position.set(
-    Math.sin(tSec * 0.9) * 0.03,
-    1.65 + Math.sin(tSec * 1.8) * 0.02,
-    Math.cos(tSec * 0.7) * 0.03
-  );
-  dev360.camera.rotation.y = dev360.yaw;
-  dev360.camera.rotation.x = dev360.pitch;
-
-  dev360.flashLight.intensity = flashlightOn ? 3.5 : 0.25;
-  dev360.flashTarget.position.set(pointer.normX * 0.48, -pointer.normY * 0.36, -1.0);
-
-  if (dev360.godRayMat) {
-    dev360.godRayMat.uniforms.uTime.value = tSec;
-    dev360.godRayMat.uniforms.uIntensity.value = flashlightOn ? 0.24 : 0.12;
-  }
-
-  const targetBlend = dev360.locked ? 1.0 : 0.0;
-  dev360.lockBlend += (targetBlend - dev360.lockBlend) * Math.min(1, 0.08 * dt);
-
-  const freeSwing = Math.sin(tSec * 1.65) * 0.62;
-  const lockedAngle = -0.44;
-  const swingAngle = freeSwing * (1 - dev360.lockBlend) + lockedAngle * dev360.lockBlend;
-
-  if (dev360.pendulumPivot) {
-    dev360.pendulumPivot.rotation.z = swingAngle;
-    if (dev360.pendulumBlade) {
-      const jitterAmp = (1 - dev360.lockBlend * 0.85) * 0.018;
-      dev360.pendulumBlade.rotation.y = Math.sin(tSec * 7.5) * jitterAmp;
-    }
-    if (!dev360.locked) {
-      const dir = freeSwing >= 0 ? 1 : -1;
-      if (dir !== dev360.lastSwingDir) {
-        dev360.lastSwingDir = dir;
-        if (audioEngine.enabled) audioEngine.playWoodCreak();
-      }
-    }
-  }
-
-  if (dev360.hiddenSealMesh) {
-    dev360.hiddenSealMesh.material.opacity = dev360.lockBlend * 0.95;
-  }
-  if (dev360.shiftGlowLight) {
-    dev360.shiftGlowLight.intensity = dev360.lockBlend * (1.35 + 0.25 * Math.sin(tSec * 3.2));
-  }
-
-  if (dev360.shadowFigure) {
-    const sx = Math.sin(dev360.shadowAngle) * 3.4;
-    const sz = Math.cos(dev360.shadowAngle) * 3.4;
-    dev360.shadowFigure.position.set(sx, 1.15, sz);
-    dev360.shadowFigure.lookAt(0, 1.15, 0);
-
-    const lookX = -Math.sin(dev360.yaw);
-    const lookZ = -Math.cos(dev360.yaw);
-    const dot = lookX * (sx / 3.4) + lookZ * (sz / 3.4);
-
-    if (dot > 0.78 && flashlightOn) {
-      dev360.shadowFigure.userData.shadowMat.opacity *= 0.86;
-      dev360.shadowFigure.userData.eyeMat.opacity *= 0.82;
-      if (dev360.shadowFigure.userData.shadowMat.opacity < 0.05) {
-        dev360.shadowAngle += Math.PI * (0.75 + Math.random() * 0.5);
-        if (audioEngine.enabled) audioEngine.playStepBehind();
-      }
-    } else {
-      dev360.shadowFigure.userData.shadowMat.opacity = Math.min(0.9, dev360.shadowFigure.userData.shadowMat.opacity + 0.015 * dt);
-      dev360.shadowFigure.userData.eyeMat.opacity = Math.min(0.85, dev360.shadowFigure.userData.eyeMat.opacity + 0.015 * dt);
-    }
-  }
-
-  const telEl = document.getElementById("dev-360-telemetry");
-  if (telEl) {
-    const degYaw = Math.round((((-dev360.yaw * 180 / Math.PI) % 360) + 360) % 360);
-    const degPitch = Math.round(dev360.pitch * 180 / Math.PI);
-    const degSwing = (swingAngle * 180 / Math.PI).toFixed(1);
-    const modeLabel = dev360.locked ? "СОСТОЯНИЕ II: ЗАФИКСИРОВАН" : "СОСТОЯНИЕ I: КАЧАНИЕ";
-    telEl.textContent = `${modeLabel} · УГОЛ: ${degYaw}° · НАКЛОН: ${degPitch}° · МАЯТНИК: ${degSwing}°`;
-  }
-
-  renderer.render(dev360.scene, dev360.camera);
-  fxCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-}
-
-
-/* ============================================================
    СОСТОЯНИЕ 2.5D
 ============================================================ */
 let currentRoomIndex = 0;
@@ -1768,14 +1237,7 @@ function resizeAll() {
   fxCanvas.style.height = window.innerHeight + "px";
   fxCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ensureFlashlightSprite();
-  if (window.Episode1 && typeof window.Episode1.onResize === "function") {
-    window.Episode1.onResize();
   }
-  if (dev360.camera) {
-    dev360.camera.aspect = window.innerWidth / window.innerHeight;
-    dev360.camera.updateProjectionMatrix();
-  }
-}
 window.addEventListener("resize", resizeAll);
 resizeAll();
 
@@ -2065,6 +1527,130 @@ function updateWorldPlaneLayout() {
   return layout;
 }
 
+
+/* ============================================================
+   ФОТОРЕАЛИСТИЧНЫЙ ТУМАН ИЗ УГЛОВ КОМНАТ
+   Рандомно выползает из углов экрана, густеет и плавно растворяется
+============================================================ */
+const cornerFogCanvas = document.getElementById("corner-fog-canvas");
+const cornerFogCtx = cornerFogCanvas ? cornerFogCanvas.getContext("2d") : null;
+
+const CORNER_ANCHORS = [
+  { name: "TL", x: 0.0, y: 0.0 },
+  { name: "TR", x: 1.0, y: 0.0 },
+  { name: "BL", x: 0.0, y: 1.0 },
+  { name: "BR", x: 1.0, y: 1.0 }
+];
+
+const cornerFogPlumes = CORNER_ANCHORS.map((anc, idx) => ({
+  id: idx,
+  anchorX: anc.x,
+  anchorY: anc.y,
+  state: "dormant", // "dormant" | "creep_in" | "hold" | "dissolve"
+  stateStartedAt: performance.now() + 2500 + idx * 3200,
+  stateDurMs: 6000,
+  density: 0.0,
+  targetDensity: 0.55,
+  reach: 0.25,
+  driftAngle: Math.atan2(0.5 - anc.y, 0.5 - anc.x),
+  wobblePhase: Math.random() * Math.PI * 2
+}));
+
+function resizeCornerFog() {
+  if (!cornerFogCanvas || !cornerFogCtx) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cornerFogCanvas.width = Math.floor(window.innerWidth * dpr);
+  cornerFogCanvas.height = Math.floor(window.innerHeight * dpr);
+  cornerFogCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener("resize", resizeCornerFog);
+resizeCornerFog();
+
+function updateAndRenderCornerFog(now) {
+  if (!cornerFogCanvas || !cornerFogCtx) return;
+  const introEl = document.getElementById("intro-screen");
+  const preloaderEl = document.getElementById("preloader-screen");
+  const preloaderOpen = preloaderEl && !preloaderEl.classList.contains("done");
+  const introOpen = introEl && !introEl.classList.contains("hidden");
+
+  if (preloaderOpen || introOpen || chamberCutscenePlaying) {
+    cornerFogCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    return;
+  }
+
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const maxDim = Math.hypot(w, h);
+  const tSec = now * 0.001;
+
+  cornerFogCtx.clearRect(0, 0, w, h);
+
+  for (let i = 0; i < cornerFogPlumes.length; i++) {
+    const p = cornerFogPlumes[i];
+    const elapsed = now - p.stateStartedAt;
+
+    if (p.state === "dormant") {
+      p.density = 0;
+      if (now >= p.stateStartedAt) {
+        p.state = "creep_in";
+        p.stateStartedAt = now;
+        p.stateDurMs = 5500 + Math.floor(Math.random() * 5500);
+        p.targetDensity = 0.42 + Math.random() * 0.46;
+        p.driftAngle = Math.atan2(0.5 - p.anchorY, 0.5 - p.anchorX) + (Math.random() - 0.5) * 0.45;
+      }
+    } else if (p.state === "creep_in") {
+      const k = Math.min(1, Math.max(0, elapsed / p.stateDurMs));
+      const ease = k * k * (3 - 2 * k);
+      p.density = p.targetDensity * ease;
+      p.reach = 0.14 + ease * 0.34;
+      if (k >= 1) {
+        p.state = "hold";
+        p.stateStartedAt = now;
+        p.stateDurMs = 4500 + Math.floor(Math.random() * 6500);
+      }
+    } else if (p.state === "hold") {
+      p.density = p.targetDensity * (0.9 + 0.1 * Math.sin(tSec * 1.1 + p.wobblePhase));
+      if (now >= p.stateStartedAt + p.stateDurMs) {
+        p.state = "dissolve";
+        p.stateStartedAt = now;
+        p.stateDurMs = 6500 + Math.floor(Math.random() * 6500);
+      }
+    } else if (p.state === "dissolve") {
+      const k = Math.min(1, Math.max(0, elapsed / p.stateDurMs));
+      const easeOut = 1 - Math.pow(1 - k, 2.2);
+      p.density = p.targetDensity * (1 - easeOut);
+      p.reach = 0.48 * (1 - easeOut * 0.55);
+      if (k >= 1) {
+        p.density = 0;
+        p.state = "dormant";
+        p.stateStartedAt = now + 7000 + Math.floor(Math.random() * 14000);
+      }
+    }
+
+    if (p.density <= 0.005) continue;
+
+    // 3 перекрывающихся облачных слоя на угол для объёмной неоднородности
+    for (let lobe = 0; lobe < 3; lobe++) {
+      const lobeFactor = 0.65 + lobe * 0.22;
+      const pushDist = maxDim * p.reach * (0.45 + lobe * 0.24) + Math.sin(tSec * 0.45 + p.wobblePhase + lobe) * 24;
+      const cx = p.anchorX * w + Math.cos(p.driftAngle + (lobe - 1) * 0.22) * pushDist;
+      const cy = p.anchorY * h + Math.sin(p.driftAngle + (lobe - 1) * 0.22) * pushDist;
+      const rad = maxDim * (0.18 + lobe * 0.09) * (0.7 + p.reach);
+
+      const grad = cornerFogCtx.createRadialGradient(cx, cy, rad * 0.05, cx, cy, rad);
+      const a = Math.min(0.62, p.density * 0.34 * lobeFactor);
+      grad.addColorStop(0.0, `rgba(176, 186, 174, ${a.toFixed(3)})`);
+      grad.addColorStop(0.45, `rgba(148, 160, 146, ${(a * 0.55).toFixed(3)})`);
+      grad.addColorStop(1.0, "rgba(120, 132, 118, 0.0)");
+
+      cornerFogCtx.fillStyle = grad;
+      cornerFogCtx.beginPath();
+      cornerFogCtx.arc(cx, cy, rad, 0, Math.PI * 2);
+      cornerFogCtx.fill();
+    }
+  }
+}
+
 function animate(time) {
   requestAnimationFrame(animate);
   if (document.hidden) { lastFrameTime = time; return; }
@@ -2073,18 +1659,7 @@ function animate(time) {
   lastFrameTime = time;
   const dt = dtMs / 16.667;
 
-  if (window.Episode1 && window.Episode1.isActive()) {
-    window.Episode1.tick(dtMs / 1000);
-    return;
-  }
-
-  if (dev360.active) {
-    pointer.x += (pointer.targetX - pointer.x) * 0.16;
-    pointer.y += (pointer.targetY - pointer.y) * 0.16;
-    pointer.normX = (pointer.x / window.innerWidth - 0.5) * 2;
-    pointer.normY = (pointer.y / window.innerHeight - 0.5) * 2;
-    renderDev360Frame(time, dt);
-    return;
+  return;
   }
 
   if (panicState.active) {
@@ -2217,6 +1792,7 @@ function animate(time) {
   updateDiscoveryTicks(w, h);
   renderer.render(scene, camera);
   render2DOverlay(w, h, room, blackFade, time, dt);
+  updateAndRenderCornerFog(time);
 }
 
 function updateDiscoveryTicks(w, h) {
@@ -2443,17 +2019,10 @@ document.querySelectorAll(".modal-backdrop").forEach(m => {
    ВВОД 2.5D
 ============================================================ */
 glCanvas.addEventListener("pointerdown", (e) => {
-  if (window.Episode1 && window.Episode1.isActive()) return;
   pointer.targetX = e.clientX; pointer.targetY = e.clientY;
-  if (dev360.active) {
-    dev360.dragging = true;
-    dev360.lastX = e.clientX;
-    dev360.lastY = e.clientY;
-  }
-});
+  });
 window.addEventListener("pointermove", (e) => {
   if (document.querySelector(".modal-backdrop.open")) return;
-  if (window.Episode1 && window.Episode1.isActive()) return;
   pointer.targetX = e.clientX; pointer.targetY = e.clientY;
   if (dev360.active && dev360.dragging) {
     dev360.targetYaw -= (e.clientX - dev360.lastX) * 0.0055;
@@ -2465,7 +2034,6 @@ window.addEventListener("pointermove", (e) => {
 window.addEventListener("pointerup", () => { dev360.dragging = false; });
 
 glCanvas.addEventListener("click", (e) => {
-  if (window.Episode1 && window.Episode1.isActive()) return;
   if (transition.active) return;
   if (document.querySelector(".modal-backdrop.open")) return;
 
@@ -2509,7 +2077,6 @@ glCanvas.addEventListener("click", (e) => {
 
 let lastWheelTime = 0;
 window.addEventListener("wheel", (e) => {
-  if (window.Episode1 && window.Episode1.isActive()) return;
   const now = performance.now();
   if (now - lastWheelTime < 1100) return;
   if (document.querySelector(".modal-backdrop.open")) return;
@@ -2518,28 +2085,12 @@ window.addEventListener("wheel", (e) => {
 }, { passive: true });
 
 window.addEventListener("keydown", (e) => {
-  if (window.Episode1 && window.Episode1.isActive()) return;
   const k = e.key.toLowerCase();
-  if (e.shiftKey && (k === "d" || k === "в")) {
-    e.preventDefault();
-    toggleDev360Mode();
-    return;
-  }
-  if (dev360.active) {
-    dev360.keysHeld[k] = true;
-    if (k === "e" || k === "у") {
-      e.preventDefault();
-      toggleDev360PendulumLock();
-      return;
     }
-  }
   if (k === "f" || k === "а") document.getElementById("btn-toggle-flashlight").click();
   if (k === "h" || k === "р") triggerHallucinationNow();
   if (e.key === "Escape") {
-    if (dev360.active) toggleDev360Mode(false);
-    document.querySelectorAll(".modal-backdrop.open").forEach(m => closeModalEl(m));
-  }
-});
+    });
 window.addEventListener("keyup", (e) => {
   delete dev360.keysHeld[e.key.toLowerCase()];
 });
@@ -2577,7 +2128,6 @@ function spawnShadowEntity(force = false) {
 }
 const entitySpawnTimer = setInterval(() => {
   if (document.hidden) return;
-  if (window.Episode1 && window.Episode1.isActive()) return;
   if (document.getElementById("intro-screen").classList.contains("hidden") && !transition.active) {
     if (Math.random() < 0.65) spawnShadowEntity(false);
   }
@@ -2797,6 +2347,40 @@ function playMechanismUnlockClank() {
   audioEngine.playSteelChains(0);
 }
 
+
+const chamberCutsceneWrap = document.getElementById("chamber-cutscene-wrap");
+const chamberCutsceneVideo = document.getElementById("chamber-cutscene-video");
+let chamberCutscenePlaying = false;
+
+function playChamberCutscene() {
+  if (!chamberCutsceneWrap || !chamberCutsceneVideo) return;
+  chamberCutscenePlaying = true;
+  if (tapeVideo && !tapeVideo.paused) tapeVideo.pause();
+  if (tapeVideoWrap) tapeVideoWrap.classList.remove("playing");
+  chamberCutsceneWrap.classList.add("playing");
+  chamberCutsceneVideo.muted = !audioEngine.enabled;
+  try { chamberCutsceneVideo.currentTime = 0; } catch (e) {}
+  const p = chamberCutsceneVideo.play();
+  if (p && typeof p.catch === "function") p.catch(() => {});
+}
+
+function stopChamberCutscene() {
+  chamberCutscenePlaying = false;
+  if (chamberCutsceneVideo && !chamberCutsceneVideo.paused) {
+    try { chamberCutsceneVideo.pause(); } catch (e) {}
+  }
+  if (chamberCutsceneWrap) chamberCutsceneWrap.classList.remove("playing");
+}
+
+if (chamberCutsceneVideo) {
+  chamberCutsceneVideo.addEventListener("ended", () => {
+    stopChamberCutscene();
+    if (!alreadySolvedOnce && ROOMS.every(r => r.solvedOnce)) {
+      setTimeout(() => openFinalModalWithSmartDefault(), 900);
+    }
+  });
+}
+
 function solveCurrentRoom(msg) {
   const room = ROOMS[currentRoomIndex];
   const alreadySolvedOnce = Boolean(room.solvedOnce);
@@ -2807,1035 +2391,16 @@ function solveCurrentRoom(msg) {
   document.getElementById("modal-feedback").textContent = msg;
   updateRoomHUD();
   saveProgress();
+  if (room.id === 7) {
+    const pModal = document.getElementById("puzzle-modal");
+    if (pModal) closeModalEl(pModal);
+    setTimeout(() => playChamberCutscene(), 350);
+    return;
+  }
   if (!alreadySolvedOnce && ROOMS.every(r => r.solvedOnce)) {
     setTimeout(() => openFinalModalWithSmartDefault(), 1400);
   }
 }
-
-/* ============================================================
-   ЭПИЗОД 1 — «СПУСК В ПОДВАЛ» С ФОТОРЕАЛИСТИЧНЫМИ СТЕНОВЫМИ ТЕКСТУРАМИ
-   Поддерживает загрузку structure.jpg из репозитория + процедурный PBR-рельеф (плесень, подтёки, сырость)
-============================================================ */
-window.Episode1 = (() => {
-  const EYE = 1.7, PR = 0.35;
-  const WALK = 4.0, RUN = 7.5;
-  const ENTITY_SPEED = 4.8;
-  const INTERACT_RANGE = 3.0;
-
-  let active = false, paused = false, pointerLocked = false, started = false;
-  let epScene, epCamera, epFlash, epFlashTarget, epEmergLight;
-  let bobTimer = 0;
-  const keys = Object.create(null);
-  const player = {
-    pos: new THREE.Vector3(0, EYE, 6),
-    vel: new THREE.Vector3(),
-    yaw: 0, pitch: 0, flashlightOn: true
-  };
-  const walls = [];
-  const interactables = [];
-  const gateDoor = { mesh: null, opening: 0, isOpening: false, baseY: 0, wall: null };
-  const entity = { active: false, mesh: null, pos: new THREE.Vector3(), speed: ENTITY_SPEED, caught: false };
-  const state = { hasHandle: false, handleInstalled: false, powerOn: false, gateOpen: false, gameOver: false, won: false, wireChecked: false, bottleChecked: false };
-
-  let elHud, elCrosshair, elPrompt, elObjective, elInventory, elWarning, elHint;
-  let elOverlay, elOverlayTitle, elOverlayText;
-  let elPause, elFade, elStartScreen;
-  let elTouch, elJoystick, elJoystickKnob, elBtnF, elBtnE;
-
-  const touch = { moveId: null, moveStartX: 0, moveStartY: 0, moveDX: 0, moveDY: 0, lookId: null, lookLastX: 0, lookLastY: 0 };
-  const raycaster = new THREE.Raycaster();
-  const screenCenter = new THREE.Vector2(0, 0);
-  let hotInteractable = null;
-  let inited = false;
-
-  // Генератор мерзких, сырых, покрытых плесенью и бурыми подтёками стен фундамента
-  // Если в репозитории есть structure.jpg — подмешивает его поверх фактуры!
-  function makeGrimyBasementSet(repeatX = 3, repeatY = 2) {
-    const size = 1024;
-    const colorCanvas = document.createElement('canvas');
-    colorCanvas.width = colorCanvas.height = size;
-    const cg = colorCanvas.getContext('2d');
-
-    const bumpCanvas = document.createElement('canvas');
-    bumpCanvas.width = bumpCanvas.height = size;
-    const bg = bumpCanvas.getContext('2d');
-
-    const roughCanvas = document.createElement('canvas');
-    roughCanvas.width = roughCanvas.height = size;
-    const rg = roughCanvas.getContext('2d');
-
-    const paintGrimeLayers = (baseImg = null) => {
-      if (baseImg) {
-        cg.drawImage(baseImg, 0, 0, size, size);
-        // Затемняем и тонируем под сырой подвал
-        cg.fillStyle = 'rgba(18, 22, 16, 0.36)';
-        cg.fillRect(0, 0, size, size);
-      } else {
-        cg.fillStyle = '#383832';
-        cg.fillRect(0, 0, size, size);
-      }
-
-      bg.fillStyle = '#808080';
-      bg.fillRect(0, 0, size, size);
-      rg.fillStyle = '#d8d8d8';
-      rg.fillRect(0, 0, size, size);
-
-      // Швы бетонных блоков фундамента и вздутия штукатурки
-      for (let y = 0; y < size; y += 256) {
-        cg.fillStyle = 'rgba(10, 12, 9, 0.62)';
-        cg.fillRect(0, y, size, 4);
-        bg.fillStyle = '#242424';
-        bg.fillRect(0, y, size, 4);
-      }
-
-      // Зернистость, раковины и облупившаяся краска
-      for (let i = 0; i < 20000; i++) {
-        const x = Math.random() * size;
-        const y = Math.random() * size;
-        const w = 1 + Math.random() * 3;
-        const h = 1 + Math.random() * 3;
-        const delta = (Math.random() - 0.5) * 42;
-
-        cg.fillStyle = `rgba(${96 + delta}, ${98 + delta}, ${84 + delta}, 0.24)`;
-        cg.fillRect(x, y, w, h);
-
-        const bVal = Math.max(0, Math.min(255, 128 + delta * 2.1)) | 0;
-        bg.fillStyle = `rgb(${bVal},${bVal},${bVal})`;
-        bg.fillRect(x, y, w, h);
-      }
-
-      // Глубокие трещины и обвалы штукатурки
-      for (let i = 0; i < 14; i++) {
-        let x = Math.random() * size;
-        let y = Math.random() * size;
-        cg.strokeStyle = 'rgba(8, 9, 7, 0.85)';
-        cg.lineWidth = 1.4 + Math.random() * 2.0;
-        bg.strokeStyle = '#121212';
-        bg.lineWidth = 2.8;
-
-        cg.beginPath(); bg.beginPath();
-        cg.moveTo(x, y); bg.moveTo(x, y);
-        for (let j = 0; j < 14; j++) {
-          x += (Math.random() - 0.48) * 44;
-          y += (Math.random() - 0.48) * 44;
-          cg.lineTo(x, y); bg.lineTo(x, y);
-        }
-        cg.stroke(); bg.stroke();
-      }
-
-      // Колонии чёрно-зелёной плесени и бурой ржавчины
-      for (let i = 0; i < 22; i++) {
-        const mx = Math.random() * size;
-        const my = Math.random() * size;
-        const mr = 40 + Math.random() * 145;
-        const mode = i % 3;
-
-        const mg = cg.createRadialGradient(mx, my, 4, mx, my, mr);
-        if (mode === 0) {
-          // Чёрная слизистая плесень
-          mg.addColorStop(0, 'rgba(12, 18, 11, 0.78)');
-          mg.addColorStop(0.5, 'rgba(26, 38, 22, 0.45)');
-          mg.addColorStop(1, 'rgba(0,0,0,0)');
-        } else if (mode === 1) {
-          // Буро-кровавая ржавчина и гниль
-          mg.addColorStop(0, 'rgba(64, 20, 12, 0.62)');
-          mg.addColorStop(0.55, 'rgba(42, 18, 11, 0.35)');
-          mg.addColorStop(1, 'rgba(0,0,0,0)');
-        } else {
-          // Болотный грибок и высолы
-          mg.addColorStop(0, 'rgba(46, 58, 36, 0.55)');
-          mg.addColorStop(1, 'rgba(0,0,0,0)');
-        }
-        cg.fillStyle = mg;
-        cg.beginPath(); cg.arc(mx, my, mr, 0, Math.PI * 2); cg.fill();
-
-        // Мокрый глянцевый след на карте шероховатости
-        const rGrad = rg.createRadialGradient(mx, my, 4, mx, my, mr * 0.9);
-        rGrad.addColorStop(0, 'rgba(48, 48, 48, 0.92)');
-        rGrad.addColorStop(1, 'rgba(220, 220, 220, 0)');
-        rg.fillStyle = rGrad;
-        rg.beginPath(); rg.arc(mx, my, mr * 0.9, 0, Math.PI * 2); rg.fill();
-      }
-
-      // Длинные грязные и бурые подтёки сверху вниз по стене
-      for (let d = 0; d < 42; d++) {
-        const dx = Math.random() * size;
-        const dy = Math.random() * (size * 0.55);
-        const len = 120 + Math.random() * 440;
-        const width = 2 + Math.random() * 7;
-
-        const dripGrad = cg.createLinearGradient(dx, dy, dx, dy + len);
-        dripGrad.addColorStop(0, d % 2 === 0 ? 'rgba(14, 18, 12, 0.72)' : 'rgba(58, 18, 10, 0.65)');
-        dripGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        cg.fillStyle = dripGrad;
-        cg.fillRect(dx, dy, width, len);
-
-        rg.fillStyle = 'rgba(42, 42, 42, 0.75)';
-        rg.fillRect(dx, dy, width + 1, len);
-      }
-
-      // Тёмная сырая полоса гнили у самого пола
-      const bottomGrime = cg.createLinearGradient(0, size * 0.72, 0, size);
-      bottomGrime.addColorStop(0, 'rgba(0,0,0,0)');
-      bottomGrime.addColorStop(1, 'rgba(10, 14, 9, 0.85)');
-      cg.fillStyle = bottomGrime;
-      cg.fillRect(0, size * 0.72, size, size * 0.28);
-    };
-
-    paintGrimeLayers(null);
-
-    const maxAniso = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 4;
-    const buildTex = (canvas, isColor) => {
-      const tex = new THREE.CanvasTexture(canvas);
-      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-      tex.repeat.set(repeatX, repeatY);
-      tex.anisotropy = maxAniso;
-      if (isColor && THREE.sRGBEncoding) tex.encoding = THREE.sRGBEncoding;
-      return tex;
-    };
-
-    const mapTex = buildTex(colorCanvas, true);
-    const bumpTex = buildTex(bumpCanvas, false);
-    const roughTex = buildTex(roughCanvas, false);
-
-    // Подгружаем structure.jpg из репозитория и накладываем поверх грязь/плесень/подтёки
-    const structImg = new Image();
-    structImg.onload = () => {
-      paintGrimeLayers(structImg);
-      mapTex.needsUpdate = true;
-      bumpTex.needsUpdate = true;
-      roughTex.needsUpdate = true;
-    };
-    structImg.src = 'structure.jpg';
-
-    return { map: mapTex, bumpMap: bumpTex, roughnessMap: roughTex };
-  }
-
-  function makeMetalTextureSet() {
-    const size = 512;
-    const colorCanvas = document.createElement('canvas');
-    colorCanvas.width = colorCanvas.height = size;
-    const cg = colorCanvas.getContext('2d');
-
-    const bumpCanvas = document.createElement('canvas');
-    bumpCanvas.width = bumpCanvas.height = size;
-    const bg = bumpCanvas.getContext('2d');
-
-    cg.fillStyle = '#2d2118';
-    cg.fillRect(0, 0, size, size);
-    bg.fillStyle = '#808080';
-    bg.fillRect(0, 0, size, size);
-
-    for (let i = 0; i < 4500; i++) {
-      const x = Math.random() * size;
-      const y = Math.random() * size;
-      const v = (Math.random() * 60 - 30) | 0;
-      cg.fillStyle = `rgba(${120 + v},${88 + v},${58 + v},0.32)`;
-      cg.fillRect(x, y, 2, 2);
-
-      const bv = Math.max(0, Math.min(255, 128 + v * 1.5)) | 0;
-      bg.fillStyle = `rgb(${bv},${bv},${bv})`;
-      bg.fillRect(x, y, 2, 2);
-    }
-
-    for (let i = 0; i < 28; i++) {
-      const rx = Math.random() * size;
-      const ry = Math.random() * size;
-      const rw = 24 + Math.random() * 60;
-      const rh = 6 + Math.random() * 14;
-      cg.fillStyle = `rgba(${115 + Math.random() * 45},${52 + Math.random() * 28},${20 + Math.random() * 16},0.45)`;
-      cg.fillRect(rx, ry, rw, rh);
-      bg.fillStyle = '#606060';
-      bg.fillRect(rx, ry, rw, rh);
-    }
-
-    const maxAniso = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 4;
-    const map = new THREE.CanvasTexture(colorCanvas);
-    map.wrapS = map.wrapT = THREE.RepeatWrapping;
-    map.anisotropy = maxAniso;
-    if (THREE.sRGBEncoding) map.encoding = THREE.sRGBEncoding;
-
-    const bumpMap = new THREE.CanvasTexture(bumpCanvas);
-    bumpMap.wrapS = bumpMap.wrapT = THREE.RepeatWrapping;
-    bumpMap.anisotropy = maxAniso;
-
-    return { map, bumpMap };
-  }
-
-  function addWallBox(cx, cy, cz, w, h, d, mat) {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
-    mesh.position.set(cx, cy, cz);
-    epScene.add(mesh);
-    const wall = {
-      box: new THREE.Box3(new THREE.Vector3(cx - w/2, cy - h/2, cz - d/2), new THREE.Vector3(cx + w/2, cy + h/2, cz + d/2)),
-      enabled: true, mesh
-    };
-    walls.push(wall);
-    return wall;
-  }
-
-  function buildLevel() {
-    const wallTex = makeGrimyBasementSet(4, 2);
-    const floorTex = makeGrimyBasementSet(7, 7);
-    const metalTex = makeMetalTextureSet();
-
-    const conc = new THREE.MeshStandardMaterial({
-      map: wallTex.map,
-      bumpMap: wallTex.bumpMap,
-      bumpScale: 0.055,
-      roughnessMap: wallTex.roughnessMap,
-      roughness: 0.88,
-      metalness: 0.07
-    });
-    const floorMat = new THREE.MeshStandardMaterial({
-      map: floorTex.map,
-      bumpMap: floorTex.bumpMap,
-      bumpScale: 0.06,
-      roughnessMap: floorTex.roughnessMap,
-      roughness: 0.85,
-      metalness: 0.06,
-      color: 0x7c8074
-    });
-    const ceilMat = new THREE.MeshStandardMaterial({
-      map: wallTex.map,
-      bumpMap: wallTex.bumpMap,
-      bumpScale: 0.04,
-      roughness: 0.96,
-      metalness: 0.03,
-      color: 0x22251f
-    });
-    const metal = new THREE.MeshStandardMaterial({
-      map: metalTex.map,
-      bumpMap: metalTex.bumpMap,
-      bumpScale: 0.035,
-      roughness: 0.52,
-      metalness: 0.78
-    });
-    const rustMetal = new THREE.MeshStandardMaterial({
-      map: metalTex.map,
-      bumpMap: metalTex.bumpMap,
-      bumpScale: 0.045,
-      roughness: 0.84,
-      metalness: 0.36,
-      color: 0x9e7d62
-    });
-    const WALL_H = 3.0, wallTh = 0.3;
-
-    addWallBox(0, -0.1, 5, 7, 0.2, 8, floorMat);
-    addWallBox(0, WALL_H + 0.1, 5, 7, 0.2, 8, ceilMat);
-    addWallBox(-3.5, WALL_H/2, 5, wallTh, WALL_H, 4, conc);
-    addWallBox(3.5, WALL_H/2, 5, wallTh, WALL_H, 4, conc);
-    addWallBox(0, WALL_H/2, 7, 7, WALL_H, wallTh, conc);
-    addWallBox(-2.75, WALL_H/2, 3, 1.5, WALL_H, wallTh, conc);
-    addWallBox(2.75, WALL_H/2, 3, 1.5, WALL_H, wallTh, conc);
-
-    for (let i = 0; i < 6; i++) {
-      const step = new THREE.Mesh(new THREE.BoxGeometry(3, 0.2, 0.5), conc);
-      step.position.set(0, 0.2 + i * 0.35, 7.3 + i * 0.5);
-      epScene.add(step);
-    }
-
-    addWallBox(0, -0.1, -19.5, 4, 0.2, 45, floorMat);
-    addWallBox(0, WALL_H + 0.1, -19.5, 4, 0.2, 45, ceilMat);
-    addWallBox(-2.15, WALL_H/2, -19.5, wallTh, WALL_H, 45, conc);
-    addWallBox(2.15, WALL_H/2, -7.5, wallTh, WALL_H, 21, conc);
-    addWallBox(2.15, WALL_H/2, -32, wallTh, WALL_H, 20, conc);
-    addWallBox(2.15, 2.8, -20, wallTh, 0.4, 4, conc);
-
-    addWallBox(10, -0.1, -21, 16, 0.2, 18, floorMat);
-    addWallBox(10, WALL_H + 0.1, -21, 16, 0.2, 18, ceilMat);
-    addWallBox(18.15, WALL_H/2, -21, wallTh, WALL_H, 18, conc);
-    addWallBox(10, WALL_H/2, -12, 16, WALL_H, wallTh, conc);
-    addWallBox(10, WALL_H/2, -30, 16, WALL_H, wallTh, conc);
-    addWallBox(2.15, WALL_H/2, -14.5, wallTh, WALL_H, 5, conc);
-    addWallBox(2.15, WALL_H/2, -26, wallTh, WALL_H, 8, conc);
-
-    const pipeMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 42, 12), rustMetal);
-    pipeMesh.rotation.x = Math.PI / 2;
-    pipeMesh.position.set(-1.92, 2.55, -20);
-    epScene.add(pipeMesh);
-
-    const gateGroup = new THREE.Group();
-    const gateMesh = new THREE.Mesh(new THREE.BoxGeometry(3.8, 3.0, 0.25), metal);
-    gateMesh.position.set(0, 1.5, -42);
-    gateGroup.add(gateMesh);
-    for (let i = 0; i < 3; i++) {
-      const rib = new THREE.Mesh(new THREE.BoxGeometry(3.9, 0.12, 0.3), rustMetal);
-      rib.position.set(0, 0.6 + i * 1.0, -42);
-      gateGroup.add(rib);
-    }
-    const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.06, 8, 20), rustMetal);
-    wheel.position.set(0, 1.5, -41.85);
-    gateGroup.add(wheel);
-    epScene.add(gateGroup);
-    gateDoor.mesh = gateMesh;
-    gateDoor.baseY = 1.5;
-    gateDoor.wall = {
-      box: new THREE.Box3(new THREE.Vector3(-2, 0, -42.2), new THREE.Vector3(2, 3, -41.8)),
-      enabled: true
-    };
-    walls.push(gateDoor.wall);
-
-    addWallBox(0, -0.1, -47, 6, 0.2, 10, floorMat);
-    addWallBox(0, WALL_H + 0.1, -47, 6, 0.2, 10, ceilMat);
-    addWallBox(-3.15, WALL_H/2, -47, wallTh, WALL_H, 10, conc);
-    addWallBox(3.15, WALL_H/2, -47, wallTh, WALL_H, 10, conc);
-    addWallBox(0, WALL_H/2, -52, 6, WALL_H, wallTh, conc);
-    for (let i = 0; i < 6; i++) {
-      const step = new THREE.Mesh(new THREE.BoxGeometry(3, 0.2, 0.5), conc);
-      step.position.set(0, 0.2 + i * 0.35, -52.3 - i * 0.5);
-      epScene.add(step);
-    }
-
-    const handleGroup = new THREE.Group();
-    const hb = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8), rustMetal);
-    hb.rotation.z = Math.PI / 2; handleGroup.add(hb);
-    const hg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.22, 8),
-      new THREE.MeshStandardMaterial({ color: 0x3a2010, roughness: 0.9 }));
-    hg.rotation.z = Math.PI / 2; hg.position.x = 0.32; handleGroup.add(hg);
-    handleGroup.position.set(16, 0.3, -28);
-    handleGroup.rotation.y = Math.random() * Math.PI;
-    const handleGlow = new THREE.PointLight(0xffcc88, 0.4, 2.0);
-    handleGroup.add(handleGlow);
-    epScene.add(handleGroup);
-
-    const wireMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.018, 0.018, 1.35, 6),
-      new THREE.MeshStandardMaterial({ color: 0x181615, roughness: 0.75 })
-    );
-    wireMesh.position.set(14.5, 2.35, -24.5);
-    wireMesh.rotation.z = 0.28;
-    epScene.add(wireMesh);
-
-    const bottleMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.06, 0.075, 0.28, 10),
-      new THREE.MeshStandardMaterial({ color: 0x2c4232, roughness: 0.3, transparent: true, opacity: 0.85 })
-    );
-    bottleMesh.position.set(13.8, 0.14, -26.5);
-    epScene.add(bottleMesh);
-
-    interactables.push({
-      id: 'basement_wire', mesh: wireMesh,
-      getPrompt: () => state.wireChecked ? 'ПРОВОД ОСМОТРЕН (ЗВЕНО 1/3)' : 'ОСМОТРЕТЬ ОБОРВАННЫЙ ПРОВОД',
-      canInteract: () => !state.wireChecked,
-      onInteract: () => {
-        state.wireChecked = true;
-        audioEngine.playTick();
-        updateObjective();
-      }
-    });
-
-    interactables.push({
-      id: 'basement_bottle', mesh: bottleMesh,
-      getPrompt: () => state.bottleChecked ? 'БУТЫЛКА ОСМОТРЕНА (ЗВЕНО 2/3)' : 'ОСМОТРЕТЬ МУТНУЮ БУТЫЛКУ',
-      canInteract: () => !state.bottleChecked,
-      onInteract: () => {
-        state.bottleChecked = true;
-        audioEngine.playDrip();
-        updateObjective();
-      }
-    });
-
-    interactables.push({
-      id: 'handle', mesh: handleGroup,
-      getPrompt: () => state.hasHandle || state.handleInstalled ? null : 'ВЗЯТЬ РУКОЯТКУ (ЗВЕНО 3/3)',
-      canInteract: () => !state.hasHandle && !state.handleInstalled,
-      onInteract: () => {
-        state.hasHandle = true;
-        handleGroup.visible = false;
-        updateObjective(); updateInventory();
-        audioEngine.playSteelChains();
-      }
-    });
-
-    const mechGroup = new THREE.Group();
-    const mechBase = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.9, 0.3), metal);
-    mechGroup.add(mechBase);
-    const socket = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.1),
-      new THREE.MeshStandardMaterial({ color: 0x110a06, roughness: 1 }));
-    socket.position.set(0, 0.15, 0.16); mechGroup.add(socket);
-    const visualHandle = new THREE.Group();
-    const vh1 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8), rustMetal);
-    vh1.rotation.z = Math.PI / 2; vh1.position.set(0, 0.15, 0.2); visualHandle.add(vh1);
-    const vh2 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.22, 8),
-      new THREE.MeshStandardMaterial({ color: 0x3a2010, roughness: 0.9 }));
-    vh2.rotation.z = Math.PI / 2; vh2.position.set(0.32, 0.15, 0.2); visualHandle.add(vh2);
-    visualHandle.visible = false; mechGroup.add(visualHandle);
-    const mechIndicator = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8),
-      new THREE.MeshBasicMaterial({ color: 0xff2200 }));
-    mechIndicator.position.set(0, -0.3, 0.17); mechGroup.add(mechIndicator);
-    mechGroup.position.set(4, 1.5, -20);
-    mechGroup.rotation.y = -Math.PI / 2;
-    epScene.add(mechGroup);
-
-    interactables.push({
-      id: 'mechanism', mesh: mechGroup,
-      getPrompt: () => {
-        if (state.gateOpen) return null;
-        if (!state.handleInstalled) return state.hasHandle ? 'УСТАНОВИТЬ РУКОЯТКУ' : 'НУЖНА РУКОЯТКА';
-        if (!state.powerOn) return 'НЕТ ПИТАНИЯ';
-        return 'ОТКРЫТЬ ГЕРМОЗАТВОР';
-      },
-      canInteract: () => {
-        if (state.gateOpen) return false;
-        if (!state.handleInstalled) return state.hasHandle;
-        return state.powerOn;
-      },
-      onInteract: () => {
-        if (!state.handleInstalled) {
-          state.handleInstalled = true; state.hasHandle = false;
-          visualHandle.visible = true;
-          audioEngine.playSteelChains();
-          updateObjective(); updateInventory();
-        } else if (state.powerOn) openGate();
-      }
-    });
-
-    const powerGroup = new THREE.Group();
-    const powerBox = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.0, 0.25), metal);
-    powerGroup.add(powerBox);
-    const lever = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.35, 0.1),
-      new THREE.MeshStandardMaterial({ color: 0xa01010, roughness: 0.5 }));
-    lever.position.set(0, 0.15, 0.18); powerGroup.add(lever);
-    const powerInd = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8),
-      new THREE.MeshBasicMaterial({ color: 0x220000 }));
-    powerInd.position.set(0, -0.3, 0.18); powerGroup.add(powerInd);
-    powerGroup.position.set(-1.8, 1.5, -38);
-    powerGroup.rotation.y = Math.PI / 2;
-    epScene.add(powerGroup);
-
-    interactables.push({
-      id: 'power', mesh: powerGroup,
-      getPrompt: () => state.powerOn ? 'ПИТАНИЕ ВКЛЮЧЕНО' : 'ВКЛЮЧИТЬ АВАРИЙНОЕ ПИТАНИЕ',
-      canInteract: () => !state.powerOn,
-      onInteract: () => {
-        state.powerOn = true;
-        lever.rotation.z = -Math.PI / 3;
-        powerInd.material.color.setHex(0x22ff44);
-        mechIndicator.material.color.setHex(0x22ff44);
-        activatePower();
-      }
-    });
-
-    epFlash = new THREE.SpotLight(0xffe9c8, 3.2, 18, Math.PI / 6.5, 0.45, 1.2);
-    epFlashTarget = new THREE.Object3D();
-    epFlashTarget.position.set(0, 0, -1);
-    epCamera.add(epFlash);
-    epCamera.add(epFlashTarget);
-    epFlash.target = epFlashTarget;
-
-    epEmergLight = new THREE.PointLight(0xff2200, 0, 10);
-    epEmergLight.position.set(0, 2.6, -41.5);
-    epScene.add(epEmergLight);
-
-    epScene.add(new THREE.AmbientLight(0x0a0c0a, 0.35));
-
-    entity.mesh = createEntityMesh();
-    entity.mesh.visible = false;
-    epScene.add(entity.mesh);
-  }
-
-  function createEntityMesh() {
-    const g = new THREE.Group();
-    const bodyMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.35, 1.6, 12), bodyMat);
-    torso.position.y = 0.8; g.add(torso);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), bodyMat);
-    head.position.y = 1.85; head.scale.set(0.9, 1.15, 0.95); g.add(head);
-    const armGeo = new THREE.CylinderGeometry(0.07, 0.05, 1.4, 8);
-    const la = new THREE.Mesh(armGeo, bodyMat); la.position.set(-0.42, 0.95, 0.05); la.rotation.z = 0.18; g.add(la);
-    const ra = new THREE.Mesh(armGeo, bodyMat); ra.position.set(0.42, 0.95, 0.05); ra.rotation.z = -0.18; g.add(ra);
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff2200 });
-    const eyeGeo = new THREE.SphereGeometry(0.035, 8, 8);
-    const le = new THREE.Mesh(eyeGeo, eyeMat); le.position.set(-0.08, 1.9, 0.18); g.add(le);
-    const re = new THREE.Mesh(eyeGeo, eyeMat); re.position.set(0.08, 1.9, 0.18); g.add(re);
-    return g;
-  }
-
-  function activatePower() {
-    audioEngine.playSubterraneanRumble();
-    setTimeout(() => audioEngine.playDistantCry(), 400);
-    setTimeout(() => audioEngine.playSteelChains(), 900);
-    epEmergLight.intensity = 1.8;
-    updateObjective();
-    setTimeout(() => spawnEntity(), 1400);
-  }
-  function spawnEntity() {
-    if (entity.active) return;
-    entity.pos.set(16, 0, -28);
-    entity.mesh.position.set(16, 0, -28);
-    entity.mesh.visible = true;
-    entity.active = true;
-    audioEngine.playWallScratching();
-    audioEngine.playHeartbeatPulse(1.0);
-    updateObjective();
-  }
-  function openGate() {
-    if (gateDoor.isOpening) return;
-    gateDoor.isOpening = true; gateDoor.opening = 0;
-    if (typeof playMechanismUnlockClank === "function") playMechanismUnlockClank();
-    else audioEngine.playSteelChains();
-    if (typeof triggerLockHapticFeedback === "function") triggerLockHapticFeedback();
-    audioEngine.playSubterraneanRumble();
-    gateDoor.wall.enabled = false;
-    state.gateOpen = true;
-    updateObjective();
-    if (!entity.active) spawnEntity();
-  }
-
-  function updateObjective() {
-    let txt = '';
-    if (state.won) txt = 'ВЫ ВЫБРАЛИСЬ';
-    else if (state.gateOpen) txt = 'БЕГИТЕ К ВЫХОДУ. НЕ ОГЛЯДЫВАЙТЕСЬ.';
-    else if (state.powerOn && state.handleInstalled) txt = 'Питание восстановлено. Откройте гермозатвор.';
-    else if (state.powerOn && !state.handleInstalled) txt = 'Питание есть. Установите рукоятку в механизм у проёма.';
-    else if (state.handleInstalled) txt = 'Рукоятка на месте. Найдите аварийное питание в конце коридора.';
-    else if (state.hasHandle) txt = 'Рукоятка найдена. Установите её в механизм у проёма.';
-    else txt = 'Обыщите комнату справа от коридора.';
-    elObjective.textContent = txt;
-  }
-  function updateInventory() {
-    if (state.hasHandle) elInventory.innerHTML = '<span class="item">[ РУКОЯТКА ]</span>';
-    else if (state.handleInstalled) elInventory.innerHTML = '<span class="item">[ МЕХАНИЗМ: ГОТОВ ]</span>';
-    else elInventory.innerHTML = '';
-  }
-  function updateWarning() {
-    if (!entity.active || state.gameOver || state.won) { elWarning.classList.remove('visible'); return; }
-    const dx = entity.pos.x - player.pos.x, dz = entity.pos.z - player.pos.z;
-    if (Math.sqrt(dx*dx + dz*dz) < 8) elWarning.classList.add('visible');
-    else elWarning.classList.remove('visible');
-  }
-
-  function resolveCollisions(pos, radius) {
-    for (const wall of walls) {
-      if (!wall.enabled) continue;
-      if (wall.box.max.y < 0.4 || wall.box.min.y > EYE + 0.6) continue;
-      const cx = Math.max(wall.box.min.x, Math.min(pos.x, wall.box.max.x));
-      const cz = Math.max(wall.box.min.z, Math.min(pos.z, wall.box.max.z));
-      const dx = pos.x - cx, dz = pos.z - cz;
-      const distSq = dx*dx + dz*dz;
-      if (distSq < radius * radius) {
-        const dist = Math.sqrt(distSq);
-        if (dist > 0.0001) {
-          const push = radius - dist;
-          pos.x += (dx / dist) * push;
-          pos.z += (dz / dist) * push;
-        } else {
-          const opts = [
-            { axis: 'x', d: pos.x - wall.box.min.x, s: -1 },
-            { axis: 'x', d: wall.box.max.x - pos.x, s: 1 },
-            { axis: 'z', d: pos.z - wall.box.min.z, s: -1 },
-            { axis: 'z', d: wall.box.max.z - pos.z, s: 1 }
-          ];
-          opts.sort((a, b) => a.d - b.d);
-          const n = opts[0], push = radius + n.d;
-          if (n.axis === 'x') pos.x += n.s * push; else pos.z += n.s * push;
-        }
-      }
-    }
-  }
-
-  function updateInteraction() {
-    raycaster.setFromCamera(screenCenter, epCamera);
-    raycaster.far = INTERACT_RANGE;
-    const hits = raycaster.intersectObjects(interactables.map(i => i.mesh), true);
-    let found = null;
-    if (hits.length > 0) {
-      for (const hit of hits) {
-        let obj = hit.object;
-        while (obj && obj !== epScene) {
-          const inter = interactables.find(i => i.mesh === obj);
-          if (inter) { found = inter; break; }
-          obj = obj.parent;
-        }
-        if (found) break;
-      }
-    }
-    hotInteractable = found;
-    if (found) {
-      const prompt = found.getPrompt();
-      if (prompt) {
-        elPrompt.textContent = `[E] ${prompt}`;
-        elPrompt.classList.add('visible');
-        elCrosshair.classList.add('hot');
-      } else {
-        elPrompt.classList.remove('visible');
-        elCrosshair.classList.remove('hot');
-      }
-    } else {
-      elPrompt.classList.remove('visible');
-      elCrosshair.classList.remove('hot');
-    }
-  }
-  function tryInteract() {
-    if (hotInteractable && hotInteractable.canInteract()) {
-      hotInteractable.onInteract();
-      updateInteraction();
-    }
-  }
-
-  const tmpForward = new THREE.Vector3(), tmpRight = new THREE.Vector3();
-  function updatePlayer(dt) {
-    let mx = 0, mz = 0;
-    if (keys['w'] || keys['ц'] || keys['arrowup'])    mz -= 1;
-    if (keys['s'] || keys['ы'] || keys['arrowdown'])  mz += 1;
-    if (keys['a'] || keys['ф'] || keys['arrowleft'])  mx -= 1;
-    if (keys['d'] || keys['в'] || keys['arrowright']) mx += 1;
-    if (touch.moveId !== null) { mx += touch.moveDX; mz += touch.moveDY; }
-    const len = Math.hypot(mx, mz);
-    if (len > 1) { mx /= len; mz /= len; }
-
-    tmpForward.set(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
-    tmpRight.set(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
-    const sprint = keys['shift'] || keys['shiftleft'] || keys['shiftright'];
-    const speed = sprint ? RUN : WALK;
-    const targetVx = (tmpForward.x * (-mz) + tmpRight.x * mx) * speed;
-    const targetVz = (tmpForward.z * (-mz) + tmpRight.z * mx) * speed;
-    player.vel.x += (targetVx - player.vel.x) * Math.min(1, dt * 12);
-    player.vel.z += (targetVz - player.vel.z) * Math.min(1, dt * 12);
-    player.pos.x += player.vel.x * dt;
-    player.pos.z += player.vel.z * dt;
-    resolveCollisions(player.pos, PR);
-
-    const horizSpeed = Math.hypot(player.vel.x, player.vel.z);
-    if (horizSpeed > 0.25 && !REDUCE_MOTION) {
-      bobTimer += dt * (sprint ? 13 : 8.5);
-    } else {
-      bobTimer = 0;
-    }
-    const bobOffset = horizSpeed > 0.25 && !REDUCE_MOTION ? Math.sin(bobTimer) * 0.032 : 0;
-
-    epCamera.position.copy(player.pos);
-    epCamera.position.y = EYE + bobOffset;
-    epCamera.rotation.order = 'YXZ';
-    epCamera.rotation.y = player.yaw;
-    epCamera.rotation.x = player.pitch;
-    epFlash.intensity = player.flashlightOn ? 3.2 : 0;
-
-    if (state.gameOver || state.won) return;
-
-    if (state.gateOpen && player.pos.z < -47 && !state.won) {
-      state.won = true;
-      showOverlay('win', 'ВЫ ВЫБРАЛИСЬ',
-        'Гермозатвор остался позади. Лестница вывела вас обратно на поверхность. Что-то внизу всё ещё смотрит вам вслед.');
-      audioEngine.playDistantCry();
-      setTimeout(() => audioEngine.playSubterraneanRumble(), 600);
-    }
-  }
-
-  function updateEntity(dt) {
-    if (!entity.active || state.gameOver || state.won) return;
-    const dx = player.pos.x - entity.pos.x, dz = player.pos.z - entity.pos.z;
-    const dist = Math.sqrt(dx*dx + dz*dz);
-    if (dist < 1.5) {
-      entity.caught = true;
-      state.gameOver = true;
-      audioEngine.playHeartbeatPulse(1.0);
-      setTimeout(() => audioEngine.playDistantCry(), 100);
-      setTimeout(() => audioEngine.playWallScratching(), 300);
-      showOverlay('caught', 'ВЫ ПОЙМАНЫ',
-        'Тёмная фигура догнала вас в коридоре. Не хватило одного шага. Попробуйте снова — бегите быстрее.');
-      return;
-    }
-    if (dist > 0.05) {
-      const step = entity.speed * dt;
-      entity.pos.x += (dx / dist) * step;
-      entity.pos.z += (dz / dist) * step;
-      resolveCollisions(entity.pos, 0.4);
-    }
-    entity.mesh.position.set(entity.pos.x, 0, entity.pos.z);
-    const targetYaw = Math.atan2(dx, dz);
-    let dyaw = targetYaw - entity.mesh.rotation.y;
-    while (dyaw > Math.PI) dyaw -= Math.PI * 2;
-    while (dyaw < -Math.PI) dyaw += Math.PI * 2;
-    entity.mesh.rotation.y += dyaw * Math.min(1, dt * 6);
-    if (dist < 4 && Math.random() < dt * 1.2) audioEngine.playHeartbeatPulse(1.0);
-  }
-
-  function updateGate(dt) {
-    if (!gateDoor.isOpening) return;
-    gateDoor.opening = Math.min(1, gateDoor.opening + dt / 2.0);
-    const ease = 1 - Math.pow(1 - gateDoor.opening, 3);
-    gateDoor.mesh.position.y = gateDoor.baseY + ease * 3.2;
-    if (gateDoor.opening >= 1) gateDoor.isOpening = false;
-  }
-
-  function showOverlay(kind, title, text) {
-    elOverlay.className = 'visible ' + kind;
-    elOverlayTitle.textContent = title;
-    elOverlayText.textContent = text;
-    if (document.pointerLockElement === glCanvas) document.exitPointerLock();
-  }
-  function hideOverlay() { elOverlay.className = ''; }
-
-  function resetState() {
-    state.hasHandle = false;
-    state.handleInstalled = false;
-    state.wireChecked = false;
-    state.bottleChecked = false;
-    state.powerOn = false;
-    state.gateOpen = false;
-    state.gameOver = false;
-    state.won = false;
-  }
-  function resetLevelVisuals() {
-    for (const inter of interactables) {
-      if (inter.id === 'handle') inter.mesh.visible = true;
-    }
-    gateDoor.mesh.position.y = gateDoor.baseY;
-    gateDoor.opening = 0;
-    gateDoor.isOpening = false;
-    gateDoor.wall.enabled = true;
-    epEmergLight.intensity = 0;
-    entity.mesh.visible = false;
-    entity.active = false;
-    entity.caught = false;
-  }
-
-  function isTouchDevice() { return 'ontouchstart' in window || navigator.maxTouchPoints > 0; }
-
-  function onKeyDown(e) {
-    if (!active) return;
-    if (e.repeat) return;
-    const k = e.key.toLowerCase();
-    keys[k] = true;
-    if (k === 'f' || k === 'а') toggleFlashlight();
-    if (k === 'e' || k === 'у') tryInteract();
-    if (e.key === 'Escape') {
-      if (pointerLocked) document.exitPointerLock();
-      else togglePause();
-    }
-  }
-  function onKeyUp(e) {
-    if (!active) return;
-    keys[e.key.toLowerCase()] = false;
-  }
-  function onMouseMove(e) {
-    if (!active || !pointerLocked) return;
-    const sens = 0.0022;
-    player.yaw -= e.movementX * sens;
-    player.pitch -= e.movementY * sens;
-    player.pitch = Math.max(-Math.PI/2 + 0.05, Math.min(Math.PI/2 - 0.05, player.pitch));
-  }
-  function onPointerLockChange() {
-    pointerLocked = (document.pointerLockElement === glCanvas);
-    if (active && !pointerLocked && !state.gameOver && !state.won && !paused) togglePause();
-  }
-  function onCanvasClick() {
-    if (!active) return;
-    if (!pointerLocked && !isTouchDevice() && !state.gameOver && !state.won && !paused) glCanvas.requestPointerLock?.();
-  }
-  function toggleFlashlight() {
-    player.flashlightOn = !player.flashlightOn;
-    epFlash.intensity = player.flashlightOn ? 3.2 : 0;
-    elBtnF.style.background = player.flashlightOn ? 'rgba(189,125,59,0.55)' : '';
-  }
-  function togglePause() {
-    if (!active) return;
-    paused = !paused;
-    elPause.classList.toggle('visible', paused);
-    if (paused && pointerLocked) document.exitPointerLock();
-    if (!paused && !isTouchDevice()) glCanvas.requestPointerLock?.();
-  }
-
-  function bindTouchControls() {
-    if (!isTouchDevice()) return;
-    elTouch.classList.add('visible');
-    elHint.style.display = 'none';
-    const js = elJoystick;
-    js.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      const t = e.changedTouches[0];
-      touch.moveId = t.identifier;
-      touch.moveStartX = t.clientX;
-      touch.moveStartY = t.clientY;
-    }, { passive: false });
-    js.addEventListener('touchmove', (e) => {
-      e.preventDefault();
-      for (const t of e.changedTouches) {
-        if (t.identifier === touch.moveId) {
-          const dx = t.clientX - touch.moveStartX, dy = t.clientY - touch.moveStartY;
-          const maxR = 55, dist = Math.hypot(dx, dy);
-          const nx = dist > maxR ? dx / dist * maxR : dx;
-          const ny = dist > maxR ? dy / dist * maxR : dy;
-          touch.moveDX = nx / maxR; touch.moveDY = ny / maxR;
-          elJoystickKnob.style.transform = `translate(calc(-50% + ${nx}px), calc(-50% + ${ny}px))`;
-        }
-      }
-    }, { passive: false });
-    const endMove = (e) => {
-      for (const t of e.changedTouches) {
-        if (t.identifier === touch.moveId) {
-          touch.moveId = null; touch.moveDX = 0; touch.moveDY = 0;
-          elJoystickKnob.style.transform = 'translate(-50%, -50%)';
-        }
-      }
-    };
-    js.addEventListener('touchend', endMove, { passive: false });
-    js.addEventListener('touchcancel', endMove, { passive: false });
-
-    elHud.addEventListener('touchstart', (e) => {
-      for (const t of e.changedTouches) {
-        if (t.clientX > window.innerWidth / 2 &&
-            !e.target.closest('#ep1-joystick, #ep1-btn-f, #ep1-btn-e, #ep1-pause, #ep1-overlay-msg')) {
-          touch.lookId = t.identifier;
-          touch.lookLastX = t.clientX; touch.lookLastY = t.clientY;
-          break;
-        }
-      }
-    }, { passive: true });
-    elHud.addEventListener('touchmove', (e) => {
-      for (const t of e.changedTouches) {
-        if (t.identifier === touch.lookId) {
-          player.yaw -= (t.clientX - touch.lookLastX) * 0.005;
-          player.pitch -= (t.clientY - touch.lookLastY) * 0.005;
-          player.pitch = Math.max(-Math.PI/2 + 0.05, Math.min(Math.PI/2 - 0.05, player.pitch));
-          touch.lookLastX = t.clientX; touch.lookLastY = t.clientY;
-        }
-      }
-    }, { passive: true });
-    const endLook = (e) => {
-      for (const t of e.changedTouches) if (t.identifier === touch.lookId) touch.lookId = null;
-    };
-    elHud.addEventListener('touchend', endLook, { passive: true });
-    elHud.addEventListener('touchcancel', endLook, { passive: true });
-    elBtnF.addEventListener('touchstart', (e) => { e.preventDefault(); toggleFlashlight(); });
-    elBtnE.addEventListener('touchstart', (e) => { e.preventDefault(); tryInteract(); });
-  }
-
-  function init() {
-    if (inited) return;
-    inited = true;
-    elHud = document.getElementById('ep1-hud');
-    elCrosshair = document.getElementById('ep1-crosshair');
-    elPrompt = document.getElementById('ep1-prompt');
-    elObjective = document.getElementById('ep1-objective');
-    elInventory = document.getElementById('ep1-inventory');
-    elWarning = document.getElementById('ep1-warning');
-    elHint = document.getElementById('ep1-hint');
-    elOverlay = document.getElementById('ep1-overlay-msg');
-    elOverlayTitle = document.getElementById('ep1-overlay-title');
-    elOverlayText = document.getElementById('ep1-overlay-text');
-    elPause = document.getElementById('ep1-pause');
-    elFade = document.getElementById('ep1-fade');
-    elStartScreen = document.getElementById('ep1-startscreen');
-    elTouch = document.getElementById('ep1-touch');
-    elJoystick = document.getElementById('ep1-joystick');
-    elJoystickKnob = document.getElementById('ep1-joystick-knob');
-    elBtnF = document.getElementById('ep1-btn-f');
-    elBtnE = document.getElementById('ep1-btn-e');
-
-    epScene = new THREE.Scene();
-    epScene.background = new THREE.Color(0x000000);
-    epScene.fog = new THREE.FogExp2(0x000000, 0.075);
-    epCamera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 100);
-    epCamera.position.set(0, EYE, 6);
-    epCamera.rotation.order = 'YXZ';
-    epScene.add(epCamera);
-
-    buildLevel();
-
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('pointerlockchange', onPointerLockChange);
-    glCanvas.addEventListener('click', onCanvasClick);
-
-    document.getElementById('ep1-btn-retry').addEventListener('click', restartEpisode);
-    document.getElementById('ep1-btn-exit').addEventListener('click', () => stop());
-    document.getElementById('ep1-btn-resume').addEventListener('click', () => togglePause());
-    document.getElementById('ep1-btn-quit').addEventListener('click', () => stop());
-
-    bindTouchControls();
-  }
-
-  function start() {
-    if (active) return;
-    active = true;
-    paused = false;
-    resetState();
-    resetLevelVisuals();
-    player.pos.set(0, EYE, 6);
-    player.vel.set(0, 0, 0);
-    player.yaw = 0;
-    player.pitch = 0;
-    player.flashlightOn = true;
-    epFlash.intensity = 3.2;
-    elBtnF.style.background = 'rgba(189,125,59,0.55)';
-
-    document.body.classList.add('ep1-active');
-    elHud.classList.add('active');
-    hideOverlay();
-    elPause.classList.remove('visible');
-    updateObjective();
-    updateInventory();
-
-    if (!isTouchDevice()) glCanvas.requestPointerLock?.();
-    basementDescendedOnce = true;
-    saveProgress();
-    if (!started) { started = true; audioEngine.playSubterraneanRumble(); }
-    audioEngine.playFootsteps();
-  }
-
-  function stop() {
-    if (!active) return;
-    active = false;
-    paused = false;
-    if (document.pointerLockElement === glCanvas) document.exitPointerLock();
-    document.body.classList.remove('ep1-active');
-    elHud.classList.remove('active');
-    hideOverlay();
-    elPause.classList.remove('visible');
-    entity.mesh.visible = false;
-    entity.active = false;
-    saveProgress();
-    syncTapeVideo();
-  }
-
-  function restartEpisode() {
-    hideOverlay();
-    resetState();
-    resetLevelVisuals();
-    player.pos.set(0, EYE, 6);
-    player.vel.set(0, 0, 0);
-    player.yaw = 0;
-    player.pitch = 0;
-    player.flashlightOn = true;
-    epFlash.intensity = 3.2;
-    elBtnF.style.background = 'rgba(189,125,59,0.55)';
-    updateObjective();
-    updateInventory();
-    elWarning.classList.remove('visible');
-    if (!isTouchDevice()) setTimeout(() => glCanvas.requestPointerLock?.(), 100);
-  }
-
-  function onResize() {
-    if (!epCamera) return;
-    epCamera.aspect = window.innerWidth / window.innerHeight;
-    epCamera.updateProjectionMatrix();
-  }
-
-  function tick(dtSec) {
-    if (!active) return;
-    if (paused) { renderer.render(epScene, epCamera); return; }
-    if (state.gameOver || state.won) {
-      if (entity.active) entity.mesh.rotation.y += dtSec * 0.5;
-      renderer.render(epScene, epCamera);
-      return;
-    }
-    updatePlayer(dtSec);
-    updateEntity(dtSec);
-    updateGate(dtSec);
-    updateInteraction();
-    updateWarning();
-    renderer.render(epScene, epCamera);
-  }
-
-  return {
-    init, start, stop, tick, onResize,
-    isActive: () => active
-  };
-})();
 
 /* ============================================================
    ИНИЦИАЛИЗАЦИЯ UI
@@ -4135,9 +2700,6 @@ document.getElementById("btn-regen-room").addEventListener("click", () => {
   updateRoomHUD();
 });
 
-document.getElementById("btn-dev-pendulum").addEventListener("click", () => toggleDev360Mode());
-document.getElementById("btn-dev-lock-pendulum").addEventListener("click", () => toggleDev360PendulumLock());
-document.getElementById("btn-dev-exit-360").addEventListener("click", () => toggleDev360Mode(false));
 document.getElementById("btn-open-puzzle").addEventListener("click", openPuzzleModal);
 document.getElementById("btn-close-puzzle").addEventListener("click", () => closeModalEl(document.getElementById("puzzle-modal")));
 
@@ -4197,12 +2759,50 @@ document.getElementById("btn-reset-progress").addEventListener("click", () => {
   saveProgress();
 });
 
+function handleTabBlurAudio(hidden) {
+  if (!audioEngine.ctx || !audioEngine.master) return;
+  const now = audioEngine.ctx.currentTime;
+  if (hidden) {
+    // Плавное затухание шины до нуля + приостановка AudioContext, чтобы избежать треска и буферных артефактов
+    audioEngine.master.gain.cancelScheduledValues(now);
+    audioEngine.master.gain.setTargetAtTime(0.0001, now, 0.04);
+    stopHallucinationHeartbeat();
+    setTimeout(() => {
+      if (document.hidden && audioEngine.ctx && audioEngine.ctx.state === "running") {
+        audioEngine.ctx.suspend().catch(() => {});
+      }
+    }, 140);
+  } else {
+    const resumeAudio = () => {
+      if (!audioEngine.ctx || !audioEngine.master) return;
+      const t = audioEngine.ctx.currentTime;
+      const targetGain = audioEngine.enabled ? (introProceduralMixActive ? 0.42 : 1.38) : 0.0001;
+      audioEngine.master.gain.cancelScheduledValues(t);
+      audioEngine.master.gain.setValueAtTime(0.0001, t);
+      audioEngine.master.gain.setTargetAtTime(targetGain, t + 0.05, 0.12);
+      if (hallucinationState.phase !== "idle") startHallucinationHeartbeat();
+    };
+    if (audioEngine.ctx.state === "suspended") {
+      audioEngine.ctx.resume().then(resumeAudio).catch(() => {});
+    } else {
+      resumeAudio();
+    }
+  }
+}
+
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
     saveProgress();
+    handleTabBlurAudio(true);
     if (tapeVideo && !tapeVideo.paused) tapeVideo.pause();
+    if (chamberCutsceneVideo && !chamberCutsceneVideo.paused) chamberCutsceneVideo.pause();
   } else {
-    if (!(window.Episode1 && window.Episode1.isActive())) syncTapeVideo();
+    handleTabBlurAudio(false);
+    syncTapeVideo();
+    if (chamberCutscenePlaying && chamberCutsceneVideo && chamberCutsceneVideo.paused) {
+      const p = chamberCutsceneVideo.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    }
   }
 });
 
@@ -4219,6 +2819,113 @@ glCanvas.addEventListener("webglcontextlost", (e) => {
 glCanvas.addEventListener("webglcontextrestored", () => {
   document.getElementById("fatal-overlay").classList.remove("visible");
 });
+
+
+/* ============================================================
+   ПРЕЛОАДЕР С PRELOADER.MP4
+   Загружает треки, картинки и текстуры, затем выходит на экран названия игры
+============================================================ */
+(function initPreloaderFlow() {
+  const preloaderEl = document.getElementById("preloader-screen");
+  const preloaderVid = document.getElementById("preloader-video");
+  const barFillEl = document.getElementById("preloader-bar-fill");
+  const statusEl = document.getElementById("preloader-status");
+  const introEl = document.getElementById("intro-screen");
+
+  if (!preloaderEl) {
+    if (introEl) introEl.classList.remove("hidden");
+    return;
+  }
+
+  if (preloaderVid) {
+    const pv = preloaderVid.play();
+    if (pv && typeof pv.catch === "function") pv.catch(() => {});
+  }
+
+  const imageAssets = ["title.jpg"];
+  ROOMS.forEach(r => {
+    if (!r.isProceduralRoom && r.fileName) imageAssets.push(r.fileName);
+    if (r.hallucinationFileName) imageAssets.push(r.hallucinationFileName);
+  });
+
+  const mediaAssets = ["tape.mp4", "Chamber_cutscene.mp4", "Abandoned%20Victims.mp3", "Abandoned%20Victims.ogg"];
+  const totalTasks = imageAssets.length + mediaAssets.length + 1;
+  let completedTasks = 0;
+  let finished = false;
+
+  function stepProgress(label) {
+    if (finished) return;
+    completedTasks = Math.min(totalTasks, completedTasks + 1);
+    const pct = Math.round((completedTasks / totalTasks) * 100);
+    if (barFillEl) barFillEl.style.width = `${pct}%`;
+    if (statusEl) statusEl.textContent = `${label} · ${pct}%`;
+    if (completedTasks >= totalTasks) {
+      completePreloader();
+    }
+  }
+
+  function completePreloader() {
+    if (finished) return;
+    finished = true;
+    if (barFillEl) barFillEl.style.width = "100%";
+    if (statusEl) statusEl.textContent = "Готово · 100%";
+
+    setTimeout(() => {
+      preloaderEl.classList.add("done");
+      if (introEl) introEl.classList.remove("hidden");
+      setTimeout(() => {
+        if (preloaderVid && !preloaderVid.paused) {
+          try { preloaderVid.pause(); } catch (e) {}
+        }
+        preloaderEl.style.display = "none";
+      }, 950);
+    }, 350);
+  }
+
+  // Предзагрузка картинок и создание текстур комнат
+  imageAssets.forEach((src) => {
+    const img = new Image();
+    const onDone = () => stepProgress(`Загрузка текстур: ${src}`);
+    img.onload = onDone;
+    img.onerror = onDone;
+    img.src = src;
+  });
+
+  // Предзагрузка видео и аудио-треков
+  mediaAssets.forEach((src) => {
+    const isAudio = src.includes("Abandoned");
+    const el = document.createElement(isAudio ? "audio" : "video");
+    el.preload = "metadata";
+    let settled = false;
+    const onDone = () => {
+      if (settled) return;
+      settled = true;
+      stepProgress(`Подготовка звука и кат-сцен: ${decodeURIComponent(src)}`);
+    };
+    el.addEventListener("loadedmetadata", onDone, { once: true });
+    el.addEventListener("canplaythrough", onDone, { once: true });
+    el.addEventListener("error", onDone, { once: true });
+    el.src = src;
+    setTimeout(onDone, 3200);
+  });
+
+  // Инициализация процедурных текстур и фолбэков
+  setTimeout(() => {
+    ensureFlashlightSprite();
+    ROOMS.forEach((r, idx) => {
+      if (!r.isProceduralRoom && !roomTextures[idx] && !proceduralTextureCache[idx]) {
+        proceduralTextureCache[idx] = createProceduralTexture(r);
+      }
+      if (r.hallucinationFileName && !roomHallucinationTextures[idx]) {
+        roomHallucinationTextures[idx] = createHallucinationFallbackTexture(r);
+      }
+    });
+    stepProgress("Сборка сцен и тумана");
+  }, 180);
+
+  // Страховочный таймер, чтобы прелоадер никогда не завис при медленном соединении
+  setTimeout(completePreloader, 5200);
+})();
 
 /* ============================================================
    ЗАПУСК
