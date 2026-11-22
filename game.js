@@ -853,38 +853,7 @@ const refractionLensMesh = new THREE.Mesh(new THREE.IcosahedronGeometry(0.95, 2)
 refractionLensMesh.position.set(-2.6, -1.1, 1.55);
 scene.add(refractionLensMesh);
 
-// Процедурный 3D-кластер из примитивов без внешних файлов (обломки, ржавые кольца, шипы)
-const proceduralDebrisGroup = new THREE.Group();
-const debrisMat = new THREE.MeshStandardMaterial({
-  color: 0x3b2c23,
-  roughness: 0.86,
-  metalness: 0.35,
-  bumpMap: refractionBumpTex,
-  bumpScale: 0.04,
-  transparent: true,
-  opacity: 0.55
-});
-const debrisItems = [];
-for (let i = 0; i < 9; i++) {
-  const geo = i % 3 === 0
-    ? new THREE.OctahedronGeometry(0.18 + (i % 3) * 0.06, 0)
-    : (i % 3 === 1 ? new THREE.TorusGeometry(0.22, 0.035, 8, 16) : new THREE.ConeGeometry(0.12, 0.36, 6));
-  const mesh = new THREE.Mesh(geo, debrisMat);
-  mesh.position.set(
-    -4.2 + (i % 5) * 2.1,
-    -2.2 + Math.floor(i / 5) * 2.8,
-    0.75 + (i % 3) * 0.25
-  );
-  mesh.userData = {
-    baseX: mesh.position.x,
-    baseY: mesh.position.y,
-    phase: i * 1.15,
-    speed: 0.4 + (i % 4) * 0.14
-  };
-  proceduralDebrisGroup.add(mesh);
-  debrisItems.push(mesh);
-}
-scene.add(proceduralDebrisGroup);
+
 
 const proceduralTextureCache = {};
 
@@ -2004,13 +1973,6 @@ function animate(time) {
   refractionLensMesh.position.x = -2.6 + Math.sin(tSec * 0.45) * 0.25;
   refractionLensMesh.position.y = -1.1 + Math.cos(tSec * 0.38) * 0.18;
 
-  for (let i = 0; i < debrisItems.length; i++) {
-    const m = debrisItems[i];
-    const ud = m.userData;
-    m.rotation.x = tSec * ud.speed + ud.phase;
-    m.rotation.y = tSec * ud.speed * 0.75;
-    m.position.y = ud.baseY + Math.sin(tSec * ud.speed + ud.phase) * 0.12;
-  }
 
   updateDiscoveryTicks(w, h);
   renderer.render(scene, camera);
