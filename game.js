@@ -21,7 +21,7 @@ const ROOMS = [
     desc: "Сырые обои отслаиваются от гнилой штукатурки. На гниющем полу брошены мокрые домашние тапочки, рядом — ржавый бобинный диктофон.",
     portal: { x: 0.62, y: 0.48, label: "Проём в Gallery" },
     artifact: { x: 0.41, y: 0.42, label: "Катушечный диктофон" },
-    clueProp: { x: 0.34, y: 0.68, label: "Мокрые тапочки у порога", clueText: "Часть 1/2 частоты: +42 Гц (базовый тон 400 Гц на раме в Gallery)" },
+    clueProp: { x: 0.64, y: 0.78, label: "Мокрые тапочки у порога", clueText: "Часть 1/2 частоты: +42 Гц (базовый тон 400 Гц на раме в Gallery)" },
     shadowSpots: [{ x: 0.59, y: 0.52, scale: 1.05 }, { x: 0.67, y: 0.55, scale: 0.90 }],
     palette: { wall: "#18201b", floor: "#0d110e", light: "#6c8074" },
     reverbDecay: 3.5, solved: false, solvedOnce: false, tapePlaying: false, tapeFinished: false,
@@ -87,8 +87,8 @@ const ROOMS = [
   },
   /* ==== 4 СЕКРЕТНЫЕ КОМНАТЫ (2- И 3-СОСТАВНЫЕ КВЕСТЫ ПОСЛЕ ПРОХОЖДЕНИЯ 1–5) ==== */
   {
-    id: 5, code: "СЕКРЕТ 01 // ARCHIVE", fileName: "Archive_secret1.jpg",
-    isSecret: true,
+    id: 5, code: "СЕКРЕТ 01 // ARCHIVE", fileName: "Archive_secret1.gif",
+    isSecret: true, isAnimatedGif: true,
     title: "Тайник I: Затопленный архив",
     desc: "Полузатопленное хранилище дел № 404. У стеллажа — ржавый ключ и всплывшие папки, а на сырой штукатурке справа процарапано предостережение.",
     portal: { x: 0.50, y: 0.46, label: "Проход в Тайник II: Котельная" },
@@ -740,6 +740,152 @@ const roomPlaneMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 const roomMesh = new THREE.Mesh(roomPlaneGeo, roomPlaneMat);
 scene.add(roomMesh);
 
+/* ============================================================
+   ОЖИВЛЕНИЕ КОМНАТ: GOD RAYS (ФРЕНЕЛЬ + АДДИТИВНОЕ СМЕШИВАНИЕ),
+   MESHPHYSICALMATERIAL (ПРЕЛОМЛЕНИЕ / IOR) И ПРОЦЕДУРНЫЙ 3D-СЛОЙ
+============================================================ */
+function buildGodRaysRig() {
+  const group = new THREE.Group();
+  const rayMat = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+    uniforms: {
+      uTime: { value: 0 },
+      uIntensity: { value: 0.24 },
+      uColor: { value: new THREE.Color(0x9fb89d) }
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      varying vec3 vNormalView;
+      varying vec3 vViewDir;
+      void main() {
+        vUv = uv;
+        vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+        vNormalView = normalize(normalMatrix * normal);
+        vViewDir = normalize(-mvPos.xyz);
+        gl_Position = projectionMatrix * mvPos;
+      }
+    `,
+    fragmentShader: `
+      varying vec2 vUv;
+      varying vec3 vNormalView;
+      varying vec3 vViewDir;
+      uniform float uTime;
+      uniform float uIntensity;
+      uniform vec3 uColor;
+      void main() {
+        float fresnel = pow(abs(dot(vNormalView, vViewDir)), 1.65);
+        float along = smoothstep(0.0, 0.25, vUv.y) * smoothstep(1.0, 0.12, vUv.y);
+        float edgeFade = smoothstep(0.0, 0.22, vUv.x) * smoothstep(1.0, 0.78, vUv.x);
+        float shimmer = 0.78 + 0.22 * sin(uTime * 0.85 + vUv.x * 14.0 + vUv.y * 5.0);
+        float alpha = fresnel * along * edgeFade * shimmer * uIntensity;
+        gl_FragColor = vec4(uColor, alpha);
+      }
+    `
+  });
+
+  const beamGeo = new THREE.PlaneGeometry(2.6, 8.5, 1, 1);
+  const beam1 = new THREE.Mesh(beamGeo, rayMat);
+  beam1.position.set(3.2, 0.8, 1.35);
+  beam1.rotation.z = 0.42;
+  beam1.rotation.y = -0.25;
+  group.add(beam1);
+
+  const beam2 = new THREE.Mesh(beamGeo, rayMat);
+  beam2.position.set(1.6, 1.4, 1.05);
+  beam2.rotation.z = 0.34;
+  beam2.rotation.y = -0.15;
+  beam2.scale.set(0.68, 0.86, 1.0);
+  group.add(beam2);
+
+  return { group, rayMat };
+}
+
+const godRaysRig = buildGodRaysRig();
+scene.add(godRaysRig.group);
+
+// Процедурная текстура ряби/неровности для преломляющей поверхности (MeshPhysicalMaterial)
+function createRefractionNormalCanvas() {
+  const c = document.createElement("canvas");
+  c.width = 256;
+  c.height = 256;
+  const g = c.getContext("2d");
+  const img = g.createImageData(256, 256);
+  const d = img.data;
+  for (let y = 0; y < 256; y++) {
+    for (let x = 0; x < 256; x++) {
+      const nx = x / 256;
+      const ny = y / 256;
+      const wave = Math.sin(nx * Math.PI * 10 + ny * Math.PI * 6) * 0.5 +
+                   Math.cos(nx * Math.PI * 18 - ny * Math.PI * 14) * 0.5;
+      const b = Math.max(0, Math.min(255, Math.floor(128 + wave * 90)));
+      const idx = (y * 256 + x) * 4;
+      d[idx] = b;
+      d[idx + 1] = b;
+      d[idx + 2] = 255;
+      d[idx + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+const refractionBumpTex = createRefractionNormalCanvas();
+const physicalLensMat = new THREE.MeshPhysicalMaterial({
+  color: 0x8fa899,
+  roughness: 0.18,
+  metalness: 0.05,
+  ior: 1.48,
+  reflectivity: 0.85,
+  bumpMap: refractionBumpTex,
+  bumpScale: 0.035,
+  transparent: true,
+  opacity: 0.24
+});
+if ("transmission" in physicalLensMat) {
+  physicalLensMat.transmission = 0.55;
+}
+const refractionLensMesh = new THREE.Mesh(new THREE.IcosahedronGeometry(0.95, 2), physicalLensMat);
+refractionLensMesh.position.set(-2.6, -1.1, 1.55);
+scene.add(refractionLensMesh);
+
+// Процедурный 3D-кластер из примитивов без внешних файлов (обломки, ржавые кольца, шипы)
+const proceduralDebrisGroup = new THREE.Group();
+const debrisMat = new THREE.MeshStandardMaterial({
+  color: 0x3b2c23,
+  roughness: 0.86,
+  metalness: 0.35,
+  bumpMap: refractionBumpTex,
+  bumpScale: 0.04,
+  transparent: true,
+  opacity: 0.55
+});
+const debrisItems = [];
+for (let i = 0; i < 9; i++) {
+  const geo = i % 3 === 0
+    ? new THREE.OctahedronGeometry(0.18 + (i % 3) * 0.06, 0)
+    : (i % 3 === 1 ? new THREE.TorusGeometry(0.22, 0.035, 8, 16) : new THREE.ConeGeometry(0.12, 0.36, 6));
+  const mesh = new THREE.Mesh(geo, debrisMat);
+  mesh.position.set(
+    -4.2 + (i % 5) * 2.1,
+    -2.2 + Math.floor(i / 5) * 2.8,
+    0.75 + (i % 3) * 0.25
+  );
+  mesh.userData = {
+    baseX: mesh.position.x,
+    baseY: mesh.position.y,
+    phase: i * 1.15,
+    speed: 0.4 + (i % 4) * 0.14
+  };
+  proceduralDebrisGroup.add(mesh);
+  debrisItems.push(mesh);
+}
+scene.add(proceduralDebrisGroup);
+
 const proceduralTextureCache = {};
 
 /* ============================================================
@@ -987,6 +1133,17 @@ function createProceduralTexture(room) {
   g.stroke();
   g.fillStyle = "#010201";
   g.fillRect(px - 110, py - 150, 220, 300);
+  if (room.id === 0) {
+    // Отрисовываем мокрые тапочки у порога и отметку +42 на полу в процедурной текстуре
+    const sx = 1280 * 0.25, sy = 720 * 0.72;
+    g.fillStyle = "rgba(8, 12, 10, 0.75)";
+    g.beginPath(); g.ellipse(sx, sy + 14, 58, 22, 0.08, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#3a3632";
+    g.beginPath(); g.ellipse(sx - 18, sy, 14, 28, -0.18, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.ellipse(sx + 18, sy + 4, 14, 28, 0.14, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = "#1e1c1a"; g.lineWidth = 2;
+    g.stroke();
+  }
   for (let i = 0; i < 50; i++) {
     const mx = Math.random() * 1280, my = Math.random() * 720, mr = 30 + Math.random() * 100;
     const mg = g.createRadialGradient(mx, my, 4, mx, my, mr);
@@ -1290,6 +1447,25 @@ function animate(time) {
     }
   } else {
     shadowEntity.visible = false;
+  }
+
+  const tSec = time * 0.001;
+  godRaysRig.rayMat.uniforms.uTime.value = tSec;
+  godRaysRig.rayMat.uniforms.uIntensity.value = flashlightOn
+    ? (panicState.active ? 0.38 : 0.22)
+    : 0.07;
+
+  refractionLensMesh.rotation.x = tSec * 0.22;
+  refractionLensMesh.rotation.y = tSec * 0.31;
+  refractionLensMesh.position.x = -2.6 + Math.sin(tSec * 0.45) * 0.25;
+  refractionLensMesh.position.y = -1.1 + Math.cos(tSec * 0.38) * 0.18;
+
+  for (let i = 0; i < debrisItems.length; i++) {
+    const m = debrisItems[i];
+    const ud = m.userData;
+    m.rotation.x = tSec * ud.speed + ud.phase;
+    m.rotation.y = tSec * ud.speed * 0.75;
+    m.position.y = ud.baseY + Math.sin(tSec * ud.speed + ud.phase) * 0.12;
   }
 
   updateDiscoveryTicks(w, h);
