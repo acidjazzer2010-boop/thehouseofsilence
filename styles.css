@@ -454,10 +454,10 @@
     pointer-events: auto;
   }
   #chamber-cutscene-video {
-    width: 86vw;
-    height: 86vh;
-    max-width: 1440px;
-    max-height: 860px;
+    width: 82vw;
+    height: 82vh;
+    max-width: 1400px;
+    max-height: 820px;
     object-fit: contain;
     border: 1px solid rgba(120, 138, 115, 0.28);
     box-shadow: 0 0 90px rgba(0, 0, 0, 0.98), inset 0 0 40px rgba(0,0,0,0.85);
@@ -465,8 +465,8 @@
   }
   @media (max-width: 900px) {
     #chamber-cutscene-video {
-      width: 96vw;
-      height: 68vh;
+      width: 94vw;
+      height: 64vh;
     }
   }
 

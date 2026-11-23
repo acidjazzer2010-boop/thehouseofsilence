@@ -87,7 +87,7 @@ const ROOMS = [
   },
   /* ==== 4 СЕКРЕТНЫЕ КОМНАТЫ (2- И 3-СОСТАВНЫЕ КВЕСТЫ ПОСЛЕ ПРОХОЖДЕНИЯ 1–5) ==== */
   {
-    id: 5, code: "СЕКРЕТ 01 // ARCHIVE", fileName: "Archive_secret1.jpg",
+    id: 5, code: "СЕКРЕТ 01 // ARCHIVE", fileName: "Archive_secret1.gif",
     isSecret: true, isAnimatedGif: true,
     title: "Тайник I: Затопленный архив",
     desc: "Полузатопленное хранилище дел № 404. У стеллажа — ржавый ключ и всплывшие папки, а на сырой штукатурке справа процарапано предостережение.",
@@ -583,23 +583,67 @@ class DarkAmbientAudio {
   }
   playSubterraneanRumble() {
     if (!this._canPlay()) return;
-    const now = this.ctx.currentTime, dur = 3.2 + Math.random() * 1.5;
+    const now = this.ctx.currentTime, dur = 4.2 + Math.random() * 2.0;
     const panner = this.ctx.createStereoPanner();
     panner.pan.value = (Math.random() * 1.4) - 0.7;
-    const src = this.ctx.createBufferSource();
-    src.buffer = this.ambientBuffer; src.loop = true;
+
+    // Двухслойный натуральный гул: глухой инфразвук + дышащий полосовой резонанс
+    const src1 = this.ctx.createBufferSource();
+    src1.buffer = this.ambientBuffer; src1.loop = true;
     const lp = this.ctx.createBiquadFilter();
     lp.type = "lowpass";
-    lp.frequency.setValueAtTime(32, now);
-    lp.frequency.exponentialRampToValueAtTime(65, now + dur * 0.5);
-    lp.frequency.exponentialRampToValueAtTime(28, now + dur);
-    lp.Q.value = 6.0;
+    lp.frequency.setValueAtTime(36, now);
+    lp.frequency.exponentialRampToValueAtTime(78, now + dur * 0.45);
+    lp.frequency.exponentialRampToValueAtTime(30, now + dur);
+    lp.Q.value = 3.5;
+
+    const src2 = this.ctx.createBufferSource();
+    src2.buffer = this.ambientBuffer; src2.loop = true;
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.setValueAtTime(115 + Math.random() * 45, now);
+    bp.frequency.exponentialRampToValueAtTime(68, now + dur);
+    bp.Q.value = 8.5;
+
     const env = this.ctx.createGain();
     env.gain.setValueAtTime(0.0001, now);
-    env.gain.linearRampToValueAtTime(0.9, now + 0.8);
+    env.gain.linearRampToValueAtTime(0.55, now + 1.1);
+    env.gain.linearRampToValueAtTime(0.32, now + dur * 0.65);
     env.gain.exponentialRampToValueAtTime(0.0001, now + dur);
-    src.connect(lp); lp.connect(env); env.connect(panner); panner.connect(this.convolver);
-    src.start(now); src.stop(now + dur);
+
+    src1.connect(lp); lp.connect(env);
+    src2.connect(bp); bp.connect(env);
+    env.connect(panner); panner.connect(this.dryGain); panner.connect(this.convolver);
+    src1.start(now); src1.stop(now + dur + 0.05);
+    src2.start(now); src2.stop(now + dur + 0.05);
+    this._trackVoice(dur * 1000 + 200);
+  }
+  playMetallicGroan() {
+    if (!this._canPlay()) return;
+    const now = this.ctx.currentTime, dur = 2.6 + Math.random() * 1.4;
+    const panner = this.ctx.createStereoPanner();
+    panner.pan.value = (Math.random() * 1.6) - 0.8;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.crackleBuffer; src.loop = true;
+    const bp1 = this.ctx.createBiquadFilter();
+    bp1.type = "bandpass";
+    const fStart = 390 + Math.random() * 180;
+    bp1.frequency.setValueAtTime(fStart, now);
+    bp1.frequency.exponentialRampToValueAtTime(fStart * 0.62, now + dur);
+    bp1.Q.value = 28;
+    const bp2 = this.ctx.createBiquadFilter();
+    bp2.type = "bandpass";
+    bp2.frequency.setValueAtTime(fStart * 1.62, now);
+    bp2.frequency.exponentialRampToValueAtTime(fStart * 0.95, now + dur);
+    bp2.Q.value = 34;
+    const env = this.ctx.createGain();
+    env.gain.setValueAtTime(0.0001, now);
+    env.gain.linearRampToValueAtTime(0.24, now + 0.45);
+    env.gain.exponentialRampToValueAtTime(0.0004, now + dur);
+    src.connect(bp1); bp1.connect(env);
+    src.connect(bp2); bp2.connect(env);
+    env.connect(panner); panner.connect(this.convolver);
+    src.start(now); src.stop(now + dur + 0.05);
     this._trackVoice(dur * 1000 + 200);
   }
   playPanicBurst() {
@@ -653,7 +697,7 @@ class DarkAmbientAudio {
     const fn = {
       shriek: () => this.playDistantShriek(), creak: () => this.playWoodCreak(),
       scratch: () => this.playWallScratching(), chains: () => this.playSteelChains(),
-      rumble: () => this.playSubterraneanRumble(), whisper: () => this.playWhisper(),
+      rumble: () => (Math.random() < 0.5 ? this.playSubterraneanRumble() : this.playMetallicGroan()), whisper: () => this.playWhisper(),
       cry: () => this.playDistantCry(), drip: () => this.playDrip(),
       morse: () => this.playMorse(), step: () => this.playStepBehind(),
       breathing: () => this.playBreathing()
@@ -1481,21 +1525,84 @@ function tryAutoLoadImages() {
 /* ============================================================
    СУЩНОСТЬ 2.5D
 ============================================================ */
+function createOrganicShadowSpriteTexture() {
+  const c = document.createElement("canvas");
+  c.width = 512;
+  c.height = 512;
+  const g = c.getContext("2d");
+  g.clearRect(0, 0, 512, 512);
+
+  // Мягкое дымчатое тело-силуэт с вытянутыми плечами и склонившейся головой
+  const bodyGrad = g.createRadialGradient(256, 275, 18, 256, 275, 195);
+  bodyGrad.addColorStop(0.0, "rgba(2, 3, 2, 0.96)");
+  bodyGrad.addColorStop(0.55, "rgba(4, 6, 5, 0.72)");
+  bodyGrad.addColorStop(1.0, "rgba(2, 3, 2, 0.0)");
+  g.fillStyle = bodyGrad;
+  g.beginPath();
+  g.ellipse(256, 305, 92, 165, 0.04, 0, Math.PI * 2);
+  g.fill();
+
+  // Склонённая голова в дымке
+  const headGrad = g.createRadialGradient(268, 138, 8, 268, 138, 72);
+  headGrad.addColorStop(0.0, "rgba(1, 2, 1, 0.98)");
+  headGrad.addColorStop(0.6, "rgba(4, 6, 5, 0.65)");
+  headGrad.addColorStop(1.0, "rgba(2, 3, 2, 0.0)");
+  g.fillStyle = headGrad;
+  g.beginPath();
+  g.ellipse(268, 138, 44, 58, -0.24, 0, Math.PI * 2);
+  g.fill();
+
+  // Длинные размытые щупальца/руки, растворяющиеся в темноте
+  for (let i = 0; i < 4; i++) {
+    const side = i < 2 ? -1 : 1;
+    const spread = (i % 2 === 0 ? 1 : 1.35) * side;
+    const armGrad = g.createLinearGradient(256 + side * 48, 210, 256 + spread * 145, 420);
+    armGrad.addColorStop(0, "rgba(2, 3, 2, 0.85)");
+    armGrad.addColorStop(1, "rgba(2, 3, 2, 0.0)");
+    g.strokeStyle = armGrad;
+    g.lineWidth = 18 - (i % 2) * 5;
+    g.lineCap = "round";
+    g.beginPath();
+    g.moveTo(256 + side * 42, 205);
+    g.quadraticCurveTo(256 + spread * 115, 295, 256 + spread * 140, 415);
+    g.stroke();
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  tex.needsUpdate = true;
+  return tex;
+}
+
 function build3DShadowEntity() {
   const group = new THREE.Group();
-  const shadowMat = new THREE.MeshStandardMaterial({ color: 0x020302, roughness: 0.98, transparent: true, opacity: 0.0 });
-  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.32, 1.45, 16), shadowMat);
-  group.add(torso);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.21, 16, 16), shadowMat);
-  head.scale.set(0.88, 1.18, 0.92); head.position.set(0.06, 0.92, 0.08); head.rotation.z = -0.22;
-  group.add(head);
-  const armGeo = new THREE.CylinderGeometry(0.065, 0.045, 1.35, 10);
-  const leftArm = new THREE.Mesh(armGeo, shadowMat); leftArm.position.set(-0.32, -0.12, 0.05); leftArm.rotation.z = 0.12; group.add(leftArm);
-  const rightArm = new THREE.Mesh(armGeo, shadowMat); rightArm.position.set(0.32, -0.14, 0.05); rightArm.rotation.z = -0.10; group.add(rightArm);
-  const eyeMat = new THREE.MeshBasicMaterial({ color: 0xd9e0d4, transparent: true, opacity: 0.0 });
-  const eyeGeo = new THREE.SphereGeometry(0.018, 8, 8);
-  const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-0.01, 0.94, 0.26); group.add(eyeL);
-  const eyeR = new THREE.Mesh(eyeGeo, eyeMat); eyeR.position.set(0.11, 0.92, 0.25); group.add(eyeR);
+  const tex = createOrganicShadowSpriteTexture();
+  const shadowMat = new THREE.MeshBasicMaterial({
+    map: tex,
+    transparent: true,
+    opacity: 0.0,
+    depthWrite: false
+  });
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 4.2), shadowMat);
+  group.add(plane);
+
+  // Слабый тусклый отблеск в глубине глазниц
+  const eyeMat = new THREE.MeshBasicMaterial({
+    color: 0xc9b89c,
+    transparent: true,
+    opacity: 0.0,
+    depthWrite: false
+  });
+  const eyeGeo = new THREE.CircleGeometry(0.022, 10);
+  const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+  eyeL.position.set(0.04, 0.86, 0.03);
+  group.add(eyeL);
+  const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+  eyeR.position.set(0.16, 0.84, 0.03);
+  group.add(eyeR);
+
   group.userData = { shadowMat, eyeMat };
   return group;
 }
@@ -1580,7 +1687,6 @@ function updateAndRenderCornerFog(now) {
 
   const w = window.innerWidth;
   const h = window.innerHeight;
-  const maxDim = Math.hypot(w, h);
   const tSec = now * 0.001;
 
   cornerFogCtx.clearRect(0, 0, w, h);
@@ -1592,60 +1698,70 @@ function updateAndRenderCornerFog(now) {
     if (p.state === "dormant") {
       p.density = 0;
       if (now >= p.stateStartedAt) {
+        // Реже запускаем туман (16–32 сек покоя), чтобы не перегружать кадр
         p.state = "creep_in";
         p.stateStartedAt = now;
-        p.stateDurMs = 5500 + Math.floor(Math.random() * 5500);
-        p.targetDensity = 0.42 + Math.random() * 0.46;
-        p.driftAngle = Math.atan2(0.5 - p.anchorY, 0.5 - p.anchorX) + (Math.random() - 0.5) * 0.45;
+        p.stateDurMs = 9500 + Math.floor(Math.random() * 6500);
+        p.targetDensity = 0.28 + Math.random() * 0.24;
       }
     } else if (p.state === "creep_in") {
       const k = Math.min(1, Math.max(0, elapsed / p.stateDurMs));
       const ease = k * k * (3 - 2 * k);
       p.density = p.targetDensity * ease;
-      p.reach = 0.14 + ease * 0.34;
+      p.reach = 0.08 + ease * 0.34;
       if (k >= 1) {
         p.state = "hold";
         p.stateStartedAt = now;
-        p.stateDurMs = 4500 + Math.floor(Math.random() * 6500);
+        p.stateDurMs = 6000 + Math.floor(Math.random() * 6000);
       }
     } else if (p.state === "hold") {
-      p.density = p.targetDensity * (0.9 + 0.1 * Math.sin(tSec * 1.1 + p.wobblePhase));
+      p.density = p.targetDensity * (0.94 + 0.06 * Math.sin(tSec * 0.65 + p.wobblePhase));
       if (now >= p.stateStartedAt + p.stateDurMs) {
         p.state = "dissolve";
         p.stateStartedAt = now;
-        p.stateDurMs = 6500 + Math.floor(Math.random() * 6500);
+        p.stateDurMs = 11000 + Math.floor(Math.random() * 8000);
       }
     } else if (p.state === "dissolve") {
       const k = Math.min(1, Math.max(0, elapsed / p.stateDurMs));
-      const easeOut = 1 - Math.pow(1 - k, 2.2);
+      const easeOut = 1 - Math.pow(1 - k, 2.6);
       p.density = p.targetDensity * (1 - easeOut);
-      p.reach = 0.48 * (1 - easeOut * 0.55);
+      p.reach = 0.42 * (1 - easeOut * 0.65);
       if (k >= 1) {
         p.density = 0;
         p.state = "dormant";
-        p.stateStartedAt = now + 7000 + Math.floor(Math.random() * 14000);
+        p.stateStartedAt = now + 16000 + Math.floor(Math.random() * 16000);
       }
     }
 
-    if (p.density <= 0.005) continue;
+    if (p.density <= 0.004) continue;
 
-    // 3 перекрывающихся облачных слоя на угол для объёмной неоднородности
+    // Туман стелется горизонтально вдоль низа/пола и постепенно заполняет углы
+    const fromRight = p.anchorX > 0.5;
+    const fromBottom = p.anchorY > 0.5;
+    const horizDir = fromRight ? -1 : 1;
+    const floorY = fromBottom ? h * (0.94 - p.reach * 0.16) : h * (0.14 + p.reach * 0.16);
+
     for (let lobe = 0; lobe < 3; lobe++) {
-      const lobeFactor = 0.65 + lobe * 0.22;
-      const pushDist = maxDim * p.reach * (0.45 + lobe * 0.24) + Math.sin(tSec * 0.45 + p.wobblePhase + lobe) * 24;
-      const cx = p.anchorX * w + Math.cos(p.driftAngle + (lobe - 1) * 0.22) * pushDist;
-      const cy = p.anchorY * h + Math.sin(p.driftAngle + (lobe - 1) * 0.22) * pushDist;
-      const rad = maxDim * (0.18 + lobe * 0.09) * (0.7 + p.reach);
+      const spanX = w * (0.16 + p.reach * (0.36 + lobe * 0.14));
+      const spanY = Math.max(36, h * (0.05 + p.reach * (0.09 + lobe * 0.045)));
+      const driftX = horizDir * (w * p.reach * (0.12 + lobe * 0.15)) + Math.sin(tSec * 0.25 + p.wobblePhase + lobe) * 18;
+      const cx = (fromRight ? w : 0) + driftX;
+      const cy = floorY + (fromBottom ? -lobe * 14 : lobe * 14) + Math.cos(tSec * 0.32 + p.wobblePhase) * 6;
 
-      const grad = cornerFogCtx.createRadialGradient(cx, cy, rad * 0.05, cx, cy, rad);
-      const a = Math.min(0.62, p.density * 0.34 * lobeFactor);
-      grad.addColorStop(0.0, `rgba(176, 186, 174, ${a.toFixed(3)})`);
-      grad.addColorStop(0.45, `rgba(148, 160, 146, ${(a * 0.55).toFixed(3)})`);
-      grad.addColorStop(1.0, "rgba(120, 132, 118, 0.0)");
+      const grad = cornerFogCtx.createLinearGradient(
+        fromRight ? cx + spanX * 0.5 : cx - spanX * 0.5,
+        cy,
+        fromRight ? cx - spanX * 0.5 : cx + spanX * 0.5,
+        cy
+      );
+      const a = Math.min(0.36, p.density * (0.28 - lobe * 0.05));
+      grad.addColorStop(0.0, `rgba(168, 178, 166, ${a.toFixed(3)})`);
+      grad.addColorStop(0.55, `rgba(138, 148, 136, ${(a * 0.45).toFixed(3)})`);
+      grad.addColorStop(1.0, "rgba(110, 120, 108, 0.0)");
 
       cornerFogCtx.fillStyle = grad;
       cornerFogCtx.beginPath();
-      cornerFogCtx.arc(cx, cy, rad, 0, Math.PI * 2);
+      cornerFogCtx.ellipse(cx, cy, Math.max(40, spanX * 0.65), spanY, 0, 0, Math.PI * 2);
       cornerFogCtx.fill();
     }
   }
@@ -1811,16 +1927,18 @@ function render2DOverlay(w, h, room, blackFade, time, dt) {
   const t = getOverlayTransform(w, h);
   const scaleX = t.scaleX, scaleY = t.scaleY, offsetX = t.offsetX, offsetY = t.offsetY;
   dustParticles.forEach(p => {
-    p.x += p.vx * dt; p.y += p.vy * dt;
+    p.x += p.vx * dt * 0.65;
+    p.y += p.vy * dt * 0.65;
     if (p.y < 0) p.y = 1;
     if (p.x < 0) p.x = 1;
     if (p.x > 1) p.x = 0;
-    const px = p.x * w - pointer.normX * 20 * p.z;
-    const py = p.y * h - pointer.normY * 14 * p.z;
+    const px = p.x * w - pointer.normX * 18 * p.z;
+    const py = p.y * h - pointer.normY * 12 * p.z;
     const dist = Math.hypot(px - pointer.x, py - pointer.y);
-    const boost = (flashlightOn && dist < 240) ? (1 - dist / 240) * 0.7 : 0;
-    fxCtx.fillStyle = `rgba(195, 208, 188, ${Math.min(0.92, 0.12 + boost)})`;
-    fxCtx.beginPath(); fxCtx.arc(px, py, p.size * p.z, 0, Math.PI * 2); fxCtx.fill();
+    const boost = (flashlightOn && dist < 250) ? (1 - dist / 250) * 0.65 : 0;
+    const rTiny = Math.max(0.8, p.size * 0.62 * p.z);
+    fxCtx.fillStyle = `rgba(206, 216, 198, ${Math.min(0.85, 0.18 + boost)})`;
+    fxCtx.beginPath(); fxCtx.arc(px, py, rTiny, 0, Math.PI * 2); fxCtx.fill();
   });
   drawMarker2D(offsetX + room.artifact.x * scaleX, offsetY + room.artifact.y * scaleY,
     room.artifact.label, room.solved ? "#528c63" : "#bd7d3b", time);
@@ -1926,7 +2044,6 @@ function updateRoomHUD() {
   document.getElementById("hud-room-indicator").textContent =
     `ЛОКАЦИЯ ${curStr} / ${ROOMS.length} — ${room.title.toUpperCase()}`;
   document.getElementById("dossier-code").textContent = room.code;
-  document.getElementById("dossier-file-hint").textContent = room.isProceduralRoom ? "ГЕНЕРАТОР: АКТИВЕН" : `ФАЙЛ: ${room.fileName}`;
   document.getElementById("dossier-title").textContent = room.title;
   document.getElementById("dossier-text").textContent = room.desc;
   const regenBtn = document.getElementById("btn-regen-room");
@@ -2893,6 +3010,17 @@ glCanvas.addEventListener("webglcontextrestored", () => {
     // Медленное затемнение прелоадера и плавный переход к экрану названия игры
     preloaderEl.classList.add("done");
     if (introEl) introEl.classList.remove("hidden");
+    try {
+      if (typeof armAndLoadIntroBgm === "function") armAndLoadIntroBgm();
+      if (typeof startIntroProceduralLayer === "function") startIntroProceduralLayer();
+      const b = document.getElementById("intro-bgm");
+      if (b) {
+        b.preload = "auto";
+        b.volume = 0.65;
+        const p = b.play();
+        if (p && typeof p.catch === "function") p.catch(() => {});
+      }
+    } catch (e) {}
 
     setTimeout(() => {
       if (preloaderVid && !preloaderVid.paused) {
