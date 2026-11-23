@@ -2,626 +2,191 @@
 
 /* ============================================================
    КОНСТАНТЫ И СПИСОК КОМНАТ
-   1-5: основные (Taperoom.jpg, Gallery.jpg, attic.jpg, Surgeryroom.jpg, Bunker.jpg)
-   6-9: секретные (открываются только после прохождения 1-5)
-   10:  процедурная аномалия
+   1-5: основные 2.5D (Taperoom.jpg, Gallery.jpg, attic.jpg, Surgeryroom.jpg, Bunker.jpg)
+   6-9: секретные 2.5D (открываются после прохождения 1-5)
+   10:  тестовая 360° комната из редактора (1000405137.jpg + искры 1000405140.mp4 по тапу)
 ============================================================ */
 const REDUCE_MOTION     = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const STORAGE_KEY       = 'osobnyak_progress_v4';
-const FLASHLIGHT_RATIO  = 0.34;
+const FLASHLIGHT_RATIO  = 0.48; // расширенный луч фонаря (было 0.34)
 const TRANSITION_SPEED  = 0.026;
-const POINTER_LERP      = 0.12;
+const POINTER_LERP      = 0.14;
 const ENTITY_LERP       = 0.035;
 const ENTITY_EVADE_LERP = 0.14;
 
 const ROOMS = [
   {
-    "id": 0,
-    "code": "СЕКТОР 01 // TAPEROOM",
-    "fileName": "./assets/1000404062.jpg",
-    "title": "Прихожая с катушечным диктофоном",
-    "desc": "Сырые обои отслаиваются от гнилой штукатурки. На гниющем полу брошены мокрые домашние тапочки, рядом — ржавый бобинный диктофон.",
-    "portal": {
-      "x": 0.62,
-      "y": 0.48,
-      "label": "Проём в Gallery"
-    },
-    "artifact": {
-      "x": 0.41,
-      "y": 0.42,
-      "label": "Катушечный диктофон"
-    },
-    "clueProp": {
-      "x": 0.64,
-      "y": 0.78,
-      "label": "Мокрые тапочки у порога",
-      "clueText": "Часть 1/2 частоты: +42 Гц (базовый тон 400 Гц на раме в Gallery)"
-    },
-    "shadowSpots": [
-      {
-        "x": 0.59,
-        "y": 0.52,
-        "scale": 1.05
-      },
-      {
-        "x": 0.67,
-        "y": 0.55,
-        "scale": 0.9
-      }
-    ],
-    "palette": {
-      "wall": "#18201b",
-      "floor": "#0d110e",
-      "light": "#6c8074"
-    },
-    "reverbDecay": 3.5,
-    "solved": false,
-    "solvedOnce": false,
-    "tapePlaying": false,
-    "tapeFinished": false,
-    "puzzleTitle": "Бобинный диктофон «ЭХО-4» (2-составный)",
-    "puzzleDesc": "Шаг 1: осмотрите мокрые тапочки у порога (добавка +42 Гц). Шаг 2: сверьте базовую отметку 400 Гц в Gallery и выставьте итоговую частоту.",
-    "puzzleType": "frequency",
-    "targetFreq": 442,
-    "editorInteractives": [
-      {
-        "id": "wall_layer_2",
-        "type": "image",
-        "src": "./assets/1000399346.jpg",
-        "fallbackSrc": "1000399346.jpg",
-        "sound": "spark",
-        "action": "none",
-        "clueText": "",
-        "targetRoomId": null,
-        "position": {
-          "u": 0.0302,
-          "v": 0.216
-        },
-        "scale": 1,
-        "scaleX": 1,
-        "scaleY": 1,
-        "rotationDeg": 31,
-        "size": {
-          "width": 104.61,
-          "height": 140
-        },
-        "corners": {
-          "tl": [
-            0,
-            0
-          ],
-          "tr": [
-            0.5062,
-            0.3071
-          ],
-          "br": [
-            0.9937,
-            -0.2887
-          ],
-          "bl": [
-            -0.6521,
-            -0.3584
-          ]
-        },
-        "additiveBlend": false,
-        "blendMode": "alpha",
-        "chromaKey": null,
-        "loop": false
-      }
-    ],
-    "fallbackFileName": "1000404062.jpg"
+    id: 0, code: "СЕКТОР 01 // TAPEROOM", fileName: "Taperoom.jpg",
+    title: "Прихожая с катушечным диктофоном",
+    desc: "Сырые обои отслаиваются от гнилой штукатурки. На гниющем полу брошены мокрые домашние тапочки, рядом — ржавый бобинный диктофон.",
+    portal: { x: 0.62, y: 0.48, label: "Проём в Gallery" },
+    artifact: { x: 0.41, y: 0.42, label: "Катушечный диктофон" },
+    clueProp: { x: 0.64, y: 0.78, label: "Мокрые тапочки у порога", clueText: "Часть 1/2 частоты: +42 Гц (базовый тон 400 Гц на раме в Gallery)" },
+    shadowSpots: [{ x: 0.59, y: 0.52, scale: 1.05 }, { x: 0.67, y: 0.55, scale: 0.90 }],
+    palette: { wall: "#18201b", floor: "#0d110e", light: "#6c8074" },
+    reverbDecay: 3.5, solved: false, solvedOnce: false, tapePlaying: false, tapeFinished: false,
+    puzzleTitle: "Бобинный диктофон «ЭХО-4» (2-составный)",
+    puzzleDesc: "Шаг 1: осмотрите мокрые тапочки у порога (добавка +42 Гц). Шаг 2: сверьте базовую отметку 400 Гц в Gallery и выставьте итоговую частоту.",
+    puzzleType: "frequency", targetFreq: 442
   },
   {
-    "id": 1,
-    "code": "СЕКТОР 02 // GALLERY",
-    "fileName": "Gallery.jpg",
-    "title": "Галерея с пустыми рамами и цепями",
-    "desc": "Вытянутая анфилада с облезлыми стенами, осколками рамок и тяжёлыми цепями.",
-    "portal": {
-      "x": 0.5,
-      "y": 0.46,
-      "label": "Подъём в Attic"
-    },
-    "artifact": {
-      "x": 0.31,
-      "y": 0.44,
-      "label": "Узел с кодовым замком"
-    },
-    "clueProp": {
-      "x": 0.68,
-      "y": 0.52,
-      "label": "Осколок разбитой рамки",
-      "clueText": "Знаки I и IV на осколке рамки; знаки VII и IX — на заляпанной простыне в Attic (400 Гц — метка плёнки)"
-    },
-    "shadowSpots": [
-      {
-        "x": 0.45,
-        "y": 0.52,
-        "scale": 0.85
-      },
-      {
-        "x": 0.55,
-        "y": 0.5,
-        "scale": 0.92
-      }
-    ],
-    "palette": {
-      "wall": "#1c221b",
-      "floor": "#121510",
-      "light": "#7a8c76"
-    },
-    "reverbDecay": 4,
-    "solved": false,
-    "solvedOnce": false,
-    "puzzleTitle": "Четырёхдисковый замок смотрителя (2-составный)",
-    "puzzleDesc": "Первая пара римских знаков (I, IV) спрятана на осколке рамки здесь, вторая пара (VII, IX) — на заляпанной простыне в Attic.",
-    "puzzleType": "roman_code",
-    "targetCode": [
-      "I",
-      "IV",
-      "VII",
-      "IX"
-    ]
+    id: 1, code: "СЕКТОР 02 // GALLERY", fileName: "Gallery.jpg",
+    title: "Галерея с пустыми рамами и цепями",
+    desc: "Вытянутая анфилада с облезлыми стенами, осколками рамок и тяжёлыми цепями.",
+    portal: { x: 0.50, y: 0.46, label: "Подъём в Attic" },
+    artifact: { x: 0.31, y: 0.44, label: "Узел с кодовым замком" },
+    clueProp: { x: 0.68, y: 0.52, label: "Осколок разбитой рамки", clueText: "Знаки I и IV на осколке рамки; знаки VII и IX — на заляпанной простыне в Attic (400 Гц — метка плёнки)" },
+    shadowSpots: [{ x: 0.45, y: 0.52, scale: 0.85 }, { x: 0.55, y: 0.50, scale: 0.92 }],
+    palette: { wall: "#1c221b", floor: "#121510", light: "#7a8c76" },
+    reverbDecay: 4.0, solved: false, solvedOnce: false,
+    puzzleTitle: "Четырёхдисковый замок смотрителя (2-составный)",
+    puzzleDesc: "Первая пара римских знаков (I, IV) спрятана на осколке рамки здесь, вторая пара (VII, IX) — на заляпанной простыне в Attic.",
+    puzzleType: "roman_code", targetCode: ["I", "IV", "VII", "IX"]
   },
   {
-    "id": 2,
-    "code": "СЕКТОР 03 // ATTIC",
-    "fileName": "attic.jpg",
-    "title": "Чердак с заляпанными простынями",
-    "desc": "Под гниющими стропилами стоят сундуки и мебель под заляпанными простынями и старыми пледами.",
-    "portal": {
-      "x": 0.5,
-      "y": 0.45,
-      "label": "Люк в Surgeryroom"
-    },
-    "artifact": {
-      "x": 0.14,
-      "y": 0.72,
-      "label": "Кованый сундук с противовесами"
-    },
-    "clueProp": {
-      "x": 0.52,
-      "y": 0.58,
-      "label": "Заляпанный плед на кресле",
-      "clueText": "Знаки VII и IX для Gallery; для весов: на пледе вышито «6 кг слева», а в Surgeryroom на бутылке — «6 кг справа»"
-    },
-    "shadowSpots": [
-      {
-        "x": 0.42,
-        "y": 0.48,
-        "scale": 0.82
-      },
-      {
-        "x": 0.73,
-        "y": 0.5,
-        "scale": 0.95
-      }
-    ],
-    "palette": {
-      "wall": "#211c16",
-      "floor": "#14110d",
-      "light": "#9c896e"
-    },
-    "reverbDecay": 3.2,
-    "solved": false,
-    "solvedOnce": false,
-    "puzzleTitle": "Рычажные весы чердачного люка (2-составный)",
-    "puzzleDesc": "Левая чаша (6 кг) указана на заляпанном пледе здесь, а правая (6 кг) — на этикетке бутылки в Surgeryroom.",
-    "puzzleType": "weights"
+    id: 2, code: "СЕКТОР 03 // ATTIC", fileName: "attic.jpg",
+    title: "Чердак с заляпанными простынями",
+    desc: "Под гниющими стропилами стоят сундуки и мебель под заляпанными простынями и старыми пледами.",
+    portal: { x: 0.50, y: 0.45, label: "Люк в Surgeryroom" },
+    artifact: { x: 0.14, y: 0.72, label: "Кованый сундук с противовесами" },
+    clueProp: { x: 0.52, y: 0.58, label: "Заляпанный плед на кресле", clueText: "Знаки VII и IX для Gallery; для весов: на пледе вышито «6 кг слева», а в Surgeryroom на бутылке — «6 кг справа»" },
+    shadowSpots: [{ x: 0.42, y: 0.48, scale: 0.82 }, { x: 0.73, y: 0.50, scale: 0.95 }],
+    palette: { wall: "#211c16", floor: "#14110d", light: "#9c896e" },
+    reverbDecay: 3.2, solved: false, solvedOnce: false,
+    puzzleTitle: "Рычажные весы чердачного люка (2-составный)",
+    puzzleDesc: "Левая чаша (6 кг) указана на заляпанном пледе здесь, а правая (6 кг) — на этикетке бутылки в Surgeryroom.",
+    puzzleType: "weights"
   },
   {
-    "id": 3,
-    "code": "СЕКТОР 04 // SURGERYROOM",
-    "fileName": "Surgeryroom.jpg",
-    "title": "Заброшенная операционная",
-    "desc": "Потрескавшийся кафель, пустые склянки и бутылки, ржавые ширмы и операционный стол.",
-    "portal": {
-      "x": 0.64,
-      "y": 0.49,
-      "label": "Гермошлюз в Bunker"
-    },
-    "artifact": {
-      "x": 0.48,
-      "y": 0.54,
-      "label": "Хирургический стол и дозатор"
-    },
-    "clueProp": {
-      "x": 0.24,
-      "y": 0.64,
-      "label": "Мутная бутылка с осадком",
-      "clueText": "Правая чаша весов Attic = 6 кг; для дозатора: колба А = 3 (здесь), колба B = 1 (на оборванном проводе в Bunker)"
-    },
-    "shadowSpots": [
-      {
-        "x": 0.26,
-        "y": 0.53,
-        "scale": 1.02
-      },
-      {
-        "x": 0.64,
-        "y": 0.51,
-        "scale": 0.88
-      }
-    ],
-    "palette": {
-      "wall": "#172420",
-      "floor": "#0e1412",
-      "light": "#779c8e"
-    },
-    "reverbDecay": 4.5,
-    "solved": false,
-    "solvedOnce": false,
-    "puzzleTitle": "Дозатор инфузионной стойки №9 (2-составный)",
-    "puzzleDesc": "Доза колбы А = 3 читается на склянке/кафеле здесь, а доза колбы B = 1 привязана к оборванному проводу в Bunker.",
-    "puzzleType": "dosage",
-    "targetA": 3,
-    "targetB": 1
+    id: 3, code: "СЕКТОР 04 // SURGERYROOM", fileName: "Surgeryroom.jpg",
+    title: "Заброшенная операционная",
+    desc: "Потрескавшийся кафель, пустые склянки и бутылки, ржавые ширмы и операционный стол.",
+    portal: { x: 0.64, y: 0.49, label: "Гермошлюз в Bunker" },
+    artifact: { x: 0.48, y: 0.54, label: "Хирургический стол и дозатор" },
+    clueProp: { x: 0.24, y: 0.64, label: "Мутная бутылка с осадком", clueText: "Правая чаша весов Attic = 6 кг; для дозатора: колба А = 3 (здесь), колба B = 1 (на оборванном проводе в Bunker)" },
+    shadowSpots: [{ x: 0.26, y: 0.53, scale: 1.02 }, { x: 0.64, y: 0.51, scale: 0.88 }],
+    palette: { wall: "#172420", floor: "#0e1412", light: "#779c8e" },
+    reverbDecay: 4.5, solved: false, solvedOnce: false,
+    puzzleTitle: "Дозатор инфузионной стойки №9 (2-составный)",
+    puzzleDesc: "Доза колбы А = 3 читается на склянке/кафеле здесь, а доза колбы B = 1 привязана к оборванному проводу в Bunker.",
+    puzzleType: "dosage", targetA: 3, targetB: 1
   },
   {
-    "id": 4,
-    "code": "СЕКТОР 05 // BUNKER",
-    "fileName": "Bunker.jpg",
-    "title": "Подземный бункер связи",
-    "desc": "Массивная ржавая гермодверь, оборванные провода, аварийный маяк и полевой телефон.",
-    "portal": {
-      "x": 0.9,
-      "y": 0.52,
-      "label": "Секретный шлюз: Архив"
-    },
-    "artifact": {
-      "x": 0.33,
-      "y": 0.56,
-      "label": "Полевой телефон и гермовентиль"
-    },
-    "clueProp": {
-      "x": 0.64,
-      "y": 0.38,
-      "label": "Оборванный провод под потолком",
-      "clueText": "Колба B = 1; обороты штурвала: первые 3 поворота вправо (R, R, R) здесь, последние 2 влево (L, L) — на заклинившем ключе в Archive"
-    },
-    "shadowSpots": [
-      {
-        "x": 0.87,
-        "y": 0.54,
-        "scale": 0.96
-      },
-      {
-        "x": 0.76,
-        "y": 0.55,
-        "scale": 0.85
-      }
-    ],
-    "palette": {
-      "wall": "#1b1917",
-      "floor": "#0f0d0c",
-      "light": "#c93b2b"
-    },
-    "reverbDecay": 5.2,
-    "solved": false,
-    "solvedOnce": false,
-    "puzzleTitle": "Штурвал гермошлюза и передатчик (2-составный)",
-    "puzzleDesc": "Начало серии (R, R, R) у штурвала здесь, завершение (L, L) — на ржавом ключе у затопленного стеллажа в Archive.",
-    "puzzleType": "valve",
-    "targetSequence": [
-      "R",
-      "R",
-      "R",
-      "L",
-      "L"
-    ]
+    id: 4, code: "СЕКТОР 05 // BUNKER", fileName: "Bunker.jpg",
+    title: "Подземный бункер связи",
+    desc: "Массивная ржавая гермодверь, оборванные провода, аварийный маяк и полевой телефон.",
+    portal: { x: 0.90, y: 0.52, label: "Секретный шлюз: Архив" },
+    artifact: { x: 0.33, y: 0.56, label: "Полевой телефон и гермовентиль" },
+    clueProp: { x: 0.64, y: 0.38, label: "Оборванный провод под потолком", clueText: "Колба B = 1; обороты штурвала: первые 3 поворота вправо (R, R, R) здесь, последние 2 влево (L, L) — на заклинившем ключе в Archive" },
+    shadowSpots: [{ x: 0.87, y: 0.54, scale: 0.96 }, { x: 0.76, y: 0.55, scale: 0.85 }],
+    palette: { wall: "#1b1917", floor: "#0f0d0c", light: "#c93b2b" },
+    reverbDecay: 5.2, solved: false, solvedOnce: false,
+    puzzleTitle: "Штурвал гермошлюза и передатчик (2-составный)",
+    puzzleDesc: "Начало серии (R, R, R) у штурвала здесь, завершение (L, L) — на ржавом ключе у затопленного стеллажа в Archive.",
+    puzzleType: "valve", targetSequence: ["R", "R", "R", "L", "L"]
+  },
+  /* ==== 4 СЕКРЕТНЫЕ КОМНАТЫ (2- И 3-СОСТАВНЫЕ КВЕСТЫ ПОСЛЕ ПРОХОЖДЕНИЯ 1–5) ==== */
+  {
+    id: 5, code: "СЕКРЕТ 01 // ARCHIVE", fileName: "Archive_secret1.gif",
+    isSecret: true, isAnimatedGif: true,
+    title: "Тайник I: Затопленный архив",
+    desc: "Полузатопленное хранилище дел № 404. У стеллажа — ржавый ключ и всплывшие папки, а на сырой штукатурке справа процарапано предостережение.",
+    portal: { x: 0.50, y: 0.46, label: "Проход в Тайник II: Котельная" },
+    artifact: { x: 0.78, y: 0.56, label: "Водомерный замок стеллажа" },
+    clueProp: { x: 0.22, y: 0.64, label: "Ржавый ключ в всплывших бумагах", clueText: "Финал штурвала Bunker: L, L; ключ к архиву: первое слово «НЕ» на всплывшей папке, второе «СМОТРИ» — на стене" },
+    shadowSpots: [{ x: 0.48, y: 0.50, scale: 0.95 }, { x: 0.25, y: 0.54, scale: 0.88 }],
+    palette: { wall: "#141d17", floor: "#080d0a", light: "#658f74" },
+    reverbDecay: 5.4, solved: false, solvedOnce: false,
+    puzzleTitle: "Шифр затопленного архива (2-составный)",
+    puzzleDesc: "Сложите два слова: «НЕ» (отметка на бумагах у ржавого ключа) и «СМОТРИ» (на сырой стене над водой).",
+    puzzleType: "text_code",
+    placeholder: "Два слова со стены...",
+    targetWord: "НЕ СМОТРИ"
   },
   {
-    "id": 5,
-    "code": "СЕКРЕТ 01 // ARCHIVE",
-    "fileName": "Archive_secret1.gif",
-    "isSecret": true,
-    "isAnimatedGif": true,
-    "title": "Тайник I: Затопленный архив",
-    "desc": "Полузатопленное хранилище дел № 404. У стеллажа — ржавый ключ и всплывшие папки, а на сырой штукатурке справа процарапано предостережение.",
-    "portal": {
-      "x": 0.5,
-      "y": 0.46,
-      "label": "Проход в Тайник II: Котельная"
-    },
-    "artifact": {
-      "x": 0.78,
-      "y": 0.56,
-      "label": "Водомерный замок стеллажа"
-    },
-    "clueProp": {
-      "x": 0.22,
-      "y": 0.64,
-      "label": "Ржавый ключ в всплывших бумагах",
-      "clueText": "Финал штурвала Bunker: L, L; ключ к архиву: первое слово «НЕ» на всплывшей папке, второе «СМОТРИ» — на стене"
-    },
-    "shadowSpots": [
-      {
-        "x": 0.48,
-        "y": 0.5,
-        "scale": 0.95
-      },
-      {
-        "x": 0.25,
-        "y": 0.54,
-        "scale": 0.88
-      }
-    ],
-    "palette": {
-      "wall": "#141d17",
-      "floor": "#080d0a",
-      "light": "#658f74"
-    },
-    "reverbDecay": 5.4,
-    "solved": false,
-    "solvedOnce": false,
-    "puzzleTitle": "Шифр затопленного архива (2-составный)",
-    "puzzleDesc": "Сложите два слова: «НЕ» (отметка на бумагах у ржавого ключа) и «СМОТРИ» (на сырой стене над водой).",
-    "puzzleType": "text_code",
-    "placeholder": "Два слова со стены...",
-    "targetWord": "НЕ СМОТРИ"
+    id: 6, code: "СЕКРЕТ 02 // FURNACE", fileName: "Furnace_secret1.jpg",
+    hallucinationFileName: "Furnace_secret2.jpg",
+    isSecret: true,
+    title: "Тайник II: Заброшенная котельная",
+    desc: "Чёрная от копоти топка со старыми манометрами и лопнувшими стеклянными колбами в золе.",
+    portal: { x: 0.68, y: 0.46, label: "Лаз в Тайник III: Камера маятника" },
+    artifact: { x: 0.34, y: 0.54, label: "Топочный засов котла" },
+    clueProp: { x: 0.56, y: 0.74, label: "Лопнувшая склянка в золе", clueText: "3-составный код: [6] на горлышке склянки здесь, [1] на оборванном проводе в Bunker, [8] в золе перед топкой" },
+    shadowSpots: [{ x: 0.66, y: 0.52, scale: 1.0 }, { x: 0.82, y: 0.54, scale: 0.9 }],
+    palette: { wall: "#1f1712", floor: "#0d0907", light: "#c27838" },
+    reverbDecay: 4.8, solved: false, solvedOnce: false,
+    puzzleTitle: "Термозамок топочной дверцы (3-составный)",
+    puzzleDesc: "Соберите 3 цифры: [6] на лопнувшей склянке в котельной, [1] на проводе в Bunker и [8] в золе перед топкой.",
+    puzzleType: "pin_digits",
+    targetPin: [6, 1, 8]
   },
   {
-    "id": 6,
-    "code": "СЕКРЕТ 02 // FURNACE",
-    "fileName": "Furnace_secret1.jpg",
-    "hallucinationFileName": "Furnace_secret2.jpg",
-    "isSecret": true,
-    "title": "Тайник II: Заброшенная котельная",
-    "desc": "Чёрная от копоти топка со старыми манометрами и лопнувшими стеклянными колбами в золе.",
-    "portal": {
-      "x": 0.68,
-      "y": 0.46,
-      "label": "Лаз в Тайник III: Камера маятника"
-    },
-    "artifact": {
-      "x": 0.34,
-      "y": 0.54,
-      "label": "Топочный засов котла"
-    },
-    "clueProp": {
-      "x": 0.56,
-      "y": 0.74,
-      "label": "Лопнувшая склянка в золе",
-      "clueText": "3-составный код: [6] на горлышке склянки здесь, [1] на оборванном проводе в Bunker, [8] в золе перед топкой"
-    },
-    "shadowSpots": [
-      {
-        "x": 0.66,
-        "y": 0.52,
-        "scale": 1
-      },
-      {
-        "x": 0.82,
-        "y": 0.54,
-        "scale": 0.9
-      }
-    ],
-    "palette": {
-      "wall": "#1f1712",
-      "floor": "#0d0907",
-      "light": "#c27838"
-    },
-    "reverbDecay": 4.8,
-    "solved": false,
-    "solvedOnce": false,
-    "puzzleTitle": "Термозамок топочной дверцы (3-составный)",
-    "puzzleDesc": "Соберите 3 цифры: [6] на лопнувшей склянке в котельной, [1] на проводе в Bunker и [8] в золе перед топкой.",
-    "puzzleType": "pin_digits",
-    "targetPin": [
-      6,
-      1,
-      8
-    ]
+    id: 7, code: "СЕКРЕТ 03 // GORECHAMBER", fileName: "Gorechamber_secret1.jpg",
+    hallucinationFileName: "Gorechamber_secret2.jpg",
+    isSecret: true,
+    title: "Тайник III: Камера с маятником",
+    desc: "Сырой каземат с ржавыми кандалами, порванными ремнями и четырьмя римскими знаками на каменной плите пола.",
+    portal: { x: 0.54, y: 0.45, label: "Переход в Тайник IV: Зеркальный изолятор" },
+    artifact: { x: 0.16, y: 0.46, label: "Цепной стопор маятника" },
+    clueProp: { x: 0.74, y: 0.66, label: "Порванный кожаный ремень у стены", clueText: "3-составный ключ: [I, III] на ремне и кандалах здесь, [IX] на осколке рамки в Gallery, [X] под лезвием маятника" },
+    shadowSpots: [{ x: 0.55, y: 0.52, scale: 0.96 }, { x: 0.84, y: 0.54, scale: 0.88 }],
+    palette: { wall: "#1c2019", floor: "#0d100c", light: "#85967e" },
+    reverbDecay: 5.6, solved: false, solvedOnce: false,
+    puzzleTitle: "Римский замок каземата (3-составный)",
+    puzzleDesc: "Соберите 4 знака из 3 источников: [I, III] на порванном ремне у стены, [IX] на рамке в Gallery и [X] на плите под маятником.",
+    puzzleType: "roman_code_extended",
+    targetCode: ["I", "III", "IX", "X"]
   },
   {
-    "id": 7,
-    "code": "СЕКРЕТ 03 // GORECHAMBER",
-    "fileName": "Gorechamber_secret1.jpg",
-    "hallucinationFileName": "Gorechamber_secret2.jpg",
-    "isSecret": true,
-    "title": "Тайник III: Камера с маятником",
-    "desc": "Сырой каземат с ржавыми кандалами, порванными ремнями и четырьмя римскими знаками на каменной плите пола.",
-    "portal": {
-      "x": 0.54,
-      "y": 0.45,
-      "label": "Переход в Тайник IV: Зеркальный изолятор"
-    },
-    "artifact": {
-      "x": 0.16,
-      "y": 0.46,
-      "label": "Цепной стопор маятника"
-    },
-    "clueProp": {
-      "x": 0.74,
-      "y": 0.66,
-      "label": "Порванный кожаный ремень у стены",
-      "clueText": "3-составный ключ: [I, III] на ремне и кандалах здесь, [IX] на осколке рамки в Gallery, [X] под лезвием маятника"
-    },
-    "shadowSpots": [
-      {
-        "x": 0.55,
-        "y": 0.52,
-        "scale": 0.96
-      },
-      {
-        "x": 0.84,
-        "y": 0.54,
-        "scale": 0.88
-      }
-    ],
-    "palette": {
-      "wall": "#1c2019",
-      "floor": "#0d100c",
-      "light": "#85967e"
-    },
-    "reverbDecay": 5.6,
-    "solved": false,
-    "solvedOnce": false,
-    "puzzleTitle": "Римский замок каземата (3-составный)",
-    "puzzleDesc": "Соберите 4 знака из 3 источников: [I, III] на порванном ремне у стены, [IX] на рамке в Gallery и [X] на плите под маятником.",
-    "puzzleType": "roman_code_extended",
-    "targetCode": [
-      "I",
-      "III",
-      "IX",
-      "X"
-    ]
+    id: 8, code: "СЕКРЕТ 04 // MIRROROOM", fileName: "Mirroroom_secret1.jpg",
+    isSecret: true,
+    title: "Тайник IV: Зеркальный изолятор",
+    desc: "Круглая камера с треснувшими зеркалами, ржавой клеткой, грязными тапочками у порога и двумя цифрами в проломе потолка.",
+    portal: { x: 0.62, y: 0.48, label: "Переход в Сектор 10 (360°)" },
+    artifact: { x: 0.62, y: 0.55, label: "Засов заколоченной двери" },
+    clueProp: { x: 0.36, y: 0.76, label: "Осколок зеркала у ржавой клетки", clueText: "2-составный шифр: [9] в проломе потолка, [4] в отражении осколка зеркала у клетки" },
+    shadowSpots: [{ x: 0.28, y: 0.52, scale: 0.92 }, { x: 0.80, y: 0.52, scale: 0.92 }],
+    palette: { wall: "#1c1c18", floor: "#0d0c0a", light: "#b59d78" },
+    reverbDecay: 5.0, solved: false, solvedOnce: false,
+    puzzleTitle: "Зеркальный шифр изолятора (2-составный)",
+    puzzleDesc: "Первая цифра [9] видна в проломе потолка, вторая [4] — в осколке зеркала у ржавой клетки.",
+    puzzleType: "pin_digits",
+    targetPin: [9, 4]
   },
+  /* ==== 10-Я ТЕСТОВАЯ КОМНАТА: ПОЛНЫЙ ОБЗОР 360° + ИСКРЫ ПО НАЖАТИЮ ==== */
   {
-    "id": 8,
-    "code": "СЕКРЕТ 04 // MIRROROOM",
-    "fileName": "Mirroroom_secret1.jpg",
-    "isSecret": true,
-    "title": "Тайник IV: Зеркальный изолятор",
-    "desc": "Круглая камера с треснувшими зеркалами, ржавой клеткой, грязными тапочками у порога и двумя цифрами в проломе потолка.",
-    "portal": {
-      "x": 0.62,
-      "y": 0.48,
-      "label": "Спуск в Процедурную аномалию"
-    },
-    "artifact": {
-      "x": 0.62,
-      "y": 0.55,
-      "label": "Засов заколоченной двери"
-    },
-    "clueProp": {
-      "x": 0.36,
-      "y": 0.76,
-      "label": "Осколок зеркала у ржавой клетки",
-      "clueText": "2-составный шифр: [9] в проломе потолка, [4] в отражении осколка зеркала у клетки"
-    },
-    "shadowSpots": [
+    id: 9, code: "СЕКТОР 10 // ТЕСТ 360°", fileName: "./assets/1000405137.jpg",
+    fallbackFileName: "1000405137.jpg",
+    is360EditorRoom: true,
+    startCamera: { lon: 145, lat: 5 },
+    editorInteractives: [
       {
-        "x": 0.28,
-        "y": 0.52,
-        "scale": 0.92
-      },
-      {
-        "x": 0.8,
-        "y": 0.52,
-        "scale": 0.92
+        id: "sparks_panel",
+        type: "video",
+        src: "./assets/1000405140.mp4",
+        fallbackSrc: "1000405140.mp4",
+        targetRoomId: null,
+        position: { u: 0.378, v: 0.462 },
+        scale: 0.45,
+        rotationDeg: 0,
+        size: { width: 248.89, height: 140 },
+        additiveBlend: true,
+        loop: false // запускается по нажатию на щиток
       }
     ],
-    "palette": {
-      "wall": "#1c1c18",
-      "floor": "#0d0c0a",
-      "light": "#b59d78"
-    },
-    "reverbDecay": 5,
-    "solved": false,
-    "solvedOnce": false,
-    "puzzleTitle": "Зеркальный шифр изолятора (2-составный)",
-    "puzzleDesc": "Первая цифра [9] видна в проломе потолка, вторая [4] — в осколке зеркала у ржавой клетки.",
-    "puzzleType": "pin_digits",
-    "targetPin": [
-      9,
-      4
-    ]
-  },
-  {
-    "id": 9,
-    "code": "СЕКТОР 10 // 360° АНОМАЛИЯ",
-    "fileName": "./assets/1000405137.jpg",
-    "fallbackFileName": "1000405137.jpg",
-    "is360EditorRoom": true,
-    "startCamera": {
-      "lon": 145,
-      "lat": 5
-    },
-    "editorInteractives": [
-      {
-        "id": "sparks_panel",
-        "type": "video",
-        "src": "./assets/1000405140.mp4",
-        "fallbackSrc": "1000405140.mp4",
-        "sound": "spark",
-        "action": "none",
-        "clueText": "",
-        "targetRoomId": null,
-        "position": {
-          "u": 0.378,
-          "v": 0.462
-        },
-        "scale": 0.45,
-        "scaleX": 0.45,
-        "scaleY": 0.45,
-        "rotationDeg": 0,
-        "size": {
-          "width": 248.89,
-          "height": 140
-        },
-        "corners": {
-          "tl": [
-            0,
-            0
-          ],
-          "tr": [
-            0,
-            0
-          ],
-          "br": [
-            0,
-            0
-          ],
-          "bl": [
-            0,
-            0
-          ]
-        },
-        "additiveBlend": true,
-        "blendMode": "additive",
-        "chromaKey": null,
-        "loop": true
-      }
-    ],
-    "title": "Комната 1 (Заброшенная)",
-    "desc": "Сырая заброшенная камера полного 360°-обзора с осыпающимися искрами проводки. Осмотрите пространство вокруг и разблокируйте выход.",
-    "portal": {
-      "x": 0.78,
-      "y": 0.5,
-      "label": "Выход на поверхность (В начало)"
-    },
-    "artifact": {
-      "x": 0.38,
-      "y": 0.48,
-      "label": "Искрящий щиток проводки"
-    },
-    "shadowSpots": [
-      {
-        "x": 0.74,
-        "y": 0.53,
-        "scale": 1.05
-      },
-      {
-        "x": 0.22,
-        "y": 0.56,
-        "scale": 0.92
-      }
-    ],
-    "palette": {
-      "wall": "#161a18",
-      "floor": "#0a0c0b",
-      "light": "#8f3222"
-    },
-    "reverbDecay": 5.8,
-    "solved": false,
-    "solvedOnce": false,
-    "puzzleTitle": "Релейный замок заброшенной комнаты",
-    "puzzleDesc": "Осмотрите искрящую проводку и стены этой 360°-комнаты, чтобы подобрать трёхзначный код (4 - 0 - 9).",
-    "puzzleType": "pin_digits",
-    "targetPin": [
-      4,
-      0,
-      9
-    ]
+    title: "Комната 1 (Заброшенная 360°)",
+    desc: "Тестовая комната с полным обзором 360°. Оглядитесь вокруг: нажмите на электрощит слева от двери, чтобы вызвать искры, или осмотрите замок.",
+    portal: { u: 0.455, v: 0.50, label: "Выход на поверхность (В начало)" },
+    artifact: { u: 0.515, v: 0.55, label: "Заброшенный куст у окон" },
+    clueProp: { u: 0.378, v: 0.462, label: "Электрощит (нажмите для искр)", clueText: "При замыкании щитка на шкале вспыхнули цифры: 4 - 0 - 9" },
+    shadowSpots: [{ x: 0.74, y: 0.53, scale: 1.05 }, { x: 0.22, y: 0.56, scale: 0.92 }],
+    palette: { wall: "#161a18", floor: "#0a0c0b", light: "#8f3222" },
+    reverbDecay: 5.8, solved: false, solvedOnce: false,
+    puzzleTitle: "Релейный замок заброшенной комнаты",
+    puzzleDesc: "Нажмите на электрощит слева от двери, чтобы вызвать искры и увидеть комбинацию (4 - 0 - 9).",
+    puzzleType: "pin_digits",
+    targetPin: [4, 0, 9]
   }
-];
-
-const PROCEDURAL_ARCHETYPES = [
-  { name: "Затопленный коллектор под фундаментом", desc: "Чёрная стоячая вода отражает треснувшие бетонные своды и ржавые вентили. Откуда-то снизу доносится глухой стук.", bgTop: "#0e1513", bgBot: "#040605", accent: "#2c3d37", rust: "#5e251a" },
-  { name: "Изолятор с облупленной кафельной кладкой", desc: "Узкая камера без окон. С потолка свисают обрывки проводов и крюки, а по углам расползлась чёрная плесень.", bgTop: "#171915", bgBot: "#050604", accent: "#393e33", rust: "#6b2b1e" },
-  { name: "Архивный склеп с обрушенными стеллажами", desc: "Покосившиеся железные шкафы завалены истлевшими папками и битым стеклом. Воздух тяжёлый и ледяной.", bgTop: "#1a1412", bgBot: "#050403", accent: "#42332d", rust: "#7a2c1d" },
-  { name: "Шахта старого грузового подъёмника", desc: "Ржавые тросы уходят в непроглядную черноту наверху. На сыром бетоне видны следы чьих-то ногтей.", bgTop: "#121316", bgBot: "#030405", accent: "#2d313b", rust: "#6e261b" }
 ];
 
 function areMainRoomsCompleted() {
@@ -661,7 +226,6 @@ class DarkAmbientAudio {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) return;
     this.ctx = new AudioCtx();
-    // Мягкий компрессор защищает от жёстких пиков после увеличения громкости на +50%
     this.compressor = this.ctx.createDynamicsCompressor();
     this.compressor.threshold.value = -10;
     this.compressor.knee.value = 18;
@@ -670,7 +234,7 @@ class DarkAmbientAudio {
     this.compressor.release.value = 0.18;
 
     this.master = this.ctx.createGain();
-    this.master.gain.value = 1.38; // +50% к базовой громкости 0.92
+    this.master.gain.value = 1.38;
     this.master.connect(this.compressor);
     this.compressor.connect(this.ctx.destination);
     this.dryGain = this.ctx.createGain();
@@ -1001,6 +565,26 @@ class DarkAmbientAudio {
     src.connect(bp); bp.connect(g); g.connect(this.dryGain);
     src.start(now); src.stop(now + 0.045);
   }
+  playElectricSparkSound() {
+    if (!this.ctx || !this.enabled) return;
+    const now = this.ctx.currentTime;
+    for (let i = 0; i < 4; i++) {
+      const t = now + i * 0.09;
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.crackleBuffer;
+      const bp = this.ctx.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.frequency.setValueAtTime(3200 + Math.random() * 1400, t);
+      bp.Q.value = 3.5;
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.001, t);
+      g.gain.linearRampToValueAtTime(0.55, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0005, t + 0.12);
+      src.connect(bp); bp.connect(g);
+      g.connect(this.dryGain); g.connect(this.convolver);
+      src.start(t); src.stop(t + 0.14);
+    }
+  }
   playSteelChains(panOverride = null) {
     if (!this._canPlay()) return;
     const count = 8 + Math.floor(Math.random() * 6);
@@ -1033,7 +617,6 @@ class DarkAmbientAudio {
     const panner = this.ctx.createStereoPanner();
     panner.pan.value = (Math.random() * 1.4) - 0.7;
 
-    // Двухслойный натуральный гул: глухой инфразвук + дышащий полосовой резонанс
     const src1 = this.ctx.createBufferSource();
     src1.buffer = this.ambientBuffer; src1.loop = true;
     const lp = this.ctx.createBiquadFilter();
@@ -1209,39 +792,45 @@ function syncTapeVideo() {
 }
 
 /* ============================================================
-   THREE.JS СЦЕНА 2.5D
+   THREE.JS СЦЕНА: 2.5D ПЛОСКОСТЬ (КОМНАТЫ 1–9) + 360° СФЕРА (КОМНАТА 10)
 ============================================================ */
 const renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, alpha: false });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = 1.08;
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
 camera.position.set(0, 0, 10);
 
-scene.add(new THREE.AmbientLight(0x222a24, 0.7));
-const spotLight = new THREE.SpotLight(0xffe6bd, 2.8, 35, Math.PI * 0.22, 0.65, 1.2);
+scene.add(new THREE.AmbientLight(0x28322a, 0.85));
+const spotLight = new THREE.SpotLight(0xffe6bd, 3.0, 35, Math.PI * 0.28, 0.72, 1.1);
 spotLight.position.set(0, 0, 10);
 scene.add(spotLight);
 scene.add(spotLight.target);
 
-// 2.5D-сфера на базе панорамного осмотра (с плавной инерцией и ограниченным 2.5D-углом обзора)
+const roomPlaneMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+// 1. Классическая 2.5D-плоскость для комнат 1–9
+const roomPlaneMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), roomPlaneMat);
+scene.add(roomPlaneMesh);
+
+// 2. Полноценная 360°-сфера только для тестовой 10-й комнаты (is360EditorRoom: true)
 const roomSphereGeo = new THREE.SphereGeometry(28, 64, 40);
 roomSphereGeo.scale(-1, 1, 1);
-const roomPlaneMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-const roomMesh = new THREE.Mesh(roomSphereGeo, roomPlaneMat);
-scene.add(roomMesh);
+const roomSphereMesh = new THREE.Mesh(roomSphereGeo, roomPlaneMat);
+roomSphereMesh.visible = false;
+scene.add(roomSphereMesh);
 
-const view25D = {
+const view360 = {
   isDragging: false,
-  lon: 180,
-  lat: 0,
-  targetLon: 180,
-  targetLat: 0,
-  downLon: 180,
-  downLat: 0,
+  lon: 145,
+  lat: 5,
+  targetLon: 145,
+  targetLat: 5,
+  downLon: 145,
+  downLat: 5,
   downX: 0,
   downY: 0,
   lastX: 0,
@@ -1249,52 +838,66 @@ const view25D = {
   lastTime: 0,
   velX: 0,
   velY: 0,
-  maxLonOffset: 180, // полный обзор на 360° по горизонтали
-  maxLatOffset: 68   // широкий наклон вверх/вниз в 360°
+  maxLatOffset: 68
 };
 
-function clamp25DAngles() {
-  view25D.targetLat = Math.max(-view25D.maxLatOffset, Math.min(view25D.maxLatOffset, view25D.targetLat));
+function clamp360Angles() {
+  view360.targetLat = Math.max(-view360.maxLatOffset, Math.min(view360.maxLatOffset, view360.targetLat));
 }
 
-function update25DCameraLook(timeMs, dt, camX, camY, camZ) {
-  if (view25D.isDragging) {
-    const k = 1 - Math.pow(1 - 0.35, dt);
-    view25D.lon += (view25D.targetLon - view25D.lon) * k;
-    view25D.lat += (view25D.targetLat - view25D.lat) * k;
-  } else {
-    if (Math.abs(view25D.velX) > 0.005 || Math.abs(view25D.velY) > 0.005) {
-      view25D.targetLon -= view25D.velX * 6.5 * dt;
-      view25D.targetLat += view25D.velY * 5.0 * dt;
-      clamp25DAngles();
-      view25D.velX *= Math.pow(0.87, dt);
-      view25D.velY *= Math.pow(0.87, dt);
-    } else {
-      // Очень тонкое дыхание камеры без притягивания обратно к центру
-      view25D.targetLat += Math.sin(timeMs * 0.0012) * 0.04 * dt;
-      clamp25DAngles();
-    }
-    const k = 1 - Math.pow(1 - 0.16, dt);
-    view25D.lon += (view25D.targetLon - view25D.lon) * k;
-    view25D.lat += (view25D.targetLat - view25D.lat) * k;
+function updateCameraForActiveMode(timeMs, dt, camX, camY, camZ) {
+  const room = ROOMS[currentRoomIndex];
+  const is360 = Boolean(room && room.is360EditorRoom);
+
+  roomPlaneMesh.visible = !is360;
+  roomSphereMesh.visible = is360;
+
+  if (!is360) {
+    // Классический 2.5D-режим для комнат 1–9
+    camera.fov = 42;
+    camera.updateProjectionMatrix();
+    camera.position.set(camX, camY, camZ);
+    camera.lookAt(camX * 0.35, camY * 0.35, 0);
+    return;
   }
 
-  view25D.lat = Math.max(-view25D.maxLatOffset, Math.min(view25D.maxLatOffset, view25D.lat));
-  const phi = THREE.MathUtils.degToRad(90 - view25D.lat);
-  const theta = THREE.MathUtils.degToRad(view25D.lon);
+  // Полный 360°-режим для 10-й тестовой комнаты
+  if (camera.fov !== 68) {
+    camera.fov = 68;
+    camera.updateProjectionMatrix();
+  }
+
+  if (view360.isDragging) {
+    const k = 1 - Math.pow(1 - 0.35, dt);
+    view360.lon += (view360.targetLon - view360.lon) * k;
+    view360.lat += (view360.targetLat - view360.lat) * k;
+  } else {
+    if (Math.abs(view360.velX) > 0.005 || Math.abs(view360.velY) > 0.005) {
+      view360.targetLon -= view360.velX * 6.5 * dt;
+      view360.targetLat += view360.velY * 5.0 * dt;
+      clamp360Angles();
+      view360.velX *= Math.pow(0.87, dt);
+      view360.velY *= Math.pow(0.87, dt);
+    }
+    const k = 1 - Math.pow(1 - 0.16, dt);
+    view360.lon += (view360.targetLon - view360.lon) * k;
+    view360.lat += (view360.targetLat - view360.lat) * k;
+  }
+
+  view360.lat = Math.max(-view360.maxLatOffset, Math.min(view360.maxLatOffset, view360.lat));
+  const phi = THREE.MathUtils.degToRad(90 - view360.lat);
+  const theta = THREE.MathUtils.degToRad(view360.lon);
   const radius = 28;
-  const targetPt = new THREE.Vector3(
-    camX + radius * Math.sin(phi) * Math.cos(theta),
-    camY + radius * Math.cos(phi),
-    camZ + radius * Math.sin(phi) * Math.sin(theta)
+  camera.position.set(0, 0, 0.1);
+  camera.lookAt(
+    radius * Math.sin(phi) * Math.cos(theta),
+    radius * Math.cos(phi),
+    radius * Math.sin(phi) * Math.sin(theta)
   );
-  camera.position.set(camX, camY, camZ);
-  camera.lookAt(targetPt);
 }
 
 /* ============================================================
-   ОЖИВЛЕНИЕ КОМНАТ: GOD RAYS (ФРЕНЕЛЬ + АДДИТИВНОЕ СМЕШИВАНИЕ),
-   MESHPHYSICALMATERIAL (ПРЕЛОМЛЕНИЕ / IOR) И ПРОЦЕДУРНЫЙ 3D-СЛОЙ
+   GOD RAYS И PRELOADER LENS (ДЛЯ 2.5D КОМНАТ)
 ============================================================ */
 function buildGodRaysRig() {
   const group = new THREE.Group();
@@ -1358,7 +961,6 @@ function buildGodRaysRig() {
 const godRaysRig = buildGodRaysRig();
 scene.add(godRaysRig.group);
 
-// Процедурная текстура ряби/неровности для преломляющей поверхности (MeshPhysicalMaterial)
 function createRefractionNormalCanvas() {
   const c = document.createElement("canvas");
   c.width = 256;
@@ -1405,12 +1007,10 @@ const refractionLensMesh = new THREE.Mesh(new THREE.IcosahedronGeometry(0.95, 2)
 refractionLensMesh.position.set(-2.6, -1.1, 1.55);
 scene.add(refractionLensMesh);
 
-
-
 const proceduralTextureCache = {};
 
 /* ============================================================
-   СОСТОЯНИЕ 2.5D
+   СОСТОЯНИЕ ИГРЫ
 ============================================================ */
 let currentRoomIndex = 0;
 let freeMode = false;
@@ -1421,15 +1021,12 @@ const roomImageDims = {};
 const roomTickFlags = {};
 
 /* ============================================================
-   СИСТЕМА ГАЛЛЮЦИНАЦИЙ (ОКРОВАВЛЕННЫЙ МЕДВЕДЬ В КОМНАТАХ)
-   - Срабатывает в комнатах с hallucinationFileName (Gorechamber_secret2.jpg, Furnace_secret2.jpg и др.)
-   - Случайная пауза между приступами: 60, 75 или 105 секунд
-   - Учащённое сердцебиение + 2–3 вспышки света/тьмы -> подмена на *_secret2.jpg на 10–15 сек -> возврат через 2–3 вспышки
+   СИСТЕМА ГАЛЛЮЦИНАЦИЙ
 ============================================================ */
 const HALLUCINATION_DELAYS_MS = [60000, 75000, 105000];
 const hallucinationState = {
   roomIdx: -1,
-  phase: "idle", // "idle" | "flash_in" | "active" | "flash_out"
+  phase: "idle",
   nextTriggerAt: 0,
   phaseStartedAt: 0,
   holdDurationMs: 12000,
@@ -1472,7 +1069,7 @@ function startHallucinationHeartbeat() {
       return;
     }
     if (audioEngine.enabled) audioEngine.playHeartbeatPulse(1.0);
-  }, 540); // учащённый пульс ~110 уд/мин
+  }, 540);
 }
 
 function triggerHallucinationNow(now = performance.now()) {
@@ -1484,7 +1081,7 @@ function triggerHallucinationNow(now = performance.now()) {
   hallucinationState.roomIdx = currentRoomIndex;
   hallucinationState.phase = "flash_in";
   hallucinationState.phaseStartedAt = now;
-  hallucinationState.holdDurationMs = 10000 + Math.floor(Math.random() * 5001); // 10–15 секунд
+  hallucinationState.holdDurationMs = 10000 + Math.floor(Math.random() * 5001);
   hallucinationState.flashSeqMs = flashCount === 2 ? [0, 150, 320, 490] : [0, 130, 270, 420, 580, 740];
 
   startHallucinationHeartbeat();
@@ -1492,7 +1089,6 @@ function triggerHallucinationNow(now = performance.now()) {
 }
 
 function createHallucinationFallbackTexture(room) {
-  // Резервная процедура на случай, если *_secret2.jpg ещё не загружен в корень репозитория
   const base = roomTextures[room.id] || proceduralTextureCache[room.id];
   const c = document.createElement("canvas");
   c.width = 1600;
@@ -1506,7 +1102,6 @@ function createHallucinationFallbackTexture(room) {
     g.fillRect(0, 0, 1600, 900);
   }
 
-  // Силуэт окровавленного плюшевого медведя на полу в центре-слева
   const bx = 680, by = 690;
   const vig = g.createRadialGradient(bx, by, 20, bx, by, 280);
   vig.addColorStop(0, "rgba(65, 10, 8, 0.42)");
@@ -1519,16 +1114,15 @@ function createHallucinationFallbackTexture(room) {
   g.beginPath(); g.arc(bx - 6, by - 62, 46, 0, Math.PI * 2); g.fill();
   g.beginPath(); g.arc(bx - 42, by - 96, 17, 0, Math.PI * 2); g.fill();
   g.beginPath(); g.arc(bx + 30, by - 94, 17, 0, Math.PI * 2); g.fill();
-  // Лапы
   g.beginPath(); g.ellipse(bx - 56, by + 18, 22, 34, 0.5, 0, Math.PI * 2); g.fill();
   g.beginPath(); g.ellipse(bx + 54, by + 22, 22, 34, -0.45, 0, Math.PI * 2); g.fill();
   g.beginPath(); g.ellipse(bx - 36, by + 84, 24, 30, -0.3, 0, Math.PI * 2); g.fill();
   g.beginPath(); g.ellipse(bx + 42, by + 82, 24, 30, 0.35, 0, Math.PI * 2); g.fill();
-  // Пятна крови на морде и груди
+
   g.fillStyle = "rgba(115, 10, 10, 0.86)";
   g.beginPath(); g.ellipse(bx - 4, by - 36, 26, 20, 0.1, 0, Math.PI * 2); g.fill();
   g.beginPath(); g.ellipse(bx + 4, by + 12, 32, 36, -0.1, 0, Math.PI * 2); g.fill();
-  // Пустые тёмные глаза
+
   g.fillStyle = "#060505";
   g.beginPath(); g.arc(bx - 20, by - 66, 7, 0, Math.PI * 2); g.fill();
   g.beginPath(); g.arc(bx + 10, by - 64, 7, 0, Math.PI * 2); g.fill();
@@ -1574,7 +1168,6 @@ function updateHallucinationSystem(time) {
     }
     hallucinationState.flashAlpha = activePulse ? 0.92 : 0.0;
 
-    // На пике второй вспышки незаметно подменяем кадр комнаты на *_secret2.jpg
     if (elapsed >= (seq[2] || 260) && !hallucinationState.swappedToAlt) {
       hallucinationState.swappedToAlt = true;
       applyRoomTexture(currentRoomIndex, true);
@@ -1607,7 +1200,6 @@ function updateHallucinationSystem(time) {
     }
     hallucinationState.flashAlpha = activePulse ? 0.92 : 0.0;
 
-    // На второй вспышке возвращаем исходный кадр *_secret1.jpg
     if (elapsed >= (seq[2] || 260) && hallucinationState.swappedToAlt) {
       hallucinationState.swappedToAlt = false;
       applyRoomTexture(currentRoomIndex, false);
@@ -1626,7 +1218,8 @@ function updateHallucinationSystem(time) {
 const pointer = {
   x: window.innerWidth * 0.5, y: window.innerHeight * 0.5,
   targetX: window.innerWidth * 0.5, targetY: window.innerHeight * 0.5,
-  normX: 0, normY: 0
+  normX: 0, normY: 0,
+  isTouchInput: false
 };
 const transition = { active: false, phase: "none", progress: 0, targetRoom: 0, focusX: 0.5, focusY: 0.5 };
 const entityState = { visible: false, opacity: 0, targetOpacity: 0, evading: false, timer: 0, spot: { x: 0.59, y: 0.52, scale: 1.0 } };
@@ -1746,7 +1339,7 @@ function resetProgress() {
 }
 
 /* ============================================================
-   ФОНАРЬ 2D
+   ФОНАРЬ 2D (ШИРОКИЙ AAA-ЛУЧ + ПЕРИФЕРИЙНАЯ ВИДИМОСТЬ)
 ============================================================ */
 let flashlightSprite = null;
 let flashlightSpriteRad = 0;
@@ -1758,36 +1351,32 @@ function ensureFlashlightSprite() {
   const c = document.createElement("canvas");
   c.width = c.height = size;
   const g = c.getContext("2d");
-  const grad = g.createRadialGradient(rad, rad, rad * 0.08, rad, rad, rad);
+  // Широкое яркое ядро + плавный ореол, чтобы не приходилось водить лучом вслепую
+  const grad = g.createRadialGradient(rad, rad, rad * 0.16, rad, rad, rad);
   grad.addColorStop(0, "rgba(0, 0, 0, 1)");
-  grad.addColorStop(0.48, "rgba(0, 0, 0, 0.55)");
+  grad.addColorStop(0.55, "rgba(0, 0, 0, 0.78)");
+  grad.addColorStop(0.82, "rgba(0, 0, 0, 0.34)");
   grad.addColorStop(1, "rgba(0, 0, 0, 0)");
   g.fillStyle = grad;
   g.fillRect(0, 0, size, size);
   flashlightSprite = c;
 }
-function projectRoomNormToScreen(nx, ny, w, h) {
-  // Полный 360°-охват по азимуту: nx=0.5 — центр прямо по курсу (lon=180°), шаг по горизонтали — до ±135°
-  const yawRad = (0.5 - nx) * THREE.MathUtils.degToRad(270);
-  const pitchRad = (0.5 - ny) * THREE.MathUtils.degToRad(95);
-  const r = 18.0;
-  const dirX = -Math.cos(pitchRad) * Math.cos(yawRad);
-  const dirY = Math.sin(pitchRad);
-  const dirZ = -Math.cos(pitchRad) * Math.sin(yawRad);
 
-  const worldPt = new THREE.Vector3(
-    roomMesh.position.x + dirX * r,
-    roomMesh.position.y + dirY * r,
-    roomMesh.position.z + dirZ * r
-  );
-  worldPt.project(camera);
-  // Скрываем маркеры, ушедшие за спину камеры (z > 1 в NDC)
-  if (worldPt.z > 1) {
-    return { x: -9999, y: -9999 };
+// Проекция маркеров: для комнат 1–9 (2.5D) и для 10-й комнаты (360° UV)
+function getMarkerScreenPos(markerObj, w, h, t2D) {
+  const room = ROOMS[currentRoomIndex];
+  if (room && room.is360EditorRoom && typeof markerObj.u === "number") {
+    const worldPt = uvToSpherePos360(markerObj.u, markerObj.v, 25.5);
+    worldPt.project(camera);
+    if (worldPt.z > 1) return { x: -9999, y: -9999 };
+    return {
+      x: (worldPt.x * 0.5 + 0.5) * w,
+      y: (-worldPt.y * 0.5 + 0.5) * h
+    };
   }
   return {
-    x: (worldPt.x * 0.5 + 0.5) * w,
-    y: (-worldPt.y * 0.5 + 0.5) * h
+    x: t2D.offsetX + markerObj.x * t2D.scaleX,
+    y: t2D.offsetY + markerObj.y * t2D.scaleY
   };
 }
 
@@ -1812,7 +1401,7 @@ function resizeAll() {
   fxCanvas.style.height = window.innerHeight + "px";
   fxCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ensureFlashlightSprite();
-  }
+}
 window.addEventListener("resize", resizeAll);
 resizeAll();
 
@@ -1834,7 +1423,6 @@ function createTextureFromImageSource(img, roomIdx) {
 }
 
 function drawFallbackHint(g, room) {
-  if (room.isProceduralRoom) return;
   const hints = {
     0: { text: "F = 442 Hz", x: 0.14, y: 0.36, size: 32, rot: -0.05, sub: "несущая частота плёнки" },
     1: { text: "I · IV · VII · IX", x: 0.68, y: 0.34, size: 26, rot: 0.04, sub: "порядок дисков" },
@@ -1844,7 +1432,8 @@ function drawFallbackHint(g, room) {
     5: { text: "НЕ СМОТРИ", x: 0.72, y: 0.52, size: 30, rot: -0.02, sub: "выцарапано над водой" },
     6: { text: "618", x: 0.44, y: 0.76, size: 36, rot: -0.04, sub: "процарапано в золе" },
     7: { text: "I - III - IX - X", x: 0.40, y: 0.72, size: 28, rot: 0.0, sub: "выбито на плите пола" },
-    8: { text: "9 / 4", x: 0.62, y: 0.14, size: 28, rot: 0.03, sub: "в проломе потолка" }
+    8: { text: "9 / 4", x: 0.62, y: 0.14, size: 28, rot: 0.03, sub: "в проломе потолка" },
+    9: { text: "4 - 0 - 9", x: 0.45, y: 0.45, size: 30, rot: -0.02, sub: "код релейного щитка" }
   };
   const h = hints[room.id];
   if (!h) return;
@@ -1870,7 +1459,7 @@ function createProceduralTexture(room) {
   grad.addColorStop(0, room.palette.wall);
   grad.addColorStop(1, "#020302");
   g.fillStyle = grad; g.fillRect(0, 0, 1280, 720);
-  const px = 1280 * room.portal.x, py = 720 * room.portal.y;
+  const px = 1280 * (room.portal.x || 0.5), py = 720 * (room.portal.y || 0.5);
   g.strokeStyle = "rgba(120, 138, 115, 0.18)"; g.lineWidth = 2;
   g.beginPath();
   g.moveTo(0, 0); g.lineTo(px - 110, py - 150);
@@ -1881,7 +1470,6 @@ function createProceduralTexture(room) {
   g.fillStyle = "#010201";
   g.fillRect(px - 110, py - 150, 220, 300);
   if (room.id === 0) {
-    // Отрисовываем мокрые тапочки у порога и отметку +42 на полу в процедурной текстуре
     const sx = 1280 * 0.25, sy = 720 * 0.72;
     g.fillStyle = "rgba(8, 12, 10, 0.75)";
     g.beginPath(); g.ellipse(sx, sy + 14, 58, 22, 0.08, 0, Math.PI * 2); g.fill();
@@ -1905,95 +1493,12 @@ function createProceduralTexture(room) {
   return tex;
 }
 
-function generateRandomHorrorRoom(roomObj) {
-  const arch = PROCEDURAL_ARCHETYPES[Math.floor(Math.random() * PROCEDURAL_ARCHETYPES.length)];
-  const d1 = Math.floor(Math.random() * 10), d2 = Math.floor(Math.random() * 10), d3 = Math.floor(Math.random() * 10);
-  roomObj.targetPin = [d1, d2, d3];
-  roomObj.solved = false;
-  roomObj.title = arch.name; roomObj.desc = arch.desc;
-  const portalX = 0.68 + Math.random() * 0.18;
-  const portalY = 0.44 + Math.random() * 0.10;
-  const artX = 0.22 + Math.random() * 0.24;
-  const artY = 0.48 + Math.random() * 0.14;
-  roomObj.portal = { x: portalX, y: portalY, label: "Выход на поверхность (В начало)" };
-  roomObj.artifact = { x: artX, y: artY, label: "Ржавый релейный шкаф" };
-  roomObj.shadowSpots = [
-    { x: Math.min(0.88, portalX - 0.04), y: portalY + 0.04, scale: 1.04 },
-    { x: 0.16 + Math.random() * 0.65, y: 0.54, scale: 0.90 }
-  ];
-  const c = document.createElement("canvas");
-  c.width = 1600; c.height = 900;
-  const g = c.getContext("2d");
-  const bg = g.createRadialGradient(800, 380, 60, 800, 450, 980);
-  bg.addColorStop(0, arch.bgTop); bg.addColorStop(0.65, arch.bgBot); bg.addColorStop(1, "#010201");
-  g.fillStyle = bg; g.fillRect(0, 0, 1600, 900);
-  const px = portalX * 1600, py = portalY * 900;
-  const pw = 230 + Math.random() * 60, ph = 340 + Math.random() * 60;
-  g.strokeStyle = "rgba(130, 145, 125, 0.16)"; g.lineWidth = 2;
-  g.beginPath();
-  g.moveTo(0, 0); g.lineTo(px - pw * 0.5, py - ph * 0.5);
-  g.moveTo(1600, 0); g.lineTo(px + pw * 0.5, py - ph * 0.5);
-  g.moveTo(0, 900); g.lineTo(px - pw * 0.5, py + ph * 0.5);
-  g.moveTo(1600, 900); g.lineTo(px + pw * 0.5, py + ph * 0.5);
-  g.stroke();
-  const ribs = 4 + Math.floor(Math.random() * 5);
-  for (let i = 1; i <= ribs; i++) {
-    const t = i / (ribs + 1);
-    const xL = (px - pw * 0.5) * t, xR = 1600 - (1600 - (px + pw * 0.5)) * t;
-    const yT = (py - ph * 0.5) * t, yB = 900 - (900 - (py + ph * 0.5)) * t;
-    g.strokeStyle = "rgba(95, 110, 95, 0.14)"; g.lineWidth = 3;
-    g.strokeRect(xL, yT, xR - xL, yB - yT);
-  }
-  g.fillStyle = "#010201"; g.fillRect(px - pw * 0.5, py - ph * 0.5, pw, ph);
-  g.strokeStyle = arch.rust; g.lineWidth = 4;
-  g.strokeRect(px - pw * 0.5, py - ph * 0.5, pw, ph);
-  for (let i = 0; i < 65; i++) {
-    const mx = Math.random() * 1600, my = Math.random() * 900, mr = 25 + Math.random() * 110;
-    const mg = g.createRadialGradient(mx, my, 4, mx, my, mr);
-    mg.addColorStop(0, i % 3 === 0 ? "rgba(65, 22, 14, 0.34)" : "rgba(10, 14, 10, 0.52)");
-    mg.addColorStop(1, "rgba(0,0,0,0)");
-    g.fillStyle = mg; g.beginPath(); g.arc(mx, my, mr, 0, Math.PI * 2); g.fill();
-  }
-  const cables = 3 + Math.floor(Math.random() * 4);
-  for (let i = 0; i < cables; i++) {
-    const cx = 180 + Math.random() * 1240, len = 140 + Math.random() * 340;
-    g.strokeStyle = "rgba(25, 28, 25, 0.85)"; g.lineWidth = 2 + Math.random() * 3;
-    g.beginPath(); g.moveTo(cx, 0);
-    g.quadraticCurveTo(cx + (Math.random() - 0.5) * 80, len * 0.5, cx + (Math.random() - 0.5) * 40, len);
-    g.stroke();
-  }
-  const ax = artX * 1600, ay = artY * 900;
-  g.fillStyle = "#171412"; g.fillRect(ax - 75, ay - 95, 150, 190);
-  g.strokeStyle = "#4d3c30"; g.lineWidth = 3; g.strokeRect(ax - 75, ay - 95, 150, 190);
-  const clueSpots = [
-    { x: 0.16, y: 0.34 }, { x: 0.52, y: 0.30 }, { x: 0.56, y: 0.72 }, { x: 0.22, y: 0.76 }
-  ];
-  const chosen = clueSpots[Math.floor(Math.random() * clueSpots.length)];
-  const codeText = `${d1} - ${d2} - ${d3}`;
-  g.save();
-  g.translate(chosen.x * 1600, chosen.y * 900);
-  g.rotate((Math.random() - 0.5) * 0.18);
-  g.font = "bold 34px 'Courier New', monospace";
-  g.fillStyle = "rgba(12, 10, 9, 0.82)"; g.fillText(codeText, 3, 3);
-  g.fillStyle = "rgba(205, 190, 165, 0.58)"; g.fillText(codeText, 0, 0);
-  g.strokeStyle = "rgba(200, 185, 160, 0.32)"; g.lineWidth = 1.4;
-  g.beginPath(); g.moveTo(-18, -32); g.lineTo(145, -26);
-  g.moveTo(-12, 16); g.lineTo(138, 20); g.stroke();
-  g.restore();
-  const tex = new THREE.CanvasTexture(c);
-  tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
-  tex.generateMipmaps = false; tex.needsUpdate = true;
-  const anomIdx = ROOMS.length - 1;
-  if (roomTextures[anomIdx]) roomTextures[anomIdx].dispose();
-  roomTextures[anomIdx] = tex;
-  roomImageDims[anomIdx] = { w: 1600, h: 900 };
-}
-
-
 /* ============================================================
-   ИНТЕРАКТИВНЫЕ 3D-СЛОИ 360°-РЕДАКТОРА (БАЗОВЫЙ СЛОЙ + ИСКРЫ)
+   ИНТЕРАКТИВНЫЕ 3D-СЛОИ 360°-РЕДАКТОРА (ДЛЯ ТЕСТОВОЙ 10-Й КОМНАТЫ)
 ============================================================ */
 const editor360ActiveObjects = [];
+const editor360Raycaster = new THREE.Raycaster();
+const editor360Ndc = new THREE.Vector2();
 
 function uvToSpherePos360(u, v, radius = 25.5) {
   const phi = v * Math.PI;
@@ -2021,24 +1526,47 @@ function clearEditor360Objects() {
   }
 }
 
+function triggerEditor360Object(item) {
+  if (!item || !item.cfg) return;
+  if (item.cfg.type === "video" && item.video) {
+    item.mat.opacity = 1;
+    item.video.currentTime = 0;
+    const p = item.video.play();
+    if (p && typeof p.catch === "function") p.catch(() => {});
+    if (audioEngine.enabled) {
+      if (item.cfg.id === "sparks_panel") audioEngine.playElectricSparkSound();
+      else audioEngine.playTick();
+    }
+  } else if (item.cfg.type === "image") {
+    item.mat.opacity = item.mat.opacity > 0.5 ? 0 : 1;
+    if (audioEngine.enabled) audioEngine.playTick();
+  }
+}
+
 function mountEditor360ObjectsForRoom(room) {
   clearEditor360Objects();
   if (!room || !room.is360EditorRoom) return;
 
-  if (room.startCamera) {
-    view25D.lon = view25D.targetLon = room.startCamera.lon;
-    view25D.lat = view25D.targetLat = room.startCamera.lat;
-    view25D.velX = 0;
-    view25D.velY = 0;
-  }
+  const startLon = room.startCamera ? room.startCamera.lon : 145;
+  const startLat = room.startCamera ? room.startCamera.lat : 5;
+  view360.lon = view360.targetLon = startLon;
+  view360.lat = view360.targetLat = startLat;
+  view360.velX = 0;
+  view360.velY = 0;
+
+  // При входе в 360° комнату ставим луч фонаря в центр экрана, чтобы свайп не мешал обзору
+  pointer.x = pointer.targetX = window.innerWidth * 0.5;
+  pointer.y = pointer.targetY = window.innerHeight * 0.5;
 
   const list = Array.isArray(room.editorInteractives) ? room.editorInteractives : [];
-  // Масштабируем размеры редактора (радиус 460 -> радиус 25.5)
+  if (list.length === 0) return;
+
   const radiusScale = 25.5 / 460;
 
-  list.forEach(cfg => {
+  list.forEach((cfg, idx) => {
+    const radius = 25.5 - idx * 0.05;
     const holder = new THREE.Group();
-    holder.position.copy(uvToSpherePos360(cfg.position.u, cfg.position.v, 25.5));
+    holder.position.copy(uvToSpherePos360(cfg.position.u, cfg.position.v, radius));
     holder.lookAt(0, 0, 0);
     holder.rotateZ(THREE.MathUtils.degToRad(cfg.rotationDeg || 0));
     const s = (cfg.scale || 1) * radiusScale;
@@ -2056,7 +1584,11 @@ function mountEditor360ObjectsForRoom(room) {
       new THREE.PlaneGeometry(cfg.size.width, cfg.size.height),
       mat
     );
-    holder.add(mesh);
+    const hitZone = new THREE.Mesh(
+      new THREE.PlaneGeometry(cfg.size.width * 1.35, cfg.size.height * 1.35),
+      new THREE.MeshBasicMaterial({ visible: false })
+    );
+    holder.add(mesh, hitZone);
 
     let video = null;
     if (cfg.type === "video" && cfg.src) {
@@ -2094,13 +1626,12 @@ function mountEditor360ObjectsForRoom(room) {
       }
     }
 
-    editor360ActiveObjects.push({ cfg, holder, mat, mesh, video });
+    editor360ActiveObjects.push({ cfg, holder, mat, mesh, hitZone, video });
   });
 }
 
 function applyRoomTexture(idx, useHallucination = false) {
   const room = ROOMS[idx];
-  if (room.isProceduralRoom && !roomTextures[idx]) generateRandomHorrorRoom(room);
   if (!useHallucination) mountEditor360ObjectsForRoom(room);
 
   if (room.isAnimatedGif && gifRoomLayer) {
@@ -2128,11 +1659,9 @@ function applyRoomTexture(idx, useHallucination = false) {
 
 function tryAutoLoadImages() {
   ROOMS.forEach((room, idx) => {
-    if (room.isProceduralRoom) return;
     const img = new Image();
     img.onload = () => {
       createTextureFromImageSource(img, idx);
-      // Если *_secret2.jpg не загружен из файла, пересобираем fallback поверх реального кадра комнаты
       if (room.hallucinationFileName && !roomHallucinationTextures[idx]._fromRealFile) {
         roomHallucinationTextures[idx] = createHallucinationFallbackTexture(room);
       }
@@ -2180,7 +1709,6 @@ function createOrganicShadowSpriteTexture() {
   const g = c.getContext("2d");
   g.clearRect(0, 0, 512, 512);
 
-  // Мягкое дымчатое тело-силуэт с вытянутыми плечами и склонившейся головой
   const bodyGrad = g.createRadialGradient(256, 275, 18, 256, 275, 195);
   bodyGrad.addColorStop(0.0, "rgba(2, 3, 2, 0.96)");
   bodyGrad.addColorStop(0.55, "rgba(4, 6, 5, 0.72)");
@@ -2190,7 +1718,6 @@ function createOrganicShadowSpriteTexture() {
   g.ellipse(256, 305, 92, 165, 0.04, 0, Math.PI * 2);
   g.fill();
 
-  // Склонённая голова в дымке
   const headGrad = g.createRadialGradient(268, 138, 8, 268, 138, 72);
   headGrad.addColorStop(0.0, "rgba(1, 2, 1, 0.98)");
   headGrad.addColorStop(0.6, "rgba(4, 6, 5, 0.65)");
@@ -2200,7 +1727,6 @@ function createOrganicShadowSpriteTexture() {
   g.ellipse(268, 138, 44, 58, -0.24, 0, Math.PI * 2);
   g.fill();
 
-  // Длинные размытые щупальца/руки, растворяющиеся в темноте
   for (let i = 0; i < 4; i++) {
     const side = i < 2 ? -1 : 1;
     const spread = (i % 2 === 0 ? 1 : 1.35) * side;
@@ -2236,7 +1762,6 @@ function build3DShadowEntity() {
   const plane = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 4.2), shadowMat);
   group.add(plane);
 
-  // Слабый тусклый отблеск в глубине глазниц
   const eyeMat = new THREE.MeshBasicMaterial({
     color: 0xc9b89c,
     transparent: true,
@@ -2267,21 +1792,30 @@ let lastFrameTime = performance.now();
 
 function updateWorldPlaneLayout() {
   const dist = Math.max(1, camera.position.z);
-  const vFov = THREE.MathUtils.degToRad(camera.fov);
+  const vFov = THREE.MathUtils.degToRad(42);
   const viewH = 2 * Math.tan(vFov / 2) * dist;
   const viewW = viewH * camera.aspect;
-  roomMesh.scale.set(1, 1, 1);
-  layout.planeW = viewW * 1.12;
-  layout.planeH = viewH * 1.12;
+  const dims = roomImageDims[currentRoomIndex];
+  const imgAspect = dims ? (dims.w / dims.h) : (16 / 9);
+  const overscan = 1.12;
+  let planeW, planeH;
+  if (imgAspect >= camera.aspect) {
+    planeH = viewH * overscan;
+    planeW = planeH * imgAspect;
+  } else {
+    planeW = viewW * overscan;
+    planeH = planeW / imgAspect;
+  }
+  roomPlaneMesh.scale.set(planeW, planeH, 1);
+  layout.planeW = planeW;
+  layout.planeH = planeH;
   layout.viewW = viewW;
   layout.viewH = viewH;
   return layout;
 }
 
-
 /* ============================================================
    ФОТОРЕАЛИСТИЧНЫЙ ТУМАН ИЗ УГЛОВ КОМНАТ
-   Рандомно выползает из углов экрана, густеет и плавно растворяется
 ============================================================ */
 const cornerFogCanvas = document.getElementById("corner-fog-canvas");
 const cornerFogCtx = cornerFogCanvas ? cornerFogCanvas.getContext("2d") : null;
@@ -2297,7 +1831,7 @@ const cornerFogPlumes = CORNER_ANCHORS.map((anc, idx) => ({
   id: idx,
   anchorX: anc.x,
   anchorY: anc.y,
-  state: "dormant", // "dormant" | "creep_in" | "hold" | "dissolve"
+  state: "dormant",
   stateStartedAt: performance.now() + 2500 + idx * 3200,
   stateDurMs: 6000,
   density: 0.0,
@@ -2342,7 +1876,6 @@ function updateAndRenderCornerFog(now) {
     if (p.state === "dormant") {
       p.density = 0;
       if (now >= p.stateStartedAt) {
-        // Реже запускаем туман (16–32 сек покоя), чтобы не перегружать кадр
         p.state = "creep_in";
         p.stateStartedAt = now;
         p.stateDurMs = 9500 + Math.floor(Math.random() * 6500);
@@ -2379,7 +1912,6 @@ function updateAndRenderCornerFog(now) {
 
     if (p.density <= 0.004) continue;
 
-    // Туман стелется горизонтально вдоль низа/пола и постепенно заполняет углы
     const fromRight = p.anchorX > 0.5;
     const fromBottom = p.anchorY > 0.5;
     const horizDir = fromRight ? -1 : 1;
@@ -2432,6 +1964,14 @@ function animate(time) {
 
   const w = window.innerWidth, h = window.innerHeight;
   const room = ROOMS[currentRoomIndex];
+  const is360 = Boolean(room && room.is360EditorRoom);
+
+  // В 360°-комнате во время перетаскивания луч фонаря плавно центрируется по взгляду,
+  // чтобы не приходилось одновременно крутить камеру и ловить лучом края экрана
+  if (is360 && (view360.isDragging || pointer.isTouchInput)) {
+    pointer.targetX += (w * 0.5 - pointer.targetX) * 0.08 * dt;
+    pointer.targetY += (h * 0.48 - pointer.targetY) * 0.08 * dt;
+  }
 
   const lerpFactor = 1 - Math.pow(1 - POINTER_LERP, dt);
   pointer.x += (pointer.targetX - pointer.x) * lerpFactor;
@@ -2469,11 +2009,10 @@ function animate(time) {
         stopHallucinationHeartbeat();
         hallucinationState.swappedToAlt = false;
         scheduleNextHallucination(currentRoomIndex);
-        if (ROOMS[currentRoomIndex].isProceduralRoom) generateRandomHorrorRoom(ROOMS[currentRoomIndex]);
         applyRoomTexture(currentRoomIndex, false);
         updateRoomHUD();
         syncTapeVideo();
-    editor360ActiveObjects.forEach(o => { if (o.video && o.cfg.loop && o.video.paused) o.video.play().catch(() => {}); });
+        editor360ActiveObjects.forEach(o => { if (o.video && o.cfg.loop && o.video.paused) o.video.play().catch(() => {}); });
         if (audioEngine.ctx) audioEngine.updateCavernReverb(ROOMS[currentRoomIndex].reverbDecay);
         saveProgress();
         transition.phase = "out";
@@ -2487,7 +2026,7 @@ function animate(time) {
     }
   }
 
-  update25DCameraLook(time, dt, camX, camY, camZ);
+  updateCameraForActiveMode(time, dt, camX, camY, camZ);
 
   if (gifRoomLayer && gifRoomLayer.classList.contains("visible") && !REDUCE_MOTION) {
     gifRoomLayer.style.transform = `scale(1.06) translate(${(-pointer.normX * 14).toFixed(1)}px, ${(-pointer.normY * 10).toFixed(1)}px)`;
@@ -2497,9 +2036,9 @@ function animate(time) {
   const lightWorldY = -pointer.normY * (viewH * 0.5);
   spotLight.position.set(camX, camY, camZ);
   spotLight.target.position.set(lightWorldX, lightWorldY, 0);
-  spotLight.intensity = flashlightOn ? 2.8 : 0.35;
+  spotLight.intensity = flashlightOn ? 3.0 : 0.45;
 
-  if (entityState.visible) {
+  if (entityState.visible && !is360) {
     const ex = (entityState.spot.x - 0.5) * planeW;
     const ey = (0.5 - entityState.spot.y) * planeH;
     const esc = (entityState.spot.scale || 1.0) * (planeH * 0.16);
@@ -2534,16 +2073,19 @@ function animate(time) {
   }
 
   const tSec = time * 0.001;
-  godRaysRig.rayMat.uniforms.uTime.value = tSec;
-  godRaysRig.rayMat.uniforms.uIntensity.value = flashlightOn
-    ? (panicState.active ? 0.38 : 0.22)
-    : 0.07;
+  godRaysRig.group.visible = !is360;
+  refractionLensMesh.visible = !is360;
+  if (!is360) {
+    godRaysRig.rayMat.uniforms.uTime.value = tSec;
+    godRaysRig.rayMat.uniforms.uIntensity.value = flashlightOn
+      ? (panicState.active ? 0.38 : 0.22)
+      : 0.07;
 
-  refractionLensMesh.rotation.x = tSec * 0.22;
-  refractionLensMesh.rotation.y = tSec * 0.31;
-  refractionLensMesh.position.x = -2.6 + Math.sin(tSec * 0.45) * 0.25;
-  refractionLensMesh.position.y = -1.1 + Math.cos(tSec * 0.38) * 0.18;
-
+    refractionLensMesh.rotation.x = tSec * 0.22;
+    refractionLensMesh.rotation.y = tSec * 0.31;
+    refractionLensMesh.position.x = -2.6 + Math.sin(tSec * 0.45) * 0.25;
+    refractionLensMesh.position.y = -1.1 + Math.cos(tSec * 0.38) * 0.18;
+  }
 
   updateHallucinationSystem(time);
   updateDiscoveryTicks(w, h);
@@ -2558,17 +2100,17 @@ function updateDiscoveryTicks(w, h) {
   const t = getOverlayTransform(w, h);
   if (!roomTickFlags[currentRoomIndex]) roomTickFlags[currentRoomIndex] = {};
   const flags = roomTickFlags[currentRoomIndex];
-  const artX = t.offsetX + room.artifact.x * t.scaleX;
-  const artY = t.offsetY + room.artifact.y * t.scaleY;
-  if (!flags.artifact && Math.hypot(pointer.x - artX, pointer.y - artY) < 100) { flags.artifact = true; audioEngine.playTick(); }
-  const portX = t.offsetX + room.portal.x * t.scaleX;
-  const portY = t.offsetY + room.portal.y * t.scaleY;
-  if (!flags.portal && Math.hypot(pointer.x - portX, pointer.y - portY) < 100) { flags.portal = true; audioEngine.playTick(); }
+  const artPos = getMarkerScreenPos(room.artifact, w, h, t);
+  if (!flags.artifact && Math.hypot(pointer.x - artPos.x, pointer.y - artPos.y) < 100) { flags.artifact = true; audioEngine.playTick(); }
+  const portPos = getMarkerScreenPos(room.portal, w, h, t);
+  if (!flags.portal && Math.hypot(pointer.x - portPos.x, pointer.y - portPos.y) < 100) { flags.portal = true; audioEngine.playTick(); }
 }
 
 function render2DOverlay(w, h, room, blackFade, time, dt) {
   fxCtx.clearRect(0, 0, w, h);
   const t = getOverlayTransform(w, h);
+  const is360 = Boolean(room && room.is360EditorRoom);
+
   dustParticles.forEach(p => {
     p.x += p.vx * dt * 0.65;
     p.y += p.vy * dt * 0.65;
@@ -2578,23 +2120,30 @@ function render2DOverlay(w, h, room, blackFade, time, dt) {
     const px = p.x * w - pointer.normX * 18 * p.z;
     const py = p.y * h - pointer.normY * 12 * p.z;
     const dist = Math.hypot(px - pointer.x, py - pointer.y);
-    const boost = (flashlightOn && dist < 250) ? (1 - dist / 250) * 0.65 : 0;
+    const boost = (flashlightOn && dist < 290) ? (1 - dist / 290) * 0.65 : 0;
     const rTiny = Math.max(0.8, p.size * 0.62 * p.z);
     fxCtx.fillStyle = `rgba(206, 216, 198, ${Math.min(0.85, 0.18 + boost)})`;
     fxCtx.beginPath(); fxCtx.arc(px, py, rTiny, 0, Math.PI * 2); fxCtx.fill();
   });
-  const artPos = projectRoomNormToScreen(room.artifact.x, room.artifact.y, w, h);
-  drawMarker2D(artPos.x, artPos.y, room.artifact.label, room.solved ? "#528c63" : "#bd7d3b", time);
+
+  const artPos = getMarkerScreenPos(room.artifact, w, h, t);
+  if (artPos.x > -100) drawMarker2D(artPos.x, artPos.y, room.artifact.label, room.solved ? "#528c63" : "#bd7d3b", time);
+
   if (room.clueProp) {
-    const cpPos = projectRoomNormToScreen(room.clueProp.x, room.clueProp.y, w, h);
-    drawMarker2D(cpPos.x, cpPos.y, room.clueProp.label, "#8c7d65", time);
+    const cpPos = getMarkerScreenPos(room.clueProp, w, h, t);
+    if (cpPos.x > -100) drawMarker2D(cpPos.x, cpPos.y, room.clueProp.label, "#8c7d65", time);
   }
+
   const canPass = room.solved || freeMode;
-  const portPos = projectRoomNormToScreen(room.portal.x, room.portal.y, w, h);
-  drawMarker2D(portPos.x, portPos.y, room.portal.label, canPass ? "#528c63" : "#8f3222", time);
+  const portPos = getMarkerScreenPos(room.portal, w, h, t);
+  if (portPos.x > -100) drawMarker2D(portPos.x, portPos.y, room.portal.label, canPass ? "#528c63" : "#8f3222", time);
+
+  // Мягкое AAA-затемнение: в 360°-комнате периферия остаётся полупрозрачной (0.68),
+  // чтобы свайпать и ориентироваться в пространстве было легко
+  const darknessAlpha = is360 ? 0.68 : 0.86;
   if (flashlightOn) {
-    const flicker = REDUCE_MOTION ? 1.0 : (Math.sin(time * 0.041) * Math.sin(time * 0.017) > 0.96 ? 0.72 : 1.0);
-    fxCtx.fillStyle = "rgba(1, 2, 1, 0.94)";
+    const flicker = REDUCE_MOTION ? 1.0 : (Math.sin(time * 0.041) * Math.sin(time * 0.017) > 0.96 ? 0.82 : 1.0);
+    fxCtx.fillStyle = `rgba(1, 2, 1, ${darknessAlpha})`;
     fxCtx.fillRect(0, 0, w, h);
     if (!flashlightSprite) ensureFlashlightSprite();
     const s = flashlightSpriteRad * flicker;
@@ -2602,9 +2151,10 @@ function render2DOverlay(w, h, room, blackFade, time, dt) {
     fxCtx.drawImage(flashlightSprite, pointer.x - s, pointer.y - s, s * 2, s * 2);
     fxCtx.globalCompositeOperation = "source-over";
   } else {
-    fxCtx.fillStyle = "rgba(1, 2, 1, 0.91)";
+    fxCtx.fillStyle = `rgba(1, 2, 1, ${is360 ? 0.62 : 0.85})`;
     fxCtx.fillRect(0, 0, w, h);
   }
+
   if (panicState.active) {
     const pulse = 0.5 + 0.5 * Math.sin(time * 0.019);
     const alarmAlpha = (REDUCE_MOTION ? 0.12 : 0.28 * pulse) * panicState.intensity;
@@ -2614,7 +2164,6 @@ function render2DOverlay(w, h, room, blackFade, time, dt) {
     fxCtx.fillStyle = alarmGrad; fxCtx.fillRect(0, 0, w, h);
   }
   if (hallucinationState.flashAlpha > 0.01) {
-    // Резкая белёсо-холодная вспышка галлюцинации с красной виньеткой
     fxCtx.fillStyle = `rgba(215, 224, 212, ${(hallucinationState.flashAlpha * 0.72).toFixed(3)})`;
     fxCtx.fillRect(0, 0, w, h);
     const hGrad = fxCtx.createRadialGradient(w * 0.5, h * 0.5, Math.min(w, h) * 0.12, w * 0.5, h * 0.5, Math.max(w, h) * 0.75);
@@ -2647,15 +2196,15 @@ function drawMarker2D(x, y, label, color, time) {
 }
 
 /* ============================================================
-   HUD 2.5D
+   HUD
 ============================================================ */
 const depthNav = document.getElementById("depth-nav");
 function buildDepthNav() {
   depthNav.innerHTML = "";
   ROOMS.forEach((r, idx) => {
     const node = document.createElement("div");
-    const lockedSecret = (r.isSecret || r.isProceduralRoom) && !areMainRoomsCompleted() && !freeMode;
-    node.className = `depth-node ${idx === currentRoomIndex ? "active" : ""} ${r.solved ? "solved" : ""} ${r.isSecret ? "secret" : ""} ${r.isProceduralRoom ? "procedural" : ""} ${lockedSecret ? "locked-secret" : ""}`;
+    const lockedSecret = (r.isSecret || r.is360EditorRoom) && !areMainRoomsCompleted() && !freeMode;
+    node.className = `depth-node ${idx === currentRoomIndex ? "active" : ""} ${r.solved ? "solved" : ""} ${r.isSecret ? "secret" : ""} ${lockedSecret ? "locked-secret" : ""}`;
     node.setAttribute("role", "button"); node.setAttribute("tabindex", "0");
     const numStr = idx < 9 ? `0${idx + 1}` : `${idx + 1}`;
     const shortName = lockedSecret ? "ЗАПЕЧАТАНО" : r.title.split(" ")[0];
@@ -2672,7 +2221,7 @@ function refreshDepthNavState() {
   const mainDone = areMainRoomsCompleted();
   depthNav.querySelectorAll(".depth-node").forEach((node, idx) => {
     const r = ROOMS[idx];
-    const lockedSecret = (r.isSecret || r.isProceduralRoom) && !mainDone && !freeMode;
+    const lockedSecret = (r.isSecret || r.is360EditorRoom) && !mainDone && !freeMode;
     node.classList.toggle("active", idx === currentRoomIndex);
     node.classList.toggle("solved", r.solved);
     node.classList.toggle("locked-secret", lockedSecret);
@@ -2689,8 +2238,6 @@ function updateRoomHUD() {
   document.getElementById("dossier-code").textContent = room.code;
   document.getElementById("dossier-title").textContent = room.title;
   document.getElementById("dossier-text").textContent = room.desc;
-  const regenBtn = document.getElementById("btn-regen-room");
-  if (regenBtn) regenBtn.style.display = room.isProceduralRoom ? "inline-block" : "none";
   const badge = document.getElementById("puzzle-badge");
   if (room.solved || freeMode) {
     badge.textContent = room.solved ? "ЗАМОК ОТКРЫТ" : "СВОБОДНЫЙ ОБХОД";
@@ -2708,8 +2255,7 @@ function attemptRoomTransition(targetIdx) {
   const currentRoom = ROOMS[currentRoomIndex];
   const targetRoom = ROOMS[targetIdx];
 
-  // Секретные комнаты (индексы 5..8) и аномалия (9) открываются только после прохождения первых 5 комнат
-  if ((targetRoom.isSecret || targetRoom.isProceduralRoom) && !areMainRoomsCompleted() && !freeMode) {
+  if ((targetRoom.isSecret || targetRoom.is360EditorRoom) && !areMainRoomsCompleted() && !freeMode) {
     audioEngine.playSubterraneanRumble();
     audioEngine.playWallScratching();
     const badge = document.getElementById("puzzle-badge");
@@ -2735,9 +2281,9 @@ function attemptRoomTransition(targetIdx) {
   transition.targetRoom = targetIdx;
   if (targetIdx < currentRoomIndex) {
     const tr = ROOMS[targetIdx];
-    transition.focusX = tr.portal.x; transition.focusY = tr.portal.y;
+    transition.focusX = tr.portal.x || 0.5; transition.focusY = tr.portal.y || 0.5;
   } else {
-    transition.focusX = currentRoom.portal.x; transition.focusY = currentRoom.portal.y;
+    transition.focusX = currentRoom.portal.x || 0.5; transition.focusY = currentRoom.portal.y || 0.5;
   }
 }
 
@@ -2773,50 +2319,76 @@ document.querySelectorAll(".modal-backdrop").forEach(m => {
 });
 
 /* ============================================================
-   ВВОД 2.5D
+   ВВОД: 2.5D ДЛЯ КОМНАТ 1–9 И 360° ОБЗОР ДЛЯ 10-Й КОМНАТЫ
 ============================================================ */
 glCanvas.addEventListener("pointerdown", (e) => {
-  pointer.targetX = e.clientX; pointer.targetY = e.clientY;
-  view25D.isDragging = true;
-  view25D.downX = e.clientX;
-  view25D.downY = e.clientY;
-  view25D.downLon = view25D.targetLon;
-  view25D.downLat = view25D.targetLat;
-  view25D.lastX = e.clientX;
-  view25D.lastY = e.clientY;
-  view25D.lastTime = performance.now();
-  view25D.velX = 0;
-  view25D.velY = 0;
+  pointer.isTouchInput = (e.pointerType === "touch");
+  // В 2.5D комнатах луч сразу идёт за пальцем/курсором;
+  // в 360° комнате луч плавно светит вперёд по центру взгляда во время перетаскивания
+  if (!ROOMS[currentRoomIndex].is360EditorRoom) {
+    pointer.targetX = e.clientX;
+    pointer.targetY = e.clientY;
+  }
+
+  view360.isDragging = true;
+  view360.downX = e.clientX;
+  view360.downY = e.clientY;
+  view360.downLon = view360.targetLon;
+  view360.downLat = view360.targetLat;
+  view360.lastX = e.clientX;
+  view360.lastY = e.clientY;
+  view360.lastTime = performance.now();
+  view360.velX = 0;
+  view360.velY = 0;
 });
+
 window.addEventListener("pointermove", (e) => {
   if (document.querySelector(".modal-backdrop.open")) return;
-  pointer.targetX = e.clientX; pointer.targetY = e.clientY;
-  if (!view25D.isDragging) return;
-  const factor = camera.fov / 420;
-  view25D.targetLon = view25D.downLon + (view25D.downX - e.clientX) * factor;
-  view25D.targetLat = view25D.downLat + (e.clientY - view25D.downY) * factor;
-  clamp25DAngles();
-  const now = performance.now();
-  const dtMove = now - view25D.lastTime;
-  if (dtMove > 0) {
-    const instX = (e.clientX - view25D.lastX) / dtMove;
-    const instY = (e.clientY - view25D.lastY) / dtMove;
-    view25D.velX = view25D.velX * 0.5 + instX * 0.5;
-    view25D.velY = view25D.velY * 0.5 + instY * 0.5;
+  const is360 = Boolean(ROOMS[currentRoomIndex] && ROOMS[currentRoomIndex].is360EditorRoom);
+
+  if (!is360) {
+    pointer.targetX = e.clientX;
+    pointer.targetY = e.clientY;
+    return;
   }
-  view25D.lastX = e.clientX;
-  view25D.lastY = e.clientY;
-  view25D.lastTime = now;
+
+  // В 360°-комнате: если кнопка не зажата (наведение мышью на ПК) — двигаем луч фонаря;
+  // если зажата (свайп пальцем или мышью) — вращаем камеру вокруг оси
+  if (!view360.isDragging) {
+    if (e.pointerType === "mouse") {
+      pointer.targetX = e.clientX;
+      pointer.targetY = e.clientY;
+    }
+    return;
+  }
+
+  const factor = camera.fov / 380;
+  view360.targetLon = view360.downLon + (view360.downX - e.clientX) * factor;
+  view360.targetLat = view360.downLat + (e.clientY - view360.downY) * factor;
+  clamp360Angles();
+
+  const now = performance.now();
+  const dtMove = now - view360.lastTime;
+  if (dtMove > 0) {
+    const instX = (e.clientX - view360.lastX) / dtMove;
+    const instY = (e.clientY - view360.lastY) / dtMove;
+    view360.velX = view360.velX * 0.5 + instX * 0.5;
+    view360.velY = view360.velY * 0.5 + instY * 0.5;
+  }
+  view360.lastX = e.clientX;
+  view360.lastY = e.clientY;
+  view360.lastTime = now;
 }, { passive: true });
+
 window.addEventListener("pointerup", () => {
-  if (!view25D.isDragging) return;
-  view25D.isDragging = false;
-  if (performance.now() - view25D.lastTime > 110) {
-    view25D.velX = 0;
-    view25D.velY = 0;
+  if (!view360.isDragging) return;
+  view360.isDragging = false;
+  if (performance.now() - view360.lastTime > 110) {
+    view360.velX = 0;
+    view360.velY = 0;
   } else {
-    view25D.velX = Math.max(-1.2, Math.min(1.2, view25D.velX));
-    view25D.velY = Math.max(-1.2, Math.min(1.2, view25D.velY));
+    view360.velX = Math.max(-1.2, Math.min(1.2, view360.velX));
+    view360.velY = Math.max(-1.2, Math.min(1.2, view360.velY));
   }
 });
 
@@ -2824,21 +2396,41 @@ glCanvas.addEventListener("click", (e) => {
   if (transition.active) return;
   if (document.querySelector(".modal-backdrop.open")) return;
 
+  const room = ROOMS[currentRoomIndex];
+  const is360 = Boolean(room && room.is360EditorRoom);
+
+  // В 360°-комнате игнорируем клик, если пользователь перетаскивал камеру
+  if (is360 && Math.hypot(e.clientX - view360.downX, e.clientY - view360.downY) > 10) return;
+
   pointer.x = pointer.targetX = e.clientX;
   pointer.y = pointer.targetY = e.clientY;
   pointer.normX = (e.clientX / window.innerWidth - 0.5) * 2;
   pointer.normY = (e.clientY / window.innerHeight - 0.5) * 2;
 
+  // 1. В 360°-комнате сначала проверяем клик по 3D-объектам редактора (щиток с искрами)
+  if (is360 && editor360ActiveObjects.length > 0) {
+    const rect = glCanvas.getBoundingClientRect();
+    editor360Ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    editor360Ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    editor360Raycaster.setFromCamera(editor360Ndc, camera);
+
+    for (const item of editor360ActiveObjects) {
+      if (editor360Raycaster.intersectObject(item.hitZone).length > 0) {
+        triggerEditor360Object(item);
+        return;
+      }
+    }
+  }
+
   const w = window.innerWidth, h = window.innerHeight;
-  const room = ROOMS[currentRoomIndex];
   updateWorldPlaneLayout();
   const t = getOverlayTransform(w, h);
 
-  const artPosClick = projectRoomNormToScreen(room.artifact.x, room.artifact.y, w, h);
+  const artPosClick = getMarkerScreenPos(room.artifact, w, h, t);
   if (Math.hypot(e.clientX - artPosClick.x, e.clientY - artPosClick.y) < 90) { openPuzzleModal(); return; }
 
   if (room.clueProp) {
-    const cpPosClick = projectRoomNormToScreen(room.clueProp.x, room.clueProp.y, w, h);
+    const cpPosClick = getMarkerScreenPos(room.clueProp, w, h, t);
     if (Math.hypot(e.clientX - cpPosClick.x, e.clientY - cpPosClick.y) < 90) {
       audioEngine.playTick();
       openPuzzleModal();
@@ -2848,7 +2440,7 @@ glCanvas.addEventListener("click", (e) => {
     }
   }
 
-  const portPosClick = projectRoomNormToScreen(room.portal.x, room.portal.y, w, h);
+  const portPosClick = getMarkerScreenPos(room.portal, w, h, t);
   if (Math.hypot(e.clientX - portPosClick.x, e.clientY - portPosClick.y) < 90) {
     attemptRoomTransition((currentRoomIndex + 1) % ROOMS.length); return;
   }
@@ -2897,6 +2489,7 @@ function triggerPanicEpisode(now = performance.now()) {
 }
 function spawnShadowEntity(force = false) {
   const room = ROOMS[currentRoomIndex];
+  if (room.is360EditorRoom) return;
   if (!room.shadowSpots || room.shadowSpots.length === 0) return;
   if (entityState.visible && !force) return;
   const spot = room.shadowSpots[Math.floor(Math.random() * room.shadowSpots.length)];
@@ -2916,7 +2509,7 @@ const entitySpawnTimer = setInterval(() => {
 }, 5500);
 
 /* ============================================================
-   ЗАГАДКИ 2.5D (ОСНОВНЫЕ + СЕКРЕТНЫЕ)
+   ЗАГАДКИ (ОСНОВНЫЕ + СЕКРЕТНЫЕ + ТЕСТ 360°)
 ============================================================ */
 function openPuzzleModal() {
   const room = ROOMS[currentRoomIndex];
@@ -3062,7 +2655,7 @@ function openPuzzleModal() {
     };
     container.querySelector("#btn-word-chk").addEventListener("click", submit);
     inp.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
-  } else if (room.puzzleType === "pin_digits" || room.puzzleType === "procedural_pin") {
+  } else if (room.puzzleType === "pin_digits") {
     const len = room.targetPin.length;
     const curPin = room.solved ? [...room.targetPin] : Array(len).fill(0);
     const wrap = document.createElement("div"); wrap.className = "code-slots";
@@ -3089,7 +2682,6 @@ function openPuzzleModal() {
 function triggerLockHapticFeedback() {
   if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
     try {
-      // Двойной тяжёлый импульс лязга замка на мобильных устройствах
       navigator.vibrate([75, 55, 130]);
     } catch (e) {}
   }
@@ -3099,7 +2691,6 @@ function playMechanismUnlockClank() {
   if (!audioEngine.ctx || !audioEngine.enabled) return;
   const now = audioEngine.ctx.currentTime;
 
-  // Металлический лязг засова и пружины
   [0, 0.14, 0.29].forEach((offset, idx) => {
     const t = now + offset;
     const osc = audioEngine.ctx.createOscillator();
@@ -3128,7 +2719,6 @@ function playMechanismUnlockClank() {
 
   audioEngine.playSteelChains(0);
 }
-
 
 const chamberCutsceneWrap = document.getElementById("chamber-cutscene-wrap");
 const chamberCutsceneVideo = document.getElementById("chamber-cutscene-video");
@@ -3191,7 +2781,6 @@ const introBgm = document.getElementById("intro-bgm");
 let introBgmStarted = false;
 let introProceduralMixActive = false;
 
-// Подмешиваем генерацию DarkAmbientAudio к тихому/короткому лупу, чтобы атмосфера звучала сразу без ожидания OGG
 function startIntroProceduralLayer() {
   if (introProceduralMixActive) return;
   audioEngine.init();
@@ -3199,7 +2788,6 @@ function startIntroProceduralLayer() {
 
   introProceduralMixActive = true;
   if (audioEngine.master) {
-    // Делаем процедурный слой на экране входа приглушённым подложкой под луп
     audioEngine.master.gain.setTargetAtTime(0.42, audioEngine.ctx.currentTime, 0.25);
   }
   audioEngine.playHeartbeatPulse(0.45);
@@ -3225,7 +2813,7 @@ function armAndLoadIntroBgm() {
   if (!introBgm) return;
   introBgm.preload = "metadata";
   introBgm.loop = true;
-  introBgm.volume = 0.56; // тихий/комфортный луп, подмешиваемый к генерации
+  introBgm.volume = 0.56;
 
   const attemptPlay = () => {
     if (!introBgm || document.getElementById("intro-screen").classList.contains("hidden")) return;
@@ -3273,22 +2861,18 @@ function fadeOutIntroBgm() {
   }, 55);
 }
 
-
 /* ============================================================
    ФОТОРЕАЛИСТИЧНЫЙ МНОГОСЛОЙНЫЙ ТУМАН ПОВЕРХ TITLE.JPG
-   Ползёт между буквами, обволакивает тени и подсвечивается изнутри
 ============================================================ */
 const introFogCanvas = document.getElementById("intro-fog-canvas");
 const introFogCtx = introFogCanvas ? introFogCanvas.getContext("2d") : null;
 
-// Оффскрин-буфер низкого разрешения для плавного FBM-шума без просадки FPS
 const fogNoiseCanvas = document.createElement("canvas");
 fogNoiseCanvas.width = 256;
 fogNoiseCanvas.height = 144;
 const fogNoiseCtx = fogNoiseCanvas.getContext("2d");
 const fogNoiseImg = fogNoiseCtx.createImageData(256, 144);
 
-// Плавная детерминированная решётка градиентов / значений
 const GRID_W = 32;
 const GRID_H = 18;
 const baseGrid = new Float32Array(GRID_W * GRID_H);
@@ -3318,7 +2902,6 @@ function samplePeriodicValue(gx, gy, w, h) {
 }
 
 function fbmFog(nx, ny, t) {
-  // Доменное искажение (domain warping) — создаёт живые завихрения тумана между буквами
   const warpX = (samplePeriodicValue(nx * 5.0 + t * 0.045, ny * 4.0 - t * 0.02, GRID_W, GRID_H) - 0.5) * 1.45;
   const warpY = (samplePeriodicValue(nx * 4.5 - t * 0.03, ny * 5.0 + t * 0.038, GRID_W, GRID_H) - 0.5) * 1.25;
 
@@ -3376,14 +2959,12 @@ function renderIntroFog(now) {
   const w = window.innerWidth;
   const h = window.innerHeight;
 
-  // Обновляем FBM-поле тумана с доменным искажением
   const data = fogNoiseImg.data;
   const nw = fogNoiseCanvas.width;
   const nh = fogNoiseCanvas.height;
 
   for (let y = 0; y < nh; y++) {
     const ny = y / nh;
-    // Плотнее всего в средней полосе, где находятся буквы заголовка, и у земли
     const bandWeight = 0.55 + 0.45 * Math.exp(-Math.pow((ny - 0.52) / 0.28, 2));
     for (let x = 0; x < nw; x++) {
       const nx = x / nw;
@@ -3392,7 +2973,6 @@ function renderIntroFog(now) {
       const alphaByte = Math.min(255, Math.floor(shaped * bandWeight * 175));
 
       const idx = (y * nw + x) * 4;
-      // Холодно-серебристый туман с лёгким тёплым/болотным оттенком внутри облачных масс
       data[idx]     = 176 + Math.floor(shaped * 24);
       data[idx + 1] = 184 + Math.floor(shaped * 20);
       data[idx + 2] = 172 + Math.floor(shaped * 14);
@@ -3403,14 +2983,12 @@ function renderIntroFog(now) {
 
   introFogCtx.clearRect(0, 0, w, h);
 
-  // Слой 1: мягко интерполированный объёмный FBM-туман
   introFogCtx.save();
   introFogCtx.filter = "blur(10px)";
   introFogCtx.globalAlpha = 0.86;
   introFogCtx.drawImage(fogNoiseCanvas, 0, 0, w, h);
   introFogCtx.restore();
 
-  // Слой 2: тонкие ползущие клочья дымки, просачивающиеся сквозь просветы букв
   introFogCtx.save();
   for (let i = 0; i < fogWisps.length; i++) {
     const sp = fogWisps[i];
@@ -3460,16 +3038,6 @@ document.getElementById("btn-enter-house").addEventListener("click", () => {
   syncTapeVideo();
   resizeAll();
   setTimeout(() => { spawnShadowEntity(true); audioEngine.playWallScratching(); }, 600);
-});
-
-document.getElementById("btn-regen-room").addEventListener("click", () => {
-  const room = ROOMS[currentRoomIndex];
-  if (!room.isProceduralRoom) return;
-  audioEngine.playSubterraneanRumble();
-  audioEngine.playWallScratching();
-  generateRandomHorrorRoom(room);
-  applyRoomTexture(currentRoomIndex);
-  updateRoomHUD();
 });
 
 document.getElementById("btn-open-puzzle").addEventListener("click", openPuzzleModal);
@@ -3535,7 +3103,6 @@ function handleTabBlurAudio(hidden) {
   if (!audioEngine.ctx || !audioEngine.master) return;
   const now = audioEngine.ctx.currentTime;
   if (hidden) {
-    // Плавное затухание шины до нуля + приостановка AudioContext, чтобы избежать треска и буферных артефактов
     audioEngine.master.gain.cancelScheduledValues(now);
     audioEngine.master.gain.setTargetAtTime(0.0001, now, 0.04);
     stopHallucinationHeartbeat();
@@ -3572,6 +3139,7 @@ document.addEventListener("visibilitychange", () => {
   } else {
     handleTabBlurAudio(false);
     syncTapeVideo();
+    editor360ActiveObjects.forEach(o => { if (o.video && o.cfg.loop && o.video.paused) o.video.play().catch(() => {}); });
     if (chamberCutscenePlaying && chamberCutsceneVideo && chamberCutsceneVideo.paused) {
       const p = chamberCutsceneVideo.play();
       if (p && typeof p.catch === "function") p.catch(() => {});
@@ -3593,10 +3161,8 @@ glCanvas.addEventListener("webglcontextrestored", () => {
   document.getElementById("fatal-overlay").classList.remove("visible");
 });
 
-
 /* ============================================================
    ПРЕЛОАДЕР С PRELOADER.MP4
-   Загружает треки, картинки и текстуры, затем выходит на экран названия игры
 ============================================================ */
 (function initPreloaderFlow() {
   const preloaderEl = document.getElementById("preloader-screen");
@@ -3641,15 +3207,12 @@ glCanvas.addEventListener("webglcontextrestored", () => {
     }
   }
 
-  // Загрузка треков, картинок и текстур в течение 15 секунд
   try {
     const imageAssets = ["title.jpg"];
-    if (Array.isArray(typeof ROOMS !== "undefined" ? ROOMS : null)) {
-      ROOMS.forEach(r => {
-        if (!r.isProceduralRoom && r.fileName) imageAssets.push(r.fileName);
-        if (r.hallucinationFileName) imageAssets.push(r.hallucinationFileName);
-      });
-    }
+    ROOMS.forEach(r => {
+      if (r.fileName) imageAssets.push(r.fileName);
+      if (r.hallucinationFileName) imageAssets.push(r.hallucinationFileName);
+    });
     imageAssets.forEach(src => {
       const img = new Image();
       img.src = src;
@@ -3685,7 +3248,6 @@ glCanvas.addEventListener("webglcontextrestored", () => {
     clearTimeout(hardTimer);
     applyProgress(100);
 
-    // Медленное затемнение прелоадера и плавный переход к экрану названия игры
     preloaderEl.classList.add("done");
     if (introEl) introEl.classList.remove("hidden");
     try {
