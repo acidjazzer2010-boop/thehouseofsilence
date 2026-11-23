@@ -2,15 +2,15 @@
 
 /* ============================================================
    КОНСТАНТЫ И СПИСОК КОМНАТ
-   1-5: основные (Taperoom.jpg, Gallery.jpg, attic.jpg, Surgeryroom.jpg, Bunker.jpg)
-   6-9: секретные (открываются только после прохождения 1-5)
-   10:  360° комната из редактора (./assets/1000405137.jpg + ./assets/1000405140.mp4)
+   1-5: основные 2.5D (Taperoom.jpg, Gallery.jpg, attic.jpg, Surgeryroom.jpg, Bunker.jpg)
+   6-9: секретные 2.5D (открываются после прохождения 1-5)
+   10:  тестовая 360° комната из редактора (1000405137.jpg + искры 1000405140.mp4 по тапу)
 ============================================================ */
 const REDUCE_MOTION     = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const STORAGE_KEY       = 'osobnyak_progress_v4';
-const FLASHLIGHT_RATIO  = 0.34;
+const FLASHLIGHT_RATIO  = 0.48; // расширенный луч фонаря (было 0.34)
 const TRANSITION_SPEED  = 0.026;
-const POINTER_LERP      = 0.12;
+const POINTER_LERP      = 0.14;
 const ENTITY_LERP       = 0.035;
 const ENTITY_EVADE_LERP = 0.14;
 
@@ -153,9 +153,9 @@ const ROOMS = [
     puzzleType: "pin_digits",
     targetPin: [9, 4]
   },
-  /* ==== 10-Я КОМНАТА: 360° УРОВЕНЬ ИЗ РЕДАКТОРА (БАЗОВЫЙ СЛОЙ + ИСКРЫ) ==== */
+  /* ==== 10-Я ТЕСТОВАЯ КОМНАТА: ПОЛНЫЙ ОБЗОР 360° + ИСКРЫ ПО НАЖАТИЮ ==== */
   {
-    id: 9, code: "СЕКТОР 10 // ROOM_1", fileName: "./assets/1000405137.jpg",
+    id: 9, code: "СЕКТОР 10 // ТЕСТ 360°", fileName: "./assets/1000405137.jpg",
     fallbackFileName: "1000405137.jpg",
     is360EditorRoom: true,
     startCamera: { lon: 145, lat: 5 },
@@ -171,18 +171,19 @@ const ROOMS = [
         rotationDeg: 0,
         size: { width: 248.89, height: 140 },
         additiveBlend: true,
-        loop: true
+        loop: false // запускается по нажатию на щиток
       }
     ],
-    title: "Комната 1 (Заброшенная)",
-    desc: "Сырая заброшенная камера полного 360°-обзора с осыпающимися искрами проводки. Осмотрите пространство вокруг и разблокируйте выход.",
-    portal: { x: 0.78, y: 0.50, label: "Выход на поверхность (В начало)" },
-    artifact: { x: 0.38, y: 0.48, label: "Искрящий щиток проводки" },
+    title: "Комната 1 (Заброшенная 360°)",
+    desc: "Тестовая комната с полным обзором 360°. Оглядитесь вокруг: нажмите на электрощит слева от двери, чтобы вызвать искры, или осмотрите замок.",
+    portal: { u: 0.455, v: 0.50, label: "Выход на поверхность (В начало)" },
+    artifact: { u: 0.515, v: 0.55, label: "Заброшенный куст у окон" },
+    clueProp: { u: 0.378, v: 0.462, label: "Электрощит (нажмите для искр)", clueText: "При замыкании щитка на шкале вспыхнули цифры: 4 - 0 - 9" },
     shadowSpots: [{ x: 0.74, y: 0.53, scale: 1.05 }, { x: 0.22, y: 0.56, scale: 0.92 }],
     palette: { wall: "#161a18", floor: "#0a0c0b", light: "#8f3222" },
     reverbDecay: 5.8, solved: false, solvedOnce: false,
     puzzleTitle: "Релейный замок заброшенной комнаты",
-    puzzleDesc: "Осмотрите искрящую проводку и стены этой 360°-комнаты, чтобы подобрать трёхзначный код (4 - 0 - 9).",
+    puzzleDesc: "Нажмите на электрощит слева от двери, чтобы вызвать искры и увидеть комбинацию (4 - 0 - 9).",
     puzzleType: "pin_digits",
     targetPin: [4, 0, 9]
   }
@@ -564,6 +565,26 @@ class DarkAmbientAudio {
     src.connect(bp); bp.connect(g); g.connect(this.dryGain);
     src.start(now); src.stop(now + 0.045);
   }
+  playElectricSparkSound() {
+    if (!this.ctx || !this.enabled) return;
+    const now = this.ctx.currentTime;
+    for (let i = 0; i < 4; i++) {
+      const t = now + i * 0.09;
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.crackleBuffer;
+      const bp = this.ctx.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.frequency.setValueAtTime(3200 + Math.random() * 1400, t);
+      bp.Q.value = 3.5;
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.001, t);
+      g.gain.linearRampToValueAtTime(0.55, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0005, t + 0.12);
+      src.connect(bp); bp.connect(g);
+      g.connect(this.dryGain); g.connect(this.convolver);
+      src.start(t); src.stop(t + 0.14);
+    }
+  }
   playSteelChains(panOverride = null) {
     if (!this._canPlay()) return;
     const count = 8 + Math.floor(Math.random() * 6);
@@ -771,38 +792,45 @@ function syncTapeVideo() {
 }
 
 /* ============================================================
-   THREE.JS СЦЕНА 2.5D / 360°
+   THREE.JS СЦЕНА: 2.5D ПЛОСКОСТЬ (КОМНАТЫ 1–9) + 360° СФЕРА (КОМНАТА 10)
 ============================================================ */
 const renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, alpha: false });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = 1.08;
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
 camera.position.set(0, 0, 10);
 
-scene.add(new THREE.AmbientLight(0x222a24, 0.7));
-const spotLight = new THREE.SpotLight(0xffe6bd, 2.8, 35, Math.PI * 0.22, 0.65, 1.2);
+scene.add(new THREE.AmbientLight(0x28322a, 0.85));
+const spotLight = new THREE.SpotLight(0xffe6bd, 3.0, 35, Math.PI * 0.28, 0.72, 1.1);
 spotLight.position.set(0, 0, 10);
 scene.add(spotLight);
 scene.add(spotLight.target);
 
+const roomPlaneMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+// 1. Классическая 2.5D-плоскость для комнат 1–9
+const roomPlaneMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), roomPlaneMat);
+scene.add(roomPlaneMesh);
+
+// 2. Полноценная 360°-сфера только для тестовой 10-й комнаты (is360EditorRoom: true)
 const roomSphereGeo = new THREE.SphereGeometry(28, 64, 40);
 roomSphereGeo.scale(-1, 1, 1);
-const roomPlaneMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-const roomMesh = new THREE.Mesh(roomSphereGeo, roomPlaneMat);
-scene.add(roomMesh);
+const roomSphereMesh = new THREE.Mesh(roomSphereGeo, roomPlaneMat);
+roomSphereMesh.visible = false;
+scene.add(roomSphereMesh);
 
-const view25D = {
+const view360 = {
   isDragging: false,
-  lon: 180,
-  lat: 0,
-  targetLon: 180,
-  targetLat: 0,
-  downLon: 180,
-  downLat: 0,
+  lon: 145,
+  lat: 5,
+  targetLon: 145,
+  targetLat: 5,
+  downLon: 145,
+  downLat: 5,
   downX: 0,
   downY: 0,
   lastX: 0,
@@ -810,50 +838,66 @@ const view25D = {
   lastTime: 0,
   velX: 0,
   velY: 0,
-  maxLonOffset: 180,
   maxLatOffset: 68
 };
 
-function clamp25DAngles() {
-  view25D.targetLat = Math.max(-view25D.maxLatOffset, Math.min(view25D.maxLatOffset, view25D.targetLat));
+function clamp360Angles() {
+  view360.targetLat = Math.max(-view360.maxLatOffset, Math.min(view360.maxLatOffset, view360.targetLat));
 }
 
-function update25DCameraLook(timeMs, dt, camX, camY, camZ) {
-  if (view25D.isDragging) {
-    const k = 1 - Math.pow(1 - 0.35, dt);
-    view25D.lon += (view25D.targetLon - view25D.lon) * k;
-    view25D.lat += (view25D.targetLat - view25D.lat) * k;
-  } else {
-    if (Math.abs(view25D.velX) > 0.005 || Math.abs(view25D.velY) > 0.005) {
-      view25D.targetLon -= view25D.velX * 6.5 * dt;
-      view25D.targetLat += view25D.velY * 5.0 * dt;
-      clamp25DAngles();
-      view25D.velX *= Math.pow(0.87, dt);
-      view25D.velY *= Math.pow(0.87, dt);
-    } else {
-      view25D.targetLat += Math.sin(timeMs * 0.0012) * 0.04 * dt;
-      clamp25DAngles();
-    }
-    const k = 1 - Math.pow(1 - 0.16, dt);
-    view25D.lon += (view25D.targetLon - view25D.lon) * k;
-    view25D.lat += (view25D.targetLat - view25D.lat) * k;
+function updateCameraForActiveMode(timeMs, dt, camX, camY, camZ) {
+  const room = ROOMS[currentRoomIndex];
+  const is360 = Boolean(room && room.is360EditorRoom);
+
+  roomPlaneMesh.visible = !is360;
+  roomSphereMesh.visible = is360;
+
+  if (!is360) {
+    // Классический 2.5D-режим для комнат 1–9
+    camera.fov = 42;
+    camera.updateProjectionMatrix();
+    camera.position.set(camX, camY, camZ);
+    camera.lookAt(camX * 0.35, camY * 0.35, 0);
+    return;
   }
 
-  view25D.lat = Math.max(-view25D.maxLatOffset, Math.min(view25D.maxLatOffset, view25D.lat));
-  const phi = THREE.MathUtils.degToRad(90 - view25D.lat);
-  const theta = THREE.MathUtils.degToRad(view25D.lon);
+  // Полный 360°-режим для 10-й тестовой комнаты
+  if (camera.fov !== 68) {
+    camera.fov = 68;
+    camera.updateProjectionMatrix();
+  }
+
+  if (view360.isDragging) {
+    const k = 1 - Math.pow(1 - 0.35, dt);
+    view360.lon += (view360.targetLon - view360.lon) * k;
+    view360.lat += (view360.targetLat - view360.lat) * k;
+  } else {
+    if (Math.abs(view360.velX) > 0.005 || Math.abs(view360.velY) > 0.005) {
+      view360.targetLon -= view360.velX * 6.5 * dt;
+      view360.targetLat += view360.velY * 5.0 * dt;
+      clamp360Angles();
+      view360.velX *= Math.pow(0.87, dt);
+      view360.velY *= Math.pow(0.87, dt);
+    }
+    const k = 1 - Math.pow(1 - 0.16, dt);
+    view360.lon += (view360.targetLon - view360.lon) * k;
+    view360.lat += (view360.targetLat - view360.lat) * k;
+  }
+
+  view360.lat = Math.max(-view360.maxLatOffset, Math.min(view360.maxLatOffset, view360.lat));
+  const phi = THREE.MathUtils.degToRad(90 - view360.lat);
+  const theta = THREE.MathUtils.degToRad(view360.lon);
   const radius = 28;
-  const targetPt = new THREE.Vector3(
-    camX + radius * Math.sin(phi) * Math.cos(theta),
-    camY + radius * Math.cos(phi),
-    camZ + radius * Math.sin(phi) * Math.sin(theta)
+  camera.position.set(0, 0, 0.1);
+  camera.lookAt(
+    radius * Math.sin(phi) * Math.cos(theta),
+    radius * Math.cos(phi),
+    radius * Math.sin(phi) * Math.sin(theta)
   );
-  camera.position.set(camX, camY, camZ);
-  camera.lookAt(targetPt);
 }
 
 /* ============================================================
-   GOD RAYS И PRELOADER LENS
+   GOD RAYS И PRELOADER LENS (ДЛЯ 2.5D КОМНАТ)
 ============================================================ */
 function buildGodRaysRig() {
   const group = new THREE.Group();
@@ -966,7 +1010,7 @@ scene.add(refractionLensMesh);
 const proceduralTextureCache = {};
 
 /* ============================================================
-   СОСТОЯНИЕ 2.5D
+   СОСТОЯНИЕ ИГРЫ
 ============================================================ */
 let currentRoomIndex = 0;
 let freeMode = false;
@@ -1174,7 +1218,8 @@ function updateHallucinationSystem(time) {
 const pointer = {
   x: window.innerWidth * 0.5, y: window.innerHeight * 0.5,
   targetX: window.innerWidth * 0.5, targetY: window.innerHeight * 0.5,
-  normX: 0, normY: 0
+  normX: 0, normY: 0,
+  isTouchInput: false
 };
 const transition = { active: false, phase: "none", progress: 0, targetRoom: 0, focusX: 0.5, focusY: 0.5 };
 const entityState = { visible: false, opacity: 0, targetOpacity: 0, evading: false, timer: 0, spot: { x: 0.59, y: 0.52, scale: 1.0 } };
@@ -1294,7 +1339,7 @@ function resetProgress() {
 }
 
 /* ============================================================
-   ФОНАРЬ 2D
+   ФОНАРЬ 2D (ШИРОКИЙ AAA-ЛУЧ + ПЕРИФЕРИЙНАЯ ВИДИМОСТЬ)
 ============================================================ */
 let flashlightSprite = null;
 let flashlightSpriteRad = 0;
@@ -1306,34 +1351,32 @@ function ensureFlashlightSprite() {
   const c = document.createElement("canvas");
   c.width = c.height = size;
   const g = c.getContext("2d");
-  const grad = g.createRadialGradient(rad, rad, rad * 0.08, rad, rad, rad);
+  // Широкое яркое ядро + плавный ореол, чтобы не приходилось водить лучом вслепую
+  const grad = g.createRadialGradient(rad, rad, rad * 0.16, rad, rad, rad);
   grad.addColorStop(0, "rgba(0, 0, 0, 1)");
-  grad.addColorStop(0.48, "rgba(0, 0, 0, 0.55)");
+  grad.addColorStop(0.55, "rgba(0, 0, 0, 0.78)");
+  grad.addColorStop(0.82, "rgba(0, 0, 0, 0.34)");
   grad.addColorStop(1, "rgba(0, 0, 0, 0)");
   g.fillStyle = grad;
   g.fillRect(0, 0, size, size);
   flashlightSprite = c;
 }
-function projectRoomNormToScreen(nx, ny, w, h) {
-  const yawRad = (0.5 - nx) * THREE.MathUtils.degToRad(270);
-  const pitchRad = (0.5 - ny) * THREE.MathUtils.degToRad(95);
-  const r = 18.0;
-  const dirX = -Math.cos(pitchRad) * Math.cos(yawRad);
-  const dirY = Math.sin(pitchRad);
-  const dirZ = -Math.cos(pitchRad) * Math.sin(yawRad);
 
-  const worldPt = new THREE.Vector3(
-    roomMesh.position.x + dirX * r,
-    roomMesh.position.y + dirY * r,
-    roomMesh.position.z + dirZ * r
-  );
-  worldPt.project(camera);
-  if (worldPt.z > 1) {
-    return { x: -9999, y: -9999 };
+// Проекция маркеров: для комнат 1–9 (2.5D) и для 10-й комнаты (360° UV)
+function getMarkerScreenPos(markerObj, w, h, t2D) {
+  const room = ROOMS[currentRoomIndex];
+  if (room && room.is360EditorRoom && typeof markerObj.u === "number") {
+    const worldPt = uvToSpherePos360(markerObj.u, markerObj.v, 25.5);
+    worldPt.project(camera);
+    if (worldPt.z > 1) return { x: -9999, y: -9999 };
+    return {
+      x: (worldPt.x * 0.5 + 0.5) * w,
+      y: (-worldPt.y * 0.5 + 0.5) * h
+    };
   }
   return {
-    x: (worldPt.x * 0.5 + 0.5) * w,
-    y: (-worldPt.y * 0.5 + 0.5) * h
+    x: t2D.offsetX + markerObj.x * t2D.scaleX,
+    y: t2D.offsetY + markerObj.y * t2D.scaleY
   };
 }
 
@@ -1416,7 +1459,7 @@ function createProceduralTexture(room) {
   grad.addColorStop(0, room.palette.wall);
   grad.addColorStop(1, "#020302");
   g.fillStyle = grad; g.fillRect(0, 0, 1280, 720);
-  const px = 1280 * room.portal.x, py = 720 * room.portal.y;
+  const px = 1280 * (room.portal.x || 0.5), py = 720 * (room.portal.y || 0.5);
   g.strokeStyle = "rgba(120, 138, 115, 0.18)"; g.lineWidth = 2;
   g.beginPath();
   g.moveTo(0, 0); g.lineTo(px - 110, py - 150);
@@ -1451,7 +1494,7 @@ function createProceduralTexture(room) {
 }
 
 /* ============================================================
-   ИНТЕРАКТИВНЫЕ 3D-СЛОИ 360°-РЕДАКТОРА (БАЗОВЫЙ СЛОЙ + ИСКРЫ)
+   ИНТЕРАКТИВНЫЕ 3D-СЛОИ 360°-РЕДАКТОРА (ДЛЯ ТЕСТОВОЙ 10-Й КОМНАТЫ)
 ============================================================ */
 const editor360ActiveObjects = [];
 const editor360Raycaster = new THREE.Raycaster();
@@ -1490,30 +1533,30 @@ function triggerEditor360Object(item) {
     item.video.currentTime = 0;
     const p = item.video.play();
     if (p && typeof p.catch === "function") p.catch(() => {});
-    if (audioEngine.enabled) audioEngine.playTick();
+    if (audioEngine.enabled) {
+      if (item.cfg.id === "sparks_panel") audioEngine.playElectricSparkSound();
+      else audioEngine.playTick();
+    }
   } else if (item.cfg.type === "image") {
     item.mat.opacity = item.mat.opacity > 0.5 ? 0 : 1;
     if (audioEngine.enabled) audioEngine.playTick();
-  }
-  if (item.cfg.action === "open_puzzle") {
-    openPuzzleModal();
-  } else if (item.cfg.action === "show_clue" && item.cfg.clueText) {
-    openPuzzleModal();
-    const fb = document.getElementById("modal-feedback");
-    if (fb) fb.textContent = `УЛИКА: ${item.cfg.clueText}`;
   }
 }
 
 function mountEditor360ObjectsForRoom(room) {
   clearEditor360Objects();
-  if (!room) return;
+  if (!room || !room.is360EditorRoom) return;
 
-  const startLon = room.startCamera ? room.startCamera.lon : 180;
-  const startLat = room.startCamera ? room.startCamera.lat : 0;
-  view25D.lon = view25D.targetLon = startLon;
-  view25D.lat = view25D.targetLat = startLat;
-  view25D.velX = 0;
-  view25D.velY = 0;
+  const startLon = room.startCamera ? room.startCamera.lon : 145;
+  const startLat = room.startCamera ? room.startCamera.lat : 5;
+  view360.lon = view360.targetLon = startLon;
+  view360.lat = view360.targetLat = startLat;
+  view360.velX = 0;
+  view360.velY = 0;
+
+  // При входе в 360° комнату ставим луч фонаря в центр экрана, чтобы свайп не мешал обзору
+  pointer.x = pointer.targetX = window.innerWidth * 0.5;
+  pointer.y = pointer.targetY = window.innerHeight * 0.5;
 
   const list = Array.isArray(room.editorInteractives) ? room.editorInteractives : [];
   if (list.length === 0) return;
@@ -1542,7 +1585,7 @@ function mountEditor360ObjectsForRoom(room) {
       mat
     );
     const hitZone = new THREE.Mesh(
-      new THREE.PlaneGeometry(cfg.size.width * 1.25, cfg.size.height * 1.25),
+      new THREE.PlaneGeometry(cfg.size.width * 1.35, cfg.size.height * 1.35),
       new THREE.MeshBasicMaterial({ visible: false })
     );
     holder.add(mesh, hitZone);
@@ -1581,20 +1624,6 @@ function mountEditor360ObjectsForRoom(room) {
         const p = video.play();
         if (p && typeof p.catch === "function") p.catch(() => {});
       }
-    } else if (cfg.type === "image" && cfg.src) {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        const tex = new THREE.Texture(img);
-        tex.minFilter = THREE.LinearFilter;
-        tex.magFilter = THREE.LinearFilter;
-        tex.generateMipmaps = false;
-        tex.needsUpdate = true;
-        mat.map = tex;
-        mat.opacity = cfg.startHidden ? 0 : 1;
-        mat.needsUpdate = true;
-      };
-      img.src = cfg.src;
     }
 
     editor360ActiveObjects.push({ cfg, holder, mat, mesh, hitZone, video });
@@ -1763,12 +1792,23 @@ let lastFrameTime = performance.now();
 
 function updateWorldPlaneLayout() {
   const dist = Math.max(1, camera.position.z);
-  const vFov = THREE.MathUtils.degToRad(camera.fov);
+  const vFov = THREE.MathUtils.degToRad(42);
   const viewH = 2 * Math.tan(vFov / 2) * dist;
   const viewW = viewH * camera.aspect;
-  roomMesh.scale.set(1, 1, 1);
-  layout.planeW = viewW * 1.12;
-  layout.planeH = viewH * 1.12;
+  const dims = roomImageDims[currentRoomIndex];
+  const imgAspect = dims ? (dims.w / dims.h) : (16 / 9);
+  const overscan = 1.12;
+  let planeW, planeH;
+  if (imgAspect >= camera.aspect) {
+    planeH = viewH * overscan;
+    planeW = planeH * imgAspect;
+  } else {
+    planeW = viewW * overscan;
+    planeH = planeW / imgAspect;
+  }
+  roomPlaneMesh.scale.set(planeW, planeH, 1);
+  layout.planeW = planeW;
+  layout.planeH = planeH;
   layout.viewW = viewW;
   layout.viewH = viewH;
   return layout;
@@ -1924,6 +1964,14 @@ function animate(time) {
 
   const w = window.innerWidth, h = window.innerHeight;
   const room = ROOMS[currentRoomIndex];
+  const is360 = Boolean(room && room.is360EditorRoom);
+
+  // В 360°-комнате во время перетаскивания луч фонаря плавно центрируется по взгляду,
+  // чтобы не приходилось одновременно крутить камеру и ловить лучом края экрана
+  if (is360 && (view360.isDragging || pointer.isTouchInput)) {
+    pointer.targetX += (w * 0.5 - pointer.targetX) * 0.08 * dt;
+    pointer.targetY += (h * 0.48 - pointer.targetY) * 0.08 * dt;
+  }
 
   const lerpFactor = 1 - Math.pow(1 - POINTER_LERP, dt);
   pointer.x += (pointer.targetX - pointer.x) * lerpFactor;
@@ -1978,7 +2026,7 @@ function animate(time) {
     }
   }
 
-  update25DCameraLook(time, dt, camX, camY, camZ);
+  updateCameraForActiveMode(time, dt, camX, camY, camZ);
 
   if (gifRoomLayer && gifRoomLayer.classList.contains("visible") && !REDUCE_MOTION) {
     gifRoomLayer.style.transform = `scale(1.06) translate(${(-pointer.normX * 14).toFixed(1)}px, ${(-pointer.normY * 10).toFixed(1)}px)`;
@@ -1988,9 +2036,9 @@ function animate(time) {
   const lightWorldY = -pointer.normY * (viewH * 0.5);
   spotLight.position.set(camX, camY, camZ);
   spotLight.target.position.set(lightWorldX, lightWorldY, 0);
-  spotLight.intensity = flashlightOn ? 2.8 : 0.35;
+  spotLight.intensity = flashlightOn ? 3.0 : 0.45;
 
-  if (entityState.visible) {
+  if (entityState.visible && !is360) {
     const ex = (entityState.spot.x - 0.5) * planeW;
     const ey = (0.5 - entityState.spot.y) * planeH;
     const esc = (entityState.spot.scale || 1.0) * (planeH * 0.16);
@@ -2025,15 +2073,19 @@ function animate(time) {
   }
 
   const tSec = time * 0.001;
-  godRaysRig.rayMat.uniforms.uTime.value = tSec;
-  godRaysRig.rayMat.uniforms.uIntensity.value = flashlightOn
-    ? (panicState.active ? 0.38 : 0.22)
-    : 0.07;
+  godRaysRig.group.visible = !is360;
+  refractionLensMesh.visible = !is360;
+  if (!is360) {
+    godRaysRig.rayMat.uniforms.uTime.value = tSec;
+    godRaysRig.rayMat.uniforms.uIntensity.value = flashlightOn
+      ? (panicState.active ? 0.38 : 0.22)
+      : 0.07;
 
-  refractionLensMesh.rotation.x = tSec * 0.22;
-  refractionLensMesh.rotation.y = tSec * 0.31;
-  refractionLensMesh.position.x = -2.6 + Math.sin(tSec * 0.45) * 0.25;
-  refractionLensMesh.position.y = -1.1 + Math.cos(tSec * 0.38) * 0.18;
+    refractionLensMesh.rotation.x = tSec * 0.22;
+    refractionLensMesh.rotation.y = tSec * 0.31;
+    refractionLensMesh.position.x = -2.6 + Math.sin(tSec * 0.45) * 0.25;
+    refractionLensMesh.position.y = -1.1 + Math.cos(tSec * 0.38) * 0.18;
+  }
 
   updateHallucinationSystem(time);
   updateDiscoveryTicks(w, h);
@@ -2048,16 +2100,17 @@ function updateDiscoveryTicks(w, h) {
   const t = getOverlayTransform(w, h);
   if (!roomTickFlags[currentRoomIndex]) roomTickFlags[currentRoomIndex] = {};
   const flags = roomTickFlags[currentRoomIndex];
-  const artX = t.offsetX + room.artifact.x * t.scaleX;
-  const artY = t.offsetY + room.artifact.y * t.scaleY;
-  if (!flags.artifact && Math.hypot(pointer.x - artX, pointer.y - artY) < 100) { flags.artifact = true; audioEngine.playTick(); }
-  const portX = t.offsetX + room.portal.x * t.scaleX;
-  const portY = t.offsetY + room.portal.y * t.scaleY;
-  if (!flags.portal && Math.hypot(pointer.x - portX, pointer.y - portY) < 100) { flags.portal = true; audioEngine.playTick(); }
+  const artPos = getMarkerScreenPos(room.artifact, w, h, t);
+  if (!flags.artifact && Math.hypot(pointer.x - artPos.x, pointer.y - artPos.y) < 100) { flags.artifact = true; audioEngine.playTick(); }
+  const portPos = getMarkerScreenPos(room.portal, w, h, t);
+  if (!flags.portal && Math.hypot(pointer.x - portPos.x, pointer.y - portPos.y) < 100) { flags.portal = true; audioEngine.playTick(); }
 }
 
 function render2DOverlay(w, h, room, blackFade, time, dt) {
   fxCtx.clearRect(0, 0, w, h);
+  const t = getOverlayTransform(w, h);
+  const is360 = Boolean(room && room.is360EditorRoom);
+
   dustParticles.forEach(p => {
     p.x += p.vx * dt * 0.65;
     p.y += p.vy * dt * 0.65;
@@ -2067,23 +2120,30 @@ function render2DOverlay(w, h, room, blackFade, time, dt) {
     const px = p.x * w - pointer.normX * 18 * p.z;
     const py = p.y * h - pointer.normY * 12 * p.z;
     const dist = Math.hypot(px - pointer.x, py - pointer.y);
-    const boost = (flashlightOn && dist < 250) ? (1 - dist / 250) * 0.65 : 0;
+    const boost = (flashlightOn && dist < 290) ? (1 - dist / 290) * 0.65 : 0;
     const rTiny = Math.max(0.8, p.size * 0.62 * p.z);
     fxCtx.fillStyle = `rgba(206, 216, 198, ${Math.min(0.85, 0.18 + boost)})`;
     fxCtx.beginPath(); fxCtx.arc(px, py, rTiny, 0, Math.PI * 2); fxCtx.fill();
   });
-  const artPos = projectRoomNormToScreen(room.artifact.x, room.artifact.y, w, h);
-  drawMarker2D(artPos.x, artPos.y, room.artifact.label, room.solved ? "#528c63" : "#bd7d3b", time);
+
+  const artPos = getMarkerScreenPos(room.artifact, w, h, t);
+  if (artPos.x > -100) drawMarker2D(artPos.x, artPos.y, room.artifact.label, room.solved ? "#528c63" : "#bd7d3b", time);
+
   if (room.clueProp) {
-    const cpPos = projectRoomNormToScreen(room.clueProp.x, room.clueProp.y, w, h);
-    drawMarker2D(cpPos.x, cpPos.y, room.clueProp.label, "#8c7d65", time);
+    const cpPos = getMarkerScreenPos(room.clueProp, w, h, t);
+    if (cpPos.x > -100) drawMarker2D(cpPos.x, cpPos.y, room.clueProp.label, "#8c7d65", time);
   }
+
   const canPass = room.solved || freeMode;
-  const portPos = projectRoomNormToScreen(room.portal.x, room.portal.y, w, h);
-  drawMarker2D(portPos.x, portPos.y, room.portal.label, canPass ? "#528c63" : "#8f3222", time);
+  const portPos = getMarkerScreenPos(room.portal, w, h, t);
+  if (portPos.x > -100) drawMarker2D(portPos.x, portPos.y, room.portal.label, canPass ? "#528c63" : "#8f3222", time);
+
+  // Мягкое AAA-затемнение: в 360°-комнате периферия остаётся полупрозрачной (0.68),
+  // чтобы свайпать и ориентироваться в пространстве было легко
+  const darknessAlpha = is360 ? 0.68 : 0.86;
   if (flashlightOn) {
-    const flicker = REDUCE_MOTION ? 1.0 : (Math.sin(time * 0.041) * Math.sin(time * 0.017) > 0.96 ? 0.72 : 1.0);
-    fxCtx.fillStyle = "rgba(1, 2, 1, 0.94)";
+    const flicker = REDUCE_MOTION ? 1.0 : (Math.sin(time * 0.041) * Math.sin(time * 0.017) > 0.96 ? 0.82 : 1.0);
+    fxCtx.fillStyle = `rgba(1, 2, 1, ${darknessAlpha})`;
     fxCtx.fillRect(0, 0, w, h);
     if (!flashlightSprite) ensureFlashlightSprite();
     const s = flashlightSpriteRad * flicker;
@@ -2091,9 +2151,10 @@ function render2DOverlay(w, h, room, blackFade, time, dt) {
     fxCtx.drawImage(flashlightSprite, pointer.x - s, pointer.y - s, s * 2, s * 2);
     fxCtx.globalCompositeOperation = "source-over";
   } else {
-    fxCtx.fillStyle = "rgba(1, 2, 1, 0.91)";
+    fxCtx.fillStyle = `rgba(1, 2, 1, ${is360 ? 0.62 : 0.85})`;
     fxCtx.fillRect(0, 0, w, h);
   }
+
   if (panicState.active) {
     const pulse = 0.5 + 0.5 * Math.sin(time * 0.019);
     const alarmAlpha = (REDUCE_MOTION ? 0.12 : 0.28 * pulse) * panicState.intensity;
@@ -2135,7 +2196,7 @@ function drawMarker2D(x, y, label, color, time) {
 }
 
 /* ============================================================
-   HUD 2.5D
+   HUD
 ============================================================ */
 const depthNav = document.getElementById("depth-nav");
 function buildDepthNav() {
@@ -2220,9 +2281,9 @@ function attemptRoomTransition(targetIdx) {
   transition.targetRoom = targetIdx;
   if (targetIdx < currentRoomIndex) {
     const tr = ROOMS[targetIdx];
-    transition.focusX = tr.portal.x; transition.focusY = tr.portal.y;
+    transition.focusX = tr.portal.x || 0.5; transition.focusY = tr.portal.y || 0.5;
   } else {
-    transition.focusX = currentRoom.portal.x; transition.focusY = currentRoom.portal.y;
+    transition.focusX = currentRoom.portal.x || 0.5; transition.focusY = currentRoom.portal.y || 0.5;
   }
 }
 
@@ -2258,64 +2319,96 @@ document.querySelectorAll(".modal-backdrop").forEach(m => {
 });
 
 /* ============================================================
-   ВВОД 2.5D / 360°
+   ВВОД: 2.5D ДЛЯ КОМНАТ 1–9 И 360° ОБЗОР ДЛЯ 10-Й КОМНАТЫ
 ============================================================ */
 glCanvas.addEventListener("pointerdown", (e) => {
-  pointer.targetX = e.clientX; pointer.targetY = e.clientY;
-  view25D.isDragging = true;
-  view25D.downX = e.clientX;
-  view25D.downY = e.clientY;
-  view25D.downLon = view25D.targetLon;
-  view25D.downLat = view25D.targetLat;
-  view25D.lastX = e.clientX;
-  view25D.lastY = e.clientY;
-  view25D.lastTime = performance.now();
-  view25D.velX = 0;
-  view25D.velY = 0;
+  pointer.isTouchInput = (e.pointerType === "touch");
+  // В 2.5D комнатах луч сразу идёт за пальцем/курсором;
+  // в 360° комнате луч плавно светит вперёд по центру взгляда во время перетаскивания
+  if (!ROOMS[currentRoomIndex].is360EditorRoom) {
+    pointer.targetX = e.clientX;
+    pointer.targetY = e.clientY;
+  }
+
+  view360.isDragging = true;
+  view360.downX = e.clientX;
+  view360.downY = e.clientY;
+  view360.downLon = view360.targetLon;
+  view360.downLat = view360.targetLat;
+  view360.lastX = e.clientX;
+  view360.lastY = e.clientY;
+  view360.lastTime = performance.now();
+  view360.velX = 0;
+  view360.velY = 0;
 });
+
 window.addEventListener("pointermove", (e) => {
   if (document.querySelector(".modal-backdrop.open")) return;
-  pointer.targetX = e.clientX; pointer.targetY = e.clientY;
-  if (!view25D.isDragging) return;
-  const factor = camera.fov / 420;
-  view25D.targetLon = view25D.downLon + (view25D.downX - e.clientX) * factor;
-  view25D.targetLat = view25D.downLat + (e.clientY - view25D.downY) * factor;
-  clamp25DAngles();
-  const now = performance.now();
-  const dtMove = now - view25D.lastTime;
-  if (dtMove > 0) {
-    const instX = (e.clientX - view25D.lastX) / dtMove;
-    const instY = (e.clientY - view25D.lastY) / dtMove;
-    view25D.velX = view25D.velX * 0.5 + instX * 0.5;
-    view25D.velY = view25D.velY * 0.5 + instY * 0.5;
+  const is360 = Boolean(ROOMS[currentRoomIndex] && ROOMS[currentRoomIndex].is360EditorRoom);
+
+  if (!is360) {
+    pointer.targetX = e.clientX;
+    pointer.targetY = e.clientY;
+    return;
   }
-  view25D.lastX = e.clientX;
-  view25D.lastY = e.clientY;
-  view25D.lastTime = now;
+
+  // В 360°-комнате: если кнопка не зажата (наведение мышью на ПК) — двигаем луч фонаря;
+  // если зажата (свайп пальцем или мышью) — вращаем камеру вокруг оси
+  if (!view360.isDragging) {
+    if (e.pointerType === "mouse") {
+      pointer.targetX = e.clientX;
+      pointer.targetY = e.clientY;
+    }
+    return;
+  }
+
+  const factor = camera.fov / 380;
+  view360.targetLon = view360.downLon + (view360.downX - e.clientX) * factor;
+  view360.targetLat = view360.downLat + (e.clientY - view360.downY) * factor;
+  clamp360Angles();
+
+  const now = performance.now();
+  const dtMove = now - view360.lastTime;
+  if (dtMove > 0) {
+    const instX = (e.clientX - view360.lastX) / dtMove;
+    const instY = (e.clientY - view360.lastY) / dtMove;
+    view360.velX = view360.velX * 0.5 + instX * 0.5;
+    view360.velY = view360.velY * 0.5 + instY * 0.5;
+  }
+  view360.lastX = e.clientX;
+  view360.lastY = e.clientY;
+  view360.lastTime = now;
 }, { passive: true });
+
 window.addEventListener("pointerup", () => {
-  if (!view25D.isDragging) return;
-  view25D.isDragging = false;
-  if (performance.now() - view25D.lastTime > 110) {
-    view25D.velX = 0;
-    view25D.velY = 0;
+  if (!view360.isDragging) return;
+  view360.isDragging = false;
+  if (performance.now() - view360.lastTime > 110) {
+    view360.velX = 0;
+    view360.velY = 0;
   } else {
-    view25D.velX = Math.max(-1.2, Math.min(1.2, view25D.velX));
-    view25D.velY = Math.max(-1.2, Math.min(1.2, view25D.velY));
+    view360.velX = Math.max(-1.2, Math.min(1.2, view360.velX));
+    view360.velY = Math.max(-1.2, Math.min(1.2, view360.velY));
   }
 });
 
 glCanvas.addEventListener("click", (e) => {
   if (transition.active) return;
   if (document.querySelector(".modal-backdrop.open")) return;
-  if (Math.hypot(e.clientX - view25D.downX, e.clientY - view25D.downY) > 10) return;
+
+  const room = ROOMS[currentRoomIndex];
+  const is360 = Boolean(room && room.is360EditorRoom);
+
+  // В 360°-комнате игнорируем клик, если пользователь перетаскивал камеру
+  if (is360 && Math.hypot(e.clientX - view360.downX, e.clientY - view360.downY) > 10) return;
 
   pointer.x = pointer.targetX = e.clientX;
   pointer.y = pointer.targetY = e.clientY;
   pointer.normX = (e.clientX / window.innerWidth - 0.5) * 2;
   pointer.normY = (e.clientY / window.innerHeight - 0.5) * 2;
 
-  if (editor360ActiveObjects.length > 0) {
+  // 1. В 360°-комнате сначала проверяем клик по 3D-объектам редактора (щиток с искрами)
+  if (is360 && editor360ActiveObjects.length > 0) {
     const rect = glCanvas.getBoundingClientRect();
     editor360Ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
     editor360Ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -2330,14 +2423,14 @@ glCanvas.addEventListener("click", (e) => {
   }
 
   const w = window.innerWidth, h = window.innerHeight;
-  const room = ROOMS[currentRoomIndex];
   updateWorldPlaneLayout();
+  const t = getOverlayTransform(w, h);
 
-  const artPosClick = projectRoomNormToScreen(room.artifact.x, room.artifact.y, w, h);
+  const artPosClick = getMarkerScreenPos(room.artifact, w, h, t);
   if (Math.hypot(e.clientX - artPosClick.x, e.clientY - artPosClick.y) < 90) { openPuzzleModal(); return; }
 
   if (room.clueProp) {
-    const cpPosClick = projectRoomNormToScreen(room.clueProp.x, room.clueProp.y, w, h);
+    const cpPosClick = getMarkerScreenPos(room.clueProp, w, h, t);
     if (Math.hypot(e.clientX - cpPosClick.x, e.clientY - cpPosClick.y) < 90) {
       audioEngine.playTick();
       openPuzzleModal();
@@ -2347,7 +2440,7 @@ glCanvas.addEventListener("click", (e) => {
     }
   }
 
-  const portPosClick = projectRoomNormToScreen(room.portal.x, room.portal.y, w, h);
+  const portPosClick = getMarkerScreenPos(room.portal, w, h, t);
   if (Math.hypot(e.clientX - portPosClick.x, e.clientY - portPosClick.y) < 90) {
     attemptRoomTransition((currentRoomIndex + 1) % ROOMS.length); return;
   }
@@ -2396,6 +2489,7 @@ function triggerPanicEpisode(now = performance.now()) {
 }
 function spawnShadowEntity(force = false) {
   const room = ROOMS[currentRoomIndex];
+  if (room.is360EditorRoom) return;
   if (!room.shadowSpots || room.shadowSpots.length === 0) return;
   if (entityState.visible && !force) return;
   const spot = room.shadowSpots[Math.floor(Math.random() * room.shadowSpots.length)];
@@ -2415,7 +2509,7 @@ const entitySpawnTimer = setInterval(() => {
 }, 5500);
 
 /* ============================================================
-   ЗАГАДКИ 2.5D (ОСНОВНЫЕ + СЕКРЕТНЫЕ + 360° СЕКТОР 10)
+   ЗАГАДКИ (ОСНОВНЫЕ + СЕКРЕТНЫЕ + ТЕСТ 360°)
 ============================================================ */
 function openPuzzleModal() {
   const room = ROOMS[currentRoomIndex];
