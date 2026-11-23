@@ -153,20 +153,37 @@ const ROOMS = [
     puzzleType: "pin_digits",
     targetPin: [9, 4]
   },
-  /* ==== 10-Я КОМНАТА: ПРОЦЕДУРНАЯ АНОМАЛИЯ ==== */
+  /* ==== 10-Я КОМНАТА: 360° УРОВЕНЬ ИЗ РЕДАКТОРА (БАЗОВЫЙ СЛОЙ + ИСКРЫ) ==== */
   {
-    id: 9, code: "СЕКТОР 10 // ПРОЦЕДУРНАЯ АНОМАЛИЯ", fileName: "PROCEDURAL_ENGINE",
-    isProceduralRoom: true,
-    title: "Меняющаяся камера под фундаментом",
-    desc: "Стены этого помещения перестраиваются каждый раз, когда вы переступаете порог. Ищите выцарапанный шифр в луче фонаря.",
+    id: 9, code: "СЕКТОР 10 // 360° АНОМАЛИЯ", fileName: "./assets/1000405137.jpg",
+    fallbackFileName: "1000405137.jpg",
+    is360EditorRoom: true,
+    startCamera: { lon: 145, lat: 5 },
+    editorInteractives: [
+      {
+        id: "sparks_panel",
+        type: "video",
+        src: "./assets/1000405140.mp4",
+        fallbackSrc: "1000405140.mp4",
+        targetRoomId: null,
+        position: { u: 0.378, v: 0.462 },
+        scale: 0.45,
+        rotationDeg: 0,
+        size: { width: 248.89, height: 140 },
+        additiveBlend: true,
+        loop: true
+      }
+    ],
+    title: "Комната 1 (Заброшенная)",
+    desc: "Сырая заброшенная камера полного 360°-обзора с осыпающимися искрами проводки. Осмотрите пространство вокруг и разблокируйте выход.",
     portal: { x: 0.78, y: 0.50, label: "Выход на поверхность (В начало)" },
-    artifact: { x: 0.35, y: 0.55, label: "Ржавый релейный шкаф" },
+    artifact: { x: 0.38, y: 0.48, label: "Искрящий щиток проводки" },
     shadowSpots: [{ x: 0.74, y: 0.53, scale: 1.05 }, { x: 0.22, y: 0.56, scale: 0.92 }],
     palette: { wall: "#161a18", floor: "#0a0c0b", light: "#8f3222" },
     reverbDecay: 5.8, solved: false, solvedOnce: false,
-    puzzleTitle: "Релейный замок аномалии",
-    puzzleDesc: "Осмотрите стены и бетонные балки этой камеры фонарём — на них процарапаны 3 цифры актуального шифра.",
-    puzzleType: "procedural_pin",
+    puzzleTitle: "Релейный замок заброшенной комнаты",
+    puzzleDesc: "Осмотрите искрящую проводку и стены этой 360°-комнаты, чтобы подобрать трёхзначный код (4 - 0 - 9).",
+    puzzleType: "pin_digits",
     targetPin: [4, 0, 9]
   }
 ];
@@ -781,10 +798,70 @@ spotLight.position.set(0, 0, 10);
 scene.add(spotLight);
 scene.add(spotLight.target);
 
-const roomPlaneGeo = new THREE.PlaneGeometry(16, 9);
+// 2.5D-сфера на базе панорамного осмотра (с плавной инерцией и ограниченным 2.5D-углом обзора)
+const roomSphereGeo = new THREE.SphereGeometry(28, 64, 40);
+roomSphereGeo.scale(-1, 1, 1);
 const roomPlaneMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-const roomMesh = new THREE.Mesh(roomPlaneGeo, roomPlaneMat);
+const roomMesh = new THREE.Mesh(roomSphereGeo, roomPlaneMat);
 scene.add(roomMesh);
+
+const view25D = {
+  isDragging: false,
+  lon: 180,
+  lat: 0,
+  targetLon: 180,
+  targetLat: 0,
+  downLon: 180,
+  downLat: 0,
+  downX: 0,
+  downY: 0,
+  lastX: 0,
+  lastY: 0,
+  lastTime: 0,
+  velX: 0,
+  velY: 0,
+  maxLonOffset: 180, // полный обзор на 360° по горизонтали
+  maxLatOffset: 68   // широкий наклон вверх/вниз в 360°
+};
+
+function clamp25DAngles() {
+  view25D.targetLat = Math.max(-view25D.maxLatOffset, Math.min(view25D.maxLatOffset, view25D.targetLat));
+}
+
+function update25DCameraLook(timeMs, dt, camX, camY, camZ) {
+  if (view25D.isDragging) {
+    const k = 1 - Math.pow(1 - 0.35, dt);
+    view25D.lon += (view25D.targetLon - view25D.lon) * k;
+    view25D.lat += (view25D.targetLat - view25D.lat) * k;
+  } else {
+    if (Math.abs(view25D.velX) > 0.005 || Math.abs(view25D.velY) > 0.005) {
+      view25D.targetLon -= view25D.velX * 6.5 * dt;
+      view25D.targetLat += view25D.velY * 5.0 * dt;
+      clamp25DAngles();
+      view25D.velX *= Math.pow(0.87, dt);
+      view25D.velY *= Math.pow(0.87, dt);
+    } else {
+      // Очень тонкое дыхание камеры без притягивания обратно к центру
+      view25D.targetLat += Math.sin(timeMs * 0.0012) * 0.04 * dt;
+      clamp25DAngles();
+    }
+    const k = 1 - Math.pow(1 - 0.16, dt);
+    view25D.lon += (view25D.targetLon - view25D.lon) * k;
+    view25D.lat += (view25D.targetLat - view25D.lat) * k;
+  }
+
+  view25D.lat = Math.max(-view25D.maxLatOffset, Math.min(view25D.maxLatOffset, view25D.lat));
+  const phi = THREE.MathUtils.degToRad(90 - view25D.lat);
+  const theta = THREE.MathUtils.degToRad(view25D.lon);
+  const radius = 28;
+  const targetPt = new THREE.Vector3(
+    camX + radius * Math.sin(phi) * Math.cos(theta),
+    camY + radius * Math.cos(phi),
+    camZ + radius * Math.sin(phi) * Math.sin(theta)
+  );
+  camera.position.set(camX, camY, camZ);
+  camera.lookAt(targetPt);
+}
 
 /* ============================================================
    ОЖИВЛЕНИЕ КОМНАТ: GOD RAYS (ФРЕНЕЛЬ + АДДИТИВНОЕ СМЕШИВАНИЕ),
@@ -1260,6 +1337,31 @@ function ensureFlashlightSprite() {
   g.fillRect(0, 0, size, size);
   flashlightSprite = c;
 }
+function projectRoomNormToScreen(nx, ny, w, h) {
+  // Полный 360°-охват по азимуту: nx=0.5 — центр прямо по курсу (lon=180°), шаг по горизонтали — до ±135°
+  const yawRad = (0.5 - nx) * THREE.MathUtils.degToRad(270);
+  const pitchRad = (0.5 - ny) * THREE.MathUtils.degToRad(95);
+  const r = 18.0;
+  const dirX = -Math.cos(pitchRad) * Math.cos(yawRad);
+  const dirY = Math.sin(pitchRad);
+  const dirZ = -Math.cos(pitchRad) * Math.sin(yawRad);
+
+  const worldPt = new THREE.Vector3(
+    roomMesh.position.x + dirX * r,
+    roomMesh.position.y + dirY * r,
+    roomMesh.position.z + dirZ * r
+  );
+  worldPt.project(camera);
+  // Скрываем маркеры, ушедшие за спину камеры (z > 1 в NDC)
+  if (worldPt.z > 1) {
+    return { x: -9999, y: -9999 };
+  }
+  return {
+    x: (worldPt.x * 0.5 + 0.5) * w,
+    y: (-worldPt.y * 0.5 + 0.5) * h
+  };
+}
+
 function getOverlayTransform(w, h) {
   const scaleX = (layout.planeW / layout.viewW) * w;
   const scaleY = (layout.planeH / layout.viewH) * h;
@@ -1458,9 +1560,119 @@ function generateRandomHorrorRoom(roomObj) {
   roomImageDims[anomIdx] = { w: 1600, h: 900 };
 }
 
+
+/* ============================================================
+   ИНТЕРАКТИВНЫЕ 3D-СЛОИ 360°-РЕДАКТОРА (БАЗОВЫЙ СЛОЙ + ИСКРЫ)
+============================================================ */
+const editor360ActiveObjects = [];
+
+function uvToSpherePos360(u, v, radius = 25.5) {
+  const phi = v * Math.PI;
+  const theta = u * Math.PI * 2;
+  return new THREE.Vector3(
+    -radius * Math.sin(phi) * Math.cos(theta),
+     radius * Math.cos(phi),
+     radius * Math.sin(phi) * Math.sin(theta)
+  );
+}
+
+function clearEditor360Objects() {
+  while (editor360ActiveObjects.length > 0) {
+    const item = editor360ActiveObjects.pop();
+    if (item.video) {
+      try { item.video.pause(); item.video.removeAttribute("src"); item.video.load(); } catch (e) {}
+    }
+    if (item.mat && item.mat.map) {
+      try { item.mat.map.dispose(); } catch (e) {}
+    }
+    if (item.mat) {
+      try { item.mat.dispose(); } catch (e) {}
+    }
+    if (item.holder) scene.remove(item.holder);
+  }
+}
+
+function mountEditor360ObjectsForRoom(room) {
+  clearEditor360Objects();
+  if (!room || !room.is360EditorRoom) return;
+
+  if (room.startCamera) {
+    view25D.lon = view25D.targetLon = room.startCamera.lon;
+    view25D.lat = view25D.targetLat = room.startCamera.lat;
+    view25D.velX = 0;
+    view25D.velY = 0;
+  }
+
+  const list = Array.isArray(room.editorInteractives) ? room.editorInteractives : [];
+  // Масштабируем размеры редактора (радиус 460 -> радиус 25.5)
+  const radiusScale = 25.5 / 460;
+
+  list.forEach(cfg => {
+    const holder = new THREE.Group();
+    holder.position.copy(uvToSpherePos360(cfg.position.u, cfg.position.v, 25.5));
+    holder.lookAt(0, 0, 0);
+    holder.rotateZ(THREE.MathUtils.degToRad(cfg.rotationDeg || 0));
+    const s = (cfg.scale || 1) * radiusScale;
+    holder.scale.set(s, s, 1);
+    scene.add(holder);
+
+    const mat = new THREE.MeshBasicMaterial({
+      transparent: true,
+      blending: cfg.additiveBlend ? THREE.AdditiveBlending : THREE.NormalBlending,
+      depthWrite: false,
+      opacity: 0
+    });
+
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(cfg.size.width, cfg.size.height),
+      mat
+    );
+    holder.add(mesh);
+
+    let video = null;
+    if (cfg.type === "video" && cfg.src) {
+      video = document.createElement("video");
+      video.muted = true;
+      video.playsInline = true;
+      video.loop = Boolean(cfg.loop);
+      video.preload = "auto";
+      video.crossOrigin = "anonymous";
+
+      let triedFallback = false;
+      video.addEventListener("error", () => {
+        if (!triedFallback && cfg.fallbackSrc) {
+          triedFallback = true;
+          video.src = cfg.fallbackSrc;
+          if (cfg.loop) video.play().catch(() => {});
+        }
+      });
+
+      video.addEventListener("ended", () => {
+        if (!cfg.loop) mat.opacity = 0;
+      });
+
+      video.src = cfg.src;
+      const vTex = new THREE.VideoTexture(video);
+      vTex.minFilter = THREE.LinearFilter;
+      vTex.magFilter = THREE.LinearFilter;
+      vTex.generateMipmaps = false;
+      mat.map = vTex;
+
+      if (cfg.loop) {
+        mat.opacity = 1;
+        const p = video.play();
+        if (p && typeof p.catch === "function") p.catch(() => {});
+      }
+    }
+
+    editor360ActiveObjects.push({ cfg, holder, mat, mesh, video });
+  });
+}
+
 function applyRoomTexture(idx, useHallucination = false) {
   const room = ROOMS[idx];
   if (room.isProceduralRoom && !roomTextures[idx]) generateRandomHorrorRoom(room);
+  if (!useHallucination) mountEditor360ObjectsForRoom(room);
 
   if (room.isAnimatedGif && gifRoomLayer) {
     if (gifRoomLayer.getAttribute("src") !== room.fileName) {
@@ -1496,7 +1708,14 @@ function tryAutoLoadImages() {
         roomHallucinationTextures[idx] = createHallucinationFallbackTexture(room);
       }
     };
-    img.onerror = () => { if (idx === currentRoomIndex) applyRoomTexture(idx); };
+    img.onerror = () => {
+      if (room.fallbackFileName && img.getAttribute("data-fallback") !== "1") {
+        img.setAttribute("data-fallback", "1");
+        img.src = room.fallbackFileName;
+        return;
+      }
+      if (idx === currentRoomIndex) applyRoomTexture(idx);
+    };
     img.src = room.fileName;
 
     if (room.hallucinationFileName) {
@@ -1618,19 +1837,15 @@ const dustParticles = Array.from({ length: 80 }, () => ({
 let lastFrameTime = performance.now();
 
 function updateWorldPlaneLayout() {
-  const dist = camera.position.z;
+  const dist = Math.max(1, camera.position.z);
   const vFov = THREE.MathUtils.degToRad(camera.fov);
   const viewH = 2 * Math.tan(vFov / 2) * dist;
   const viewW = viewH * camera.aspect;
-  const dims = roomImageDims[currentRoomIndex] || { w: 16, h: 9 };
-  const imgAspect = dims.w / dims.h;
-  const viewAspect = viewW / viewH;
-  let planeW, planeH;
-  if (viewAspect > imgAspect) { planeW = viewW * 1.08; planeH = planeW / imgAspect; }
-  else { planeH = viewH * 1.08; planeW = planeH * imgAspect; }
-  roomMesh.scale.set(planeW / 16, planeH / 9, 1);
-  layout.planeW = planeW; layout.planeH = planeH;
-  layout.viewW = viewW; layout.viewH = viewH;
+  roomMesh.scale.set(1, 1, 1);
+  layout.planeW = viewW * 1.12;
+  layout.planeH = viewH * 1.12;
+  layout.viewW = viewW;
+  layout.viewH = viewH;
   return layout;
 }
 
@@ -1829,6 +2044,7 @@ function animate(time) {
         applyRoomTexture(currentRoomIndex, false);
         updateRoomHUD();
         syncTapeVideo();
+    editor360ActiveObjects.forEach(o => { if (o.video && o.cfg.loop && o.video.paused) o.video.play().catch(() => {}); });
         if (audioEngine.ctx) audioEngine.updateCavernReverb(ROOMS[currentRoomIndex].reverbDecay);
         saveProgress();
         transition.phase = "out";
@@ -1842,8 +2058,7 @@ function animate(time) {
     }
   }
 
-  camera.position.set(camX, camY, camZ);
-  camera.lookAt(camX * 0.65, camY * 0.65, 0);
+  update25DCameraLook(time, dt, camX, camY, camZ);
 
   if (gifRoomLayer && gifRoomLayer.classList.contains("visible") && !REDUCE_MOTION) {
     gifRoomLayer.style.transform = `scale(1.06) translate(${(-pointer.normX * 14).toFixed(1)}px, ${(-pointer.normY * 10).toFixed(1)}px)`;
@@ -1925,7 +2140,6 @@ function updateDiscoveryTicks(w, h) {
 function render2DOverlay(w, h, room, blackFade, time, dt) {
   fxCtx.clearRect(0, 0, w, h);
   const t = getOverlayTransform(w, h);
-  const scaleX = t.scaleX, scaleY = t.scaleY, offsetX = t.offsetX, offsetY = t.offsetY;
   dustParticles.forEach(p => {
     p.x += p.vx * dt * 0.65;
     p.y += p.vy * dt * 0.65;
@@ -1940,15 +2154,15 @@ function render2DOverlay(w, h, room, blackFade, time, dt) {
     fxCtx.fillStyle = `rgba(206, 216, 198, ${Math.min(0.85, 0.18 + boost)})`;
     fxCtx.beginPath(); fxCtx.arc(px, py, rTiny, 0, Math.PI * 2); fxCtx.fill();
   });
-  drawMarker2D(offsetX + room.artifact.x * scaleX, offsetY + room.artifact.y * scaleY,
-    room.artifact.label, room.solved ? "#528c63" : "#bd7d3b", time);
+  const artPos = projectRoomNormToScreen(room.artifact.x, room.artifact.y, w, h);
+  drawMarker2D(artPos.x, artPos.y, room.artifact.label, room.solved ? "#528c63" : "#bd7d3b", time);
   if (room.clueProp) {
-    drawMarker2D(offsetX + room.clueProp.x * scaleX, offsetY + room.clueProp.y * scaleY,
-      room.clueProp.label, "#8c7d65", time);
+    const cpPos = projectRoomNormToScreen(room.clueProp.x, room.clueProp.y, w, h);
+    drawMarker2D(cpPos.x, cpPos.y, room.clueProp.label, "#8c7d65", time);
   }
   const canPass = room.solved || freeMode;
-  drawMarker2D(offsetX + room.portal.x * scaleX, offsetY + room.portal.y * scaleY,
-    room.portal.label, canPass ? "#528c63" : "#8f3222", time);
+  const portPos = projectRoomNormToScreen(room.portal.x, room.portal.y, w, h);
+  drawMarker2D(portPos.x, portPos.y, room.portal.label, canPass ? "#528c63" : "#8f3222", time);
   if (flashlightOn) {
     const flicker = REDUCE_MOTION ? 1.0 : (Math.sin(time * 0.041) * Math.sin(time * 0.017) > 0.96 ? 0.72 : 1.0);
     fxCtx.fillStyle = "rgba(1, 2, 1, 0.94)";
@@ -2134,11 +2348,48 @@ document.querySelectorAll(".modal-backdrop").forEach(m => {
 ============================================================ */
 glCanvas.addEventListener("pointerdown", (e) => {
   pointer.targetX = e.clientX; pointer.targetY = e.clientY;
-  });
+  view25D.isDragging = true;
+  view25D.downX = e.clientX;
+  view25D.downY = e.clientY;
+  view25D.downLon = view25D.targetLon;
+  view25D.downLat = view25D.targetLat;
+  view25D.lastX = e.clientX;
+  view25D.lastY = e.clientY;
+  view25D.lastTime = performance.now();
+  view25D.velX = 0;
+  view25D.velY = 0;
+});
 window.addEventListener("pointermove", (e) => {
   if (document.querySelector(".modal-backdrop.open")) return;
   pointer.targetX = e.clientX; pointer.targetY = e.clientY;
+  if (!view25D.isDragging) return;
+  const factor = camera.fov / 420;
+  view25D.targetLon = view25D.downLon + (view25D.downX - e.clientX) * factor;
+  view25D.targetLat = view25D.downLat + (e.clientY - view25D.downY) * factor;
+  clamp25DAngles();
+  const now = performance.now();
+  const dtMove = now - view25D.lastTime;
+  if (dtMove > 0) {
+    const instX = (e.clientX - view25D.lastX) / dtMove;
+    const instY = (e.clientY - view25D.lastY) / dtMove;
+    view25D.velX = view25D.velX * 0.5 + instX * 0.5;
+    view25D.velY = view25D.velY * 0.5 + instY * 0.5;
+  }
+  view25D.lastX = e.clientX;
+  view25D.lastY = e.clientY;
+  view25D.lastTime = now;
 }, { passive: true });
+window.addEventListener("pointerup", () => {
+  if (!view25D.isDragging) return;
+  view25D.isDragging = false;
+  if (performance.now() - view25D.lastTime > 110) {
+    view25D.velX = 0;
+    view25D.velY = 0;
+  } else {
+    view25D.velX = Math.max(-1.2, Math.min(1.2, view25D.velX));
+    view25D.velY = Math.max(-1.2, Math.min(1.2, view25D.velY));
+  }
+});
 
 glCanvas.addEventListener("click", (e) => {
   if (transition.active) return;
@@ -2154,14 +2405,12 @@ glCanvas.addEventListener("click", (e) => {
   updateWorldPlaneLayout();
   const t = getOverlayTransform(w, h);
 
-  const artX = t.offsetX + room.artifact.x * t.scaleX;
-  const artY = t.offsetY + room.artifact.y * t.scaleY;
-  if (Math.hypot(e.clientX - artX, e.clientY - artY) < 90) { openPuzzleModal(); return; }
+  const artPosClick = projectRoomNormToScreen(room.artifact.x, room.artifact.y, w, h);
+  if (Math.hypot(e.clientX - artPosClick.x, e.clientY - artPosClick.y) < 90) { openPuzzleModal(); return; }
 
   if (room.clueProp) {
-    const cpX = t.offsetX + room.clueProp.x * t.scaleX;
-    const cpY = t.offsetY + room.clueProp.y * t.scaleY;
-    if (Math.hypot(e.clientX - cpX, e.clientY - cpY) < 90) {
+    const cpPosClick = projectRoomNormToScreen(room.clueProp.x, room.clueProp.y, w, h);
+    if (Math.hypot(e.clientX - cpPosClick.x, e.clientY - cpPosClick.y) < 90) {
       audioEngine.playTick();
       openPuzzleModal();
       const fb = document.getElementById("modal-feedback");
@@ -2170,9 +2419,8 @@ glCanvas.addEventListener("click", (e) => {
     }
   }
 
-  const portX = t.offsetX + room.portal.x * t.scaleX;
-  const portY = t.offsetY + room.portal.y * t.scaleY;
-  if (Math.hypot(e.clientX - portX, e.clientY - portY) < 90) {
+  const portPosClick = projectRoomNormToScreen(room.portal.x, room.portal.y, w, h);
+  if (Math.hypot(e.clientX - portPosClick.x, e.clientY - portPosClick.y) < 90) {
     attemptRoomTransition((currentRoomIndex + 1) % ROOMS.length); return;
   }
 
@@ -2890,6 +3138,7 @@ document.addEventListener("visibilitychange", () => {
     saveProgress();
     handleTabBlurAudio(true);
     if (tapeVideo && !tapeVideo.paused) tapeVideo.pause();
+    editor360ActiveObjects.forEach(o => { if (o.video && !o.video.paused) o.video.pause(); });
     if (chamberCutsceneVideo && !chamberCutsceneVideo.paused) chamberCutsceneVideo.pause();
   } else {
     handleTabBlurAudio(false);
@@ -2976,7 +3225,7 @@ glCanvas.addEventListener("webglcontextrestored", () => {
       const img = new Image();
       img.src = src;
     });
-    ["tape.mp4", "Chamber_cutscene.mp4", "Abandoned%20Victims.mp3", "Abandoned%20Victims.ogg"].forEach(src => {
+    ["tape.mp4", "Chamber_cutscene.mp4", "./assets/1000405140.mp4", "1000405140.mp4", "Abandoned%20Victims.mp3", "Abandoned%20Victims.ogg"].forEach(src => {
       const isAudio = src.includes("Abandoned");
       const el = document.createElement(isAudio ? "audio" : "video");
       el.preload = "auto";
