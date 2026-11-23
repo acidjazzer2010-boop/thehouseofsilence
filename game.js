@@ -4,11 +4,11 @@
    КОНСТАНТЫ И СПИСОК КОМНАТ
    1-5: основные 2.5D (Taperoom.jpg, Gallery.jpg, attic.jpg, Surgeryroom.jpg, Bunker.jpg)
    6-9: секретные 2.5D (открываются после прохождения 1-5)
-   10:  тестовая 360° комната из редактора (1000405137.jpg + искры 1000405140.mp4 по тапу)
+   10:  тестовая 360° комната из редактора (./assets/1000405137.jpg + искры ./assets/1000405140.mp4)
 ============================================================ */
 const REDUCE_MOTION     = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const STORAGE_KEY       = 'osobnyak_progress_v4';
-const FLASHLIGHT_RATIO  = 0.48; // расширенный луч фонаря (было 0.34)
+const FLASHLIGHT_RATIO  = 0.48;
 const TRANSITION_SPEED  = 0.026;
 const POINTER_LERP      = 0.14;
 const ENTITY_LERP       = 0.035;
@@ -17,6 +17,7 @@ const ENTITY_EVADE_LERP = 0.14;
 const ROOMS = [
   {
     id: 0, code: "СЕКТОР 01 // TAPEROOM", fileName: "Taperoom.jpg",
+    is360EditorRoom: false,
     title: "Прихожая с катушечным диктофоном",
     desc: "Сырые обои отслаиваются от гнилой штукатурки. На гниющем полу брошены мокрые домашние тапочки, рядом — ржавый бобинный диктофон.",
     portal: { x: 0.62, y: 0.48, label: "Проём в Gallery" },
@@ -31,6 +32,7 @@ const ROOMS = [
   },
   {
     id: 1, code: "СЕКТОР 02 // GALLERY", fileName: "Gallery.jpg",
+    is360EditorRoom: false,
     title: "Галерея с пустыми рамами и цепями",
     desc: "Вытянутая анфилада с облезлыми стенами, осколками рамок и тяжёлыми цепями.",
     portal: { x: 0.50, y: 0.46, label: "Подъём в Attic" },
@@ -45,6 +47,7 @@ const ROOMS = [
   },
   {
     id: 2, code: "СЕКТОР 03 // ATTIC", fileName: "attic.jpg",
+    is360EditorRoom: false,
     title: "Чердак с заляпанными простынями",
     desc: "Под гниющими стропилами стоят сундуки и мебель под заляпанными простынями и старыми пледами.",
     portal: { x: 0.50, y: 0.45, label: "Люк в Surgeryroom" },
@@ -59,6 +62,7 @@ const ROOMS = [
   },
   {
     id: 3, code: "СЕКТОР 04 // SURGERYROOM", fileName: "Surgeryroom.jpg",
+    is360EditorRoom: false,
     title: "Заброшенная операционная",
     desc: "Потрескавшийся кафель, пустые склянки и бутылки, ржавые ширмы и операционный стол.",
     portal: { x: 0.64, y: 0.49, label: "Гермошлюз в Bunker" },
@@ -73,6 +77,7 @@ const ROOMS = [
   },
   {
     id: 4, code: "СЕКТОР 05 // BUNKER", fileName: "Bunker.jpg",
+    is360EditorRoom: false,
     title: "Подземный бункер связи",
     desc: "Массивная ржавая гермодверь, оборванные провода, аварийный маяк и полевой телефон.",
     portal: { x: 0.90, y: 0.52, label: "Секретный шлюз: Архив" },
@@ -88,6 +93,7 @@ const ROOMS = [
   /* ==== 4 СЕКРЕТНЫЕ КОМНАТЫ (2- И 3-СОСТАВНЫЕ КВЕСТЫ ПОСЛЕ ПРОХОЖДЕНИЯ 1–5) ==== */
   {
     id: 5, code: "СЕКРЕТ 01 // ARCHIVE", fileName: "Archive_secret1.gif",
+    is360EditorRoom: false,
     isSecret: true, isAnimatedGif: true,
     title: "Тайник I: Затопленный архив",
     desc: "Полузатопленное хранилище дел № 404. У стеллажа — ржавый ключ и всплывшие папки, а на сырой штукатурке справа процарапано предостережение.",
@@ -106,6 +112,7 @@ const ROOMS = [
   {
     id: 6, code: "СЕКРЕТ 02 // FURNACE", fileName: "Furnace_secret1.jpg",
     hallucinationFileName: "Furnace_secret2.jpg",
+    is360EditorRoom: false,
     isSecret: true,
     title: "Тайник II: Заброшенная котельная",
     desc: "Чёрная от копоти топка со старыми манометрами и лопнувшими стеклянными колбами в золе.",
@@ -123,6 +130,7 @@ const ROOMS = [
   {
     id: 7, code: "СЕКРЕТ 03 // GORECHAMBER", fileName: "Gorechamber_secret1.jpg",
     hallucinationFileName: "Gorechamber_secret2.jpg",
+    is360EditorRoom: false,
     isSecret: true,
     title: "Тайник III: Камера с маятником",
     desc: "Сырой каземат с ржавыми кандалами, порванными ремнями и четырьмя римскими знаками на каменной плите пола.",
@@ -139,6 +147,7 @@ const ROOMS = [
   },
   {
     id: 8, code: "СЕКРЕТ 04 // MIRROROOM", fileName: "Mirroroom_secret1.jpg",
+    is360EditorRoom: false,
     isSecret: true,
     title: "Тайник IV: Зеркальный изолятор",
     desc: "Круглая камера с треснувшими зеркалами, ржавой клеткой, грязными тапочками у порога и двумя цифрами в проломе потолка.",
@@ -159,19 +168,27 @@ const ROOMS = [
     fallbackFileName: "1000405137.jpg",
     is360EditorRoom: true,
     startCamera: { lon: 145, lat: 5 },
+    atmosphereEffects: { dust: true, fog: false, rain: false, smoke: false, drops: false, insects: false, intensity: 1.0 },
     editorInteractives: [
       {
         id: "sparks_panel",
         type: "video",
         src: "./assets/1000405140.mp4",
         fallbackSrc: "1000405140.mp4",
+        sound: "spark",
+        customSoundSrc: "",
+        action: "none",
+        clueText: "",
         targetRoomId: null,
         position: { u: 0.378, v: 0.462 },
-        scale: 0.45,
+        scaleX: 0.45,
+        scaleY: 0.45,
         rotationDeg: 0,
         size: { width: 248.89, height: 140 },
-        additiveBlend: true,
-        loop: false // запускается по нажатию на щиток
+        corners: { tl: [0, 0], tr: [0, 0], br: [0, 0], bl: [0, 0] },
+        blendMode: "additive",
+        chromaKey: null,
+        loop: false
       }
     ],
     title: "Комната 1 (Заброшенная 360°)",
@@ -812,11 +829,9 @@ scene.add(spotLight.target);
 
 const roomPlaneMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
-// 1. Классическая 2.5D-плоскость для комнат 1–9
 const roomPlaneMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), roomPlaneMat);
 scene.add(roomPlaneMesh);
 
-// 2. Полноценная 360°-сфера только для тестовой 10-й комнаты (is360EditorRoom: true)
 const roomSphereGeo = new THREE.SphereGeometry(28, 64, 40);
 roomSphereGeo.scale(-1, 1, 1);
 const roomSphereMesh = new THREE.Mesh(roomSphereGeo, roomPlaneMat);
@@ -853,7 +868,6 @@ function updateCameraForActiveMode(timeMs, dt, camX, camY, camZ) {
   roomSphereMesh.visible = is360;
 
   if (!is360) {
-    // Классический 2.5D-режим для комнат 1–9
     camera.fov = 42;
     camera.updateProjectionMatrix();
     camera.position.set(camX, camY, camZ);
@@ -861,7 +875,6 @@ function updateCameraForActiveMode(timeMs, dt, camX, camY, camZ) {
     return;
   }
 
-  // Полный 360°-режим для 10-й тестовой комнаты
   if (camera.fov !== 68) {
     camera.fov = 68;
     camera.updateProjectionMatrix();
@@ -1351,7 +1364,6 @@ function ensureFlashlightSprite() {
   const c = document.createElement("canvas");
   c.width = c.height = size;
   const g = c.getContext("2d");
-  // Широкое яркое ядро + плавный ореол, чтобы не приходилось водить лучом вслепую
   const grad = g.createRadialGradient(rad, rad, rad * 0.16, rad, rad, rad);
   grad.addColorStop(0, "rgba(0, 0, 0, 1)");
   grad.addColorStop(0.55, "rgba(0, 0, 0, 0.78)");
@@ -1362,11 +1374,10 @@ function ensureFlashlightSprite() {
   flashlightSprite = c;
 }
 
-// Проекция маркеров: для комнат 1–9 (2.5D) и для 10-й комнаты (360° UV)
 function getMarkerScreenPos(markerObj, w, h, t2D) {
   const room = ROOMS[currentRoomIndex];
   if (room && room.is360EditorRoom && typeof markerObj.u === "number") {
-    const worldPt = uvToSpherePos360(markerObj.u, markerObj.v, 25.5);
+    const worldPt = uvToScenePosEditor(room, markerObj.u, markerObj.v, 25.5);
     worldPt.project(camera);
     if (worldPt.z > 1) return { x: -9999, y: -9999 };
     return {
@@ -1375,8 +1386,8 @@ function getMarkerScreenPos(markerObj, w, h, t2D) {
     };
   }
   return {
-    x: t2D.offsetX + markerObj.x * t2D.scaleX,
-    y: t2D.offsetY + markerObj.y * t2D.scaleY
+    x: t2D.offsetX + (markerObj.x ?? markerObj.u ?? 0.5) * t2D.scaleX,
+    y: t2D.offsetY + (markerObj.y ?? markerObj.v ?? 0.5) * t2D.scaleY
   };
 }
 
@@ -1494,13 +1505,19 @@ function createProceduralTexture(room) {
 }
 
 /* ============================================================
-   ИНТЕРАКТИВНЫЕ 3D-СЛОИ 360°-РЕДАКТОРА (ДЛЯ ТЕСТОВОЙ 10-Й КОМНАТЫ)
+   ИНТЕРАКТИВНЫЕ 3D-СЛОИ РЕДАКТОРА (2.5D + 360°, ХРОМАКЕЙ, ЗВУКИ, УГЛЫ)
 ============================================================ */
 const editor360ActiveObjects = [];
 const editor360Raycaster = new THREE.Raycaster();
 const editor360Ndc = new THREE.Vector2();
+let activeCustomLayerAudio = null;
 
-function uvToSpherePos360(u, v, radius = 25.5) {
+function uvToScenePosEditor(room, u, v, radius = 25.5) {
+  if (!room || !room.is360EditorRoom) {
+    const w = layout.planeW || 16;
+    const h = layout.planeH || 9;
+    return new THREE.Vector3((u - 0.5) * w, (0.5 - v) * h, 0.08);
+  }
   const phi = v * Math.PI;
   const theta = u * Math.PI * 2;
   return new THREE.Vector3(
@@ -1510,82 +1527,224 @@ function uvToSpherePos360(u, v, radius = 25.5) {
   );
 }
 
+function hexToRgbNormEditor(hex) {
+  const clean = (hex || "#00ff00").replace("#", "");
+  const num = parseInt(clean, 16) || 0x00ff00;
+  return new THREE.Vector3(
+    ((num >> 16) & 255) / 255,
+    ((num >> 8) & 255) / 255,
+    (num & 255) / 255
+  );
+}
+
+function applyCornerWarpEditor(geo, w, h, corners) {
+  const c = corners || { tl: [0, 0], tr: [0, 0], br: [0, 0], bl: [0, 0] };
+  const pTL = new THREE.Vector2((-0.5 + c.tl[0]) * w, ( 0.5 + c.tl[1]) * h);
+  const pTR = new THREE.Vector2(( 0.5 + c.tr[0]) * w, ( 0.5 + c.tr[1]) * h);
+  const pBR = new THREE.Vector2(( 0.5 + c.br[0]) * w, (-0.5 + c.br[1]) * h);
+  const pBL = new THREE.Vector2((-0.5 + c.bl[0]) * w, (-0.5 + c.bl[1]) * h);
+
+  const pos = geo.attributes.position;
+  const uv = geo.attributes.uv;
+  for (let i = 0; i < pos.count; i++) {
+    const u = uv.getX(i);
+    const v = uv.getY(i);
+    const topX = pTL.x * (1 - u) + pTR.x * u;
+    const topY = pTL.y * (1 - u) + pTR.y * u;
+    const botX = pBL.x * (1 - u) + pBR.x * u;
+    const botY = pBL.y * (1 - u) + pBR.y * u;
+    pos.setXYZ(i, botX * (1 - v) + topX * v, botY * (1 - v) + topY * v, 0);
+  }
+  pos.needsUpdate = true;
+  geo.computeBoundingSphere();
+}
+
+function createEditorLayerMaterial(cfg) {
+  const mode = cfg.blendMode || (cfg.additiveBlend === false ? "alpha" : "additive");
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: mode === "additive" ? THREE.AdditiveBlending : THREE.NormalBlending,
+    uniforms: {
+      uMap: { value: null },
+      uOpacity: { value: 0.0 },
+      uUseChroma: { value: mode === "chromakey" ? 1.0 : 0.0 },
+      uKeyColor: { value: hexToRgbNormEditor(cfg.chromaKey?.color || "#00ff00") },
+      uSimilarity: { value: cfg.chromaKey?.similarity ?? 0.36 },
+      uSmoothness: { value: cfg.chromaKey?.smoothness ?? 0.10 },
+      uSpill: { value: cfg.chromaKey?.spill ?? 0.65 }
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform sampler2D uMap;
+      uniform float uOpacity;
+      uniform float uUseChroma;
+      uniform vec3 uKeyColor;
+      uniform float uSimilarity;
+      uniform float uSmoothness;
+      uniform float uSpill;
+      varying vec2 vUv;
+
+      vec2 rgbToCbCr(vec3 c) {
+        float cb = -0.168736 * c.r - 0.331264 * c.g + 0.5 * c.b;
+        float cr =  0.5 * c.r - 0.418688 * c.g - 0.081312 * c.b;
+        return vec2(cb, cr);
+      }
+
+      void main() {
+        vec4 texColor = texture2D(uMap, vUv);
+        float alpha = texColor.a;
+        vec3 rgb = texColor.rgb;
+
+        if (uUseChroma > 0.5) {
+          vec2 pixCC = rgbToCbCr(rgb);
+          vec2 keyCC = rgbToCbCr(uKeyColor);
+          float dist = distance(pixCC, keyCC);
+          float mask = smoothstep(uSimilarity, uSimilarity + uSmoothness, dist);
+          alpha *= mask;
+
+          float spillFactor = (1.0 - smoothstep(uSimilarity, uSimilarity + uSmoothness * 2.2, dist)) * uSpill;
+          float luma = dot(rgb, vec3(0.299, 0.587, 0.114));
+          rgb = mix(rgb, vec3(luma), spillFactor);
+        }
+
+        gl_FragColor = vec4(rgb, alpha * uOpacity);
+      }
+    `
+  });
+}
+
 function clearEditor360Objects() {
+  if (activeCustomLayerAudio) {
+    try { activeCustomLayerAudio.pause(); } catch (e) {}
+    activeCustomLayerAudio = null;
+  }
   while (editor360ActiveObjects.length > 0) {
     const item = editor360ActiveObjects.pop();
     if (item.video) {
       try { item.video.pause(); item.video.removeAttribute("src"); item.video.load(); } catch (e) {}
     }
-    if (item.mat && item.mat.map) {
-      try { item.mat.map.dispose(); } catch (e) {}
+    if (item.mat?.uniforms?.uMap?.value) {
+      try { item.mat.uniforms.uMap.value.dispose(); } catch (e) {}
     }
     if (item.mat) {
       try { item.mat.dispose(); } catch (e) {}
+    }
+    if (item.mesh?.geometry) {
+      try { item.mesh.geometry.dispose(); } catch (e) {}
+    }
+    if (item.hitZone?.geometry) {
+      try { item.hitZone.geometry.dispose(); } catch (e) {}
     }
     if (item.holder) scene.remove(item.holder);
   }
 }
 
+function playLayerConfiguredSound(cfg) {
+  if (!audioEngine.enabled) return;
+  const snd = cfg.sound || "tick";
+  if (snd === "none") return;
+
+  if (snd === "custom" && cfg.customSoundSrc) {
+    if (activeCustomLayerAudio) {
+      try { activeCustomLayerAudio.pause(); } catch (e) {}
+    }
+    const audio = new Audio(cfg.customSoundSrc);
+    audio.volume = 0.88;
+    audio.play().catch(() => {});
+    activeCustomLayerAudio = audio;
+    return;
+  }
+
+  const map = {
+    spark: () => audioEngine.playElectricSparkSound(),
+    tick: () => audioEngine.playTick(),
+    chains: () => audioEngine.playSteelChains(0),
+    creak: () => audioEngine.playWoodCreak(),
+    whisper: () => audioEngine.playWhisper(),
+    rumble: () => audioEngine.playSubterraneanRumble()
+  };
+  if (map[snd]) map[snd]();
+}
+
 function triggerEditor360Object(item) {
   if (!item || !item.cfg) return;
+  playLayerConfiguredSound(item.cfg);
+
   if (item.cfg.type === "video" && item.video) {
-    item.mat.opacity = 1;
+    item.mat.uniforms.uOpacity.value = 1.0;
     item.video.currentTime = 0;
     const p = item.video.play();
     if (p && typeof p.catch === "function") p.catch(() => {});
-    if (audioEngine.enabled) {
-      if (item.cfg.id === "sparks_panel") audioEngine.playElectricSparkSound();
-      else audioEngine.playTick();
-    }
   } else if (item.cfg.type === "image") {
-    item.mat.opacity = item.mat.opacity > 0.5 ? 0 : 1;
-    if (audioEngine.enabled) audioEngine.playTick();
+    const cur = item.mat.uniforms.uOpacity.value;
+    item.mat.uniforms.uOpacity.value = cur > 0.5 ? 0.0 : 1.0;
+  }
+
+  if (item.cfg.action === "open_puzzle") {
+    openPuzzleModal();
+  } else if (item.cfg.action === "show_clue" && item.cfg.clueText) {
+    openPuzzleModal();
+    const fb = document.getElementById("modal-feedback");
+    if (fb) fb.textContent = `УЛИКА: ${item.cfg.clueText}`;
   }
 }
 
 function mountEditor360ObjectsForRoom(room) {
   clearEditor360Objects();
-  if (!room || !room.is360EditorRoom) return;
+  if (!room) return;
 
-  const startLon = room.startCamera ? room.startCamera.lon : 145;
-  const startLat = room.startCamera ? room.startCamera.lat : 5;
-  view360.lon = view360.targetLon = startLon;
-  view360.lat = view360.targetLat = startLat;
-  view360.velX = 0;
-  view360.velY = 0;
-
-  // При входе в 360° комнату ставим луч фонаря в центр экрана, чтобы свайп не мешал обзору
-  pointer.x = pointer.targetX = window.innerWidth * 0.5;
-  pointer.y = pointer.targetY = window.innerHeight * 0.5;
+  const is360 = Boolean(room.is360EditorRoom);
+  if (is360) {
+    const startLon = room.startCamera ? room.startCamera.lon : 145;
+    const startLat = room.startCamera ? room.startCamera.lat : 5;
+    view360.lon = view360.targetLon = startLon;
+    view360.lat = view360.targetLat = startLat;
+    view360.velX = 0;
+    view360.velY = 0;
+    pointer.x = pointer.targetX = window.innerWidth * 0.5;
+    pointer.y = pointer.targetY = window.innerHeight * 0.5;
+  } else {
+    updateWorldPlaneLayout();
+  }
 
   const list = Array.isArray(room.editorInteractives) ? room.editorInteractives : [];
   if (list.length === 0) return;
 
-  const radiusScale = 25.5 / 460;
+  const radiusScale = is360 ? (25.5 / 460) : (1.0 / 65);
 
   list.forEach((cfg, idx) => {
     const radius = 25.5 - idx * 0.05;
     const holder = new THREE.Group();
-    holder.position.copy(uvToSpherePos360(cfg.position.u, cfg.position.v, radius));
-    holder.lookAt(0, 0, 0);
+    const u = cfg.position?.u ?? 0.5;
+    const v = cfg.position?.v ?? 0.5;
+    holder.position.copy(uvToScenePosEditor(room, u, v, radius));
+
+    if (is360) holder.lookAt(0, 0, 0);
+    else holder.rotation.set(0, 0, 0);
+
     holder.rotateZ(THREE.MathUtils.degToRad(cfg.rotationDeg || 0));
-    const s = (cfg.scale || 1) * radiusScale;
-    holder.scale.set(s, s, 1);
+    const sx = (cfg.scaleX ?? cfg.scale ?? 1) * radiusScale;
+    const sy = (cfg.scaleY ?? cfg.scale ?? 1) * radiusScale;
+    holder.scale.set(sx, sy, 1);
     scene.add(holder);
 
-    const mat = new THREE.MeshBasicMaterial({
-      transparent: true,
-      blending: cfg.additiveBlend ? THREE.AdditiveBlending : THREE.NormalBlending,
-      depthWrite: false,
-      opacity: 0
-    });
+    const w = cfg.size?.width ?? 160;
+    const h = cfg.size?.height ?? 140;
+    const mat = createEditorLayerMaterial(cfg);
+    const geo = new THREE.PlaneGeometry(w, h, 16, 16);
+    applyCornerWarpEditor(geo, w, h, cfg.corners);
 
-    const mesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(cfg.size.width, cfg.size.height),
-      mat
-    );
+    const mesh = new THREE.Mesh(geo, mat);
     const hitZone = new THREE.Mesh(
-      new THREE.PlaneGeometry(cfg.size.width * 1.35, cfg.size.height * 1.35),
+      new THREE.PlaneGeometry(w * 1.35, h * 1.35),
       new THREE.MeshBasicMaterial({ visible: false })
     );
     holder.add(mesh, hitZone);
@@ -1609,7 +1768,7 @@ function mountEditor360ObjectsForRoom(room) {
       });
 
       video.addEventListener("ended", () => {
-        if (!cfg.loop) mat.opacity = 0;
+        if (!cfg.loop) mat.uniforms.uOpacity.value = 0.0;
       });
 
       video.src = cfg.src;
@@ -1617,13 +1776,26 @@ function mountEditor360ObjectsForRoom(room) {
       vTex.minFilter = THREE.LinearFilter;
       vTex.magFilter = THREE.LinearFilter;
       vTex.generateMipmaps = false;
-      mat.map = vTex;
+      mat.uniforms.uMap.value = vTex;
 
       if (cfg.loop) {
-        mat.opacity = 1;
+        mat.uniforms.uOpacity.value = 1.0;
         const p = video.play();
         if (p && typeof p.catch === "function") p.catch(() => {});
       }
+    } else if (cfg.type === "image" && cfg.src) {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const tex = new THREE.Texture(img);
+        tex.minFilter = THREE.LinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        tex.generateMipmaps = false;
+        tex.needsUpdate = true;
+        mat.uniforms.uMap.value = tex;
+        mat.uniforms.uOpacity.value = 1.0;
+      };
+      img.src = cfg.src;
     }
 
     editor360ActiveObjects.push({ cfg, holder, mat, mesh, hitZone, video });
@@ -1787,6 +1959,118 @@ const dustParticles = Array.from({ length: 80 }, () => ({
   vx: (Math.random() - 0.5) * 0.00025, vy: -0.00015 - Math.random() * 0.00035,
   size: 1.0 + Math.random() * 2.3
 }));
+
+/* ============================================================
+   РЕНДЕРЕР АТМОСФЕРНЫХ ЭФФЕКТОВ КОМНАТЫ (atmosphereEffects)
+============================================================ */
+const roomAtmospherePool = {
+  fog: Array.from({ length: 14 }, (_, i) => ({
+    x: Math.random(), y: 0.62 + (i % 4) * 0.1,
+    rx: 0.18 + Math.random() * 0.24, ry: 0.05 + Math.random() * 0.07,
+    vx: (0.00025 + Math.random() * 0.00045) * (i % 2 === 0 ? 1 : -1),
+    alpha: 0.04 + Math.random() * 0.05
+  })),
+  rain: Array.from({ length: 110 }, () => ({
+    x: Math.random(), y: Math.random(),
+    vy: 0.018 + Math.random() * 0.016, vx: -0.0025,
+    len: 14 + Math.random() * 20
+  })),
+  smoke: Array.from({ length: 24 }, () => ({
+    x: 0.3 + Math.random() * 0.4, y: 0.5 + Math.random() * 0.5,
+    vy: -0.0008 - Math.random() * 0.001, vx: (Math.random() - 0.5) * 0.0006,
+    r: 18 + Math.random() * 34, alpha: 0.06 + Math.random() * 0.08, phase: Math.random() * 6.28
+  })),
+  drops: Array.from({ length: 16 }, () => ({
+    x: 0.1 + Math.random() * 0.8, y: Math.random(),
+    vy: 0.008 + Math.random() * 0.009, r: 1.5 + Math.random() * 1.5
+  })),
+  insects: Array.from({ length: 26 }, () => ({
+    x: 0.2 + Math.random() * 0.6, y: 0.2 + Math.random() * 0.6,
+    vx: 0, vy: 0, phase: Math.random() * 6.28, size: 1.2 + Math.random() * 1.1
+  }))
+};
+
+function renderCustomRoomAtmosphere(ctx, w, h, room, time, dt) {
+  const atm = room.atmosphereEffects;
+  if (!atm) return;
+  const mult = atm.intensity ?? 1.0;
+  const t = time * 0.001;
+
+  if (atm.fog) {
+    for (const f of roomAtmospherePool.fog) {
+      f.x += f.vx * mult * dt;
+      if (f.x > 1.3) f.x = -0.3;
+      if (f.x < -0.3) f.x = 1.3;
+      const cx = f.x * w, cy = f.y * h, rx = f.rx * w, ry = f.ry * h;
+      const g = ctx.createRadialGradient(cx, cy, ry * 0.1, cx, cy, rx);
+      const a = Math.min(0.32, f.alpha * mult);
+      g.addColorStop(0, `rgba(175, 186, 172, ${a.toFixed(3)})`);
+      g.addColorStop(1, "rgba(140, 150, 138, 0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  if (atm.smoke) {
+    for (const s of roomAtmospherePool.smoke) {
+      s.y += s.vy * mult * dt;
+      s.x += (s.vx + Math.sin(t * 1.4 + s.phase) * 0.0005) * dt;
+      if (s.y < -0.1) { s.y = 1.05; s.x = 0.2 + Math.random() * 0.6; }
+      const cx = s.x * w, cy = s.y * h, rad = s.r * (0.8 + mult * 0.35);
+      const g = ctx.createRadialGradient(cx, cy, 2, cx, cy, rad);
+      const a = Math.min(0.28, s.alpha * mult);
+      g.addColorStop(0, `rgba(195, 200, 192, ${a.toFixed(3)})`);
+      g.addColorStop(1, "rgba(150, 155, 148, 0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  if (atm.rain) {
+    ctx.strokeStyle = `rgba(190, 208, 218, ${Math.min(0.65, 0.28 * mult).toFixed(3)})`;
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    for (const r of roomAtmospherePool.rain) {
+      r.y += r.vy * mult * dt;
+      r.x += r.vx * mult * dt;
+      if (r.y > 1.05) { r.y = -0.05; r.x = Math.random(); }
+      if (r.x < 0) r.x = 1;
+      const x1 = r.x * w, y1 = r.y * h;
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x1 + r.vx * 900, y1 + r.len);
+    }
+    ctx.stroke();
+  }
+
+  if (atm.drops) {
+    ctx.fillStyle = `rgba(195, 215, 225, ${Math.min(0.85, 0.55 * mult).toFixed(3)})`;
+    for (const d of roomAtmospherePool.drops) {
+      d.y += d.vy * mult * dt;
+      if (d.y > 0.96) {
+        ctx.strokeStyle = "rgba(195, 215, 225, 0.35)";
+        ctx.beginPath(); ctx.ellipse(d.x * w, 0.96 * h, 9, 2.5, 0, 0, Math.PI * 2); ctx.stroke();
+        d.y = 0.02; d.x = 0.1 + Math.random() * 0.8;
+      } else {
+        ctx.beginPath(); ctx.ellipse(d.x * w, d.y * h, d.r * 0.7, d.r * 2.2, 0, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+
+  if (atm.insects) {
+    for (const b of roomAtmospherePool.insects) {
+      b.vx = (b.vx + (Math.random() - 0.5) * 0.0012) * 0.92;
+      b.vy = (b.vy + (Math.random() - 0.5) * 0.0012) * 0.92;
+      b.x = THREE.MathUtils.clamp(b.x + b.vx * mult * dt, 0.05, 0.95);
+      b.y = THREE.MathUtils.clamp(b.y + b.vy * mult * dt, 0.08, 0.90);
+      const wing = Math.sin(t * 55 + b.phase) * 2.2;
+      const bx = b.x * w, by = b.y * h;
+      ctx.fillStyle = "rgba(25, 22, 18, 0.88)";
+      ctx.beginPath(); ctx.arc(bx, by, b.size, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "rgba(220, 225, 215, 0.45)";
+      ctx.fillRect(bx - wing, by - 1, wing * 2, 1.2);
+    }
+  }
+}
 
 let lastFrameTime = performance.now();
 
@@ -1966,8 +2250,6 @@ function animate(time) {
   const room = ROOMS[currentRoomIndex];
   const is360 = Boolean(room && room.is360EditorRoom);
 
-  // В 360°-комнате во время перетаскивания луч фонаря плавно центрируется по взгляду,
-  // чтобы не приходилось одновременно крутить камеру и ловить лучом края экрана
   if (is360 && (view360.isDragging || pointer.isTouchInput)) {
     pointer.targetX += (w * 0.5 - pointer.targetX) * 0.08 * dt;
     pointer.targetY += (h * 0.48 - pointer.targetY) * 0.08 * dt;
@@ -2111,20 +2393,27 @@ function render2DOverlay(w, h, room, blackFade, time, dt) {
   const t = getOverlayTransform(w, h);
   const is360 = Boolean(room && room.is360EditorRoom);
 
-  dustParticles.forEach(p => {
-    p.x += p.vx * dt * 0.65;
-    p.y += p.vy * dt * 0.65;
-    if (p.y < 0) p.y = 1;
-    if (p.x < 0) p.x = 1;
-    if (p.x > 1) p.x = 0;
-    const px = p.x * w - pointer.normX * 18 * p.z;
-    const py = p.y * h - pointer.normY * 12 * p.z;
-    const dist = Math.hypot(px - pointer.x, py - pointer.y);
-    const boost = (flashlightOn && dist < 290) ? (1 - dist / 290) * 0.65 : 0;
-    const rTiny = Math.max(0.8, p.size * 0.62 * p.z);
-    fxCtx.fillStyle = `rgba(206, 216, 198, ${Math.min(0.85, 0.18 + boost)})`;
-    fxCtx.beginPath(); fxCtx.arc(px, py, rTiny, 0, Math.PI * 2); fxCtx.fill();
-  });
+  const showDust = !room.atmosphereEffects || room.atmosphereEffects.dust !== false;
+  if (showDust) {
+    const dustMult = room.atmosphereEffects?.intensity ?? 1.0;
+    dustParticles.forEach(p => {
+      p.x += p.vx * dt * 0.65 * dustMult;
+      p.y += p.vy * dt * 0.65 * dustMult;
+      if (p.y < 0) p.y = 1;
+      if (p.x < 0) p.x = 1;
+      if (p.x > 1) p.x = 0;
+      const px = p.x * w - pointer.normX * 18 * p.z;
+      const py = p.y * h - pointer.normY * 12 * p.z;
+      const dist = Math.hypot(px - pointer.x, py - pointer.y);
+      const boost = (flashlightOn && dist < 290) ? (1 - dist / 290) * 0.65 : 0;
+      const rTiny = Math.max(0.8, p.size * 0.62 * p.z);
+      fxCtx.fillStyle = `rgba(206, 216, 198, ${Math.min(0.85, (0.18 + boost) * dustMult)})`;
+      fxCtx.beginPath(); fxCtx.arc(px, py, rTiny, 0, Math.PI * 2); fxCtx.fill();
+    });
+  }
+
+  // Атмосферные эффекты из редактора (туман, дождь, дым, капли, насекомые)
+  renderCustomRoomAtmosphere(fxCtx, w, h, room, time, dt);
 
   const artPos = getMarkerScreenPos(room.artifact, w, h, t);
   if (artPos.x > -100) drawMarker2D(artPos.x, artPos.y, room.artifact.label, room.solved ? "#528c63" : "#bd7d3b", time);
@@ -2138,8 +2427,6 @@ function render2DOverlay(w, h, room, blackFade, time, dt) {
   const portPos = getMarkerScreenPos(room.portal, w, h, t);
   if (portPos.x > -100) drawMarker2D(portPos.x, portPos.y, room.portal.label, canPass ? "#528c63" : "#8f3222", time);
 
-  // Мягкое AAA-затемнение: в 360°-комнате периферия остаётся полупрозрачной (0.68),
-  // чтобы свайпать и ориентироваться в пространстве было легко
   const darknessAlpha = is360 ? 0.68 : 0.86;
   if (flashlightOn) {
     const flicker = REDUCE_MOTION ? 1.0 : (Math.sin(time * 0.041) * Math.sin(time * 0.017) > 0.96 ? 0.82 : 1.0);
@@ -2323,8 +2610,6 @@ document.querySelectorAll(".modal-backdrop").forEach(m => {
 ============================================================ */
 glCanvas.addEventListener("pointerdown", (e) => {
   pointer.isTouchInput = (e.pointerType === "touch");
-  // В 2.5D комнатах луч сразу идёт за пальцем/курсором;
-  // в 360° комнате луч плавно светит вперёд по центру взгляда во время перетаскивания
   if (!ROOMS[currentRoomIndex].is360EditorRoom) {
     pointer.targetX = e.clientX;
     pointer.targetY = e.clientY;
@@ -2352,8 +2637,6 @@ window.addEventListener("pointermove", (e) => {
     return;
   }
 
-  // В 360°-комнате: если кнопка не зажата (наведение мышью на ПК) — двигаем луч фонаря;
-  // если зажата (свайп пальцем или мышью) — вращаем камеру вокруг оси
   if (!view360.isDragging) {
     if (e.pointerType === "mouse") {
       pointer.targetX = e.clientX;
@@ -2399,7 +2682,6 @@ glCanvas.addEventListener("click", (e) => {
   const room = ROOMS[currentRoomIndex];
   const is360 = Boolean(room && room.is360EditorRoom);
 
-  // В 360°-комнате игнорируем клик, если пользователь перетаскивал камеру
   if (is360 && Math.hypot(e.clientX - view360.downX, e.clientY - view360.downY) > 10) return;
 
   pointer.x = pointer.targetX = e.clientX;
@@ -2407,8 +2689,8 @@ glCanvas.addEventListener("click", (e) => {
   pointer.normX = (e.clientX / window.innerWidth - 0.5) * 2;
   pointer.normY = (e.clientY / window.innerHeight - 0.5) * 2;
 
-  // 1. В 360°-комнате сначала проверяем клик по 3D-объектам редактора (щиток с искрами)
-  if (is360 && editor360ActiveObjects.length > 0) {
+  // Проверяем клик по любым 3D-слоям из редактора (и в 360°, и в 2.5D комнатах)
+  if (editor360ActiveObjects.length > 0) {
     const rect = glCanvas.getBoundingClientRect();
     editor360Ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
     editor360Ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -3134,6 +3416,7 @@ document.addEventListener("visibilitychange", () => {
     saveProgress();
     handleTabBlurAudio(true);
     if (tapeVideo && !tapeVideo.paused) tapeVideo.pause();
+    if (activeCustomLayerAudio && !activeCustomLayerAudio.paused) activeCustomLayerAudio.pause();
     editor360ActiveObjects.forEach(o => { if (o.video && !o.video.paused) o.video.pause(); });
     if (chamberCutsceneVideo && !chamberCutsceneVideo.paused) chamberCutsceneVideo.pause();
   } else {
