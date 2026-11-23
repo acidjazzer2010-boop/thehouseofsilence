@@ -4,7 +4,7 @@
    КОНСТАНТЫ И СПИСОК КОМНАТ
    1-5: основные (Taperoom.jpg, Gallery.jpg, attic.jpg, Surgeryroom.jpg, Bunker.jpg)
    6-9: секретные (открываются только после прохождения 1-5)
-   10:  процедурная аномалия
+   10:  360° комната из редактора (./assets/1000405137.jpg + ./assets/1000405140.mp4)
 ============================================================ */
 const REDUCE_MOTION     = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const STORAGE_KEY       = 'osobnyak_progress_v4';
@@ -142,7 +142,7 @@ const ROOMS = [
     isSecret: true,
     title: "Тайник IV: Зеркальный изолятор",
     desc: "Круглая камера с треснувшими зеркалами, ржавой клеткой, грязными тапочками у порога и двумя цифрами в проломе потолка.",
-    portal: { x: 0.62, y: 0.48, label: "Спуск в Процедурную аномалию" },
+    portal: { x: 0.62, y: 0.48, label: "Переход в Сектор 10 (360°)" },
     artifact: { x: 0.62, y: 0.55, label: "Засов заколоченной двери" },
     clueProp: { x: 0.36, y: 0.76, label: "Осколок зеркала у ржавой клетки", clueText: "2-составный шифр: [9] в проломе потолка, [4] в отражении осколка зеркала у клетки" },
     shadowSpots: [{ x: 0.28, y: 0.52, scale: 0.92 }, { x: 0.80, y: 0.52, scale: 0.92 }],
@@ -155,7 +155,7 @@ const ROOMS = [
   },
   /* ==== 10-Я КОМНАТА: 360° УРОВЕНЬ ИЗ РЕДАКТОРА (БАЗОВЫЙ СЛОЙ + ИСКРЫ) ==== */
   {
-    id: 9, code: "СЕКТОР 10 // 360° АНОМАЛИЯ", fileName: "./assets/1000405137.jpg",
+    id: 9, code: "СЕКТОР 10 // ROOM_1", fileName: "./assets/1000405137.jpg",
     fallbackFileName: "1000405137.jpg",
     is360EditorRoom: true,
     startCamera: { lon: 145, lat: 5 },
@@ -186,13 +186,6 @@ const ROOMS = [
     puzzleType: "pin_digits",
     targetPin: [4, 0, 9]
   }
-];
-
-const PROCEDURAL_ARCHETYPES = [
-  { name: "Затопленный коллектор под фундаментом", desc: "Чёрная стоячая вода отражает треснувшие бетонные своды и ржавые вентили. Откуда-то снизу доносится глухой стук.", bgTop: "#0e1513", bgBot: "#040605", accent: "#2c3d37", rust: "#5e251a" },
-  { name: "Изолятор с облупленной кафельной кладкой", desc: "Узкая камера без окон. С потолка свисают обрывки проводов и крюки, а по углам расползлась чёрная плесень.", bgTop: "#171915", bgBot: "#050604", accent: "#393e33", rust: "#6b2b1e" },
-  { name: "Архивный склеп с обрушенными стеллажами", desc: "Покосившиеся железные шкафы завалены истлевшими папками и битым стеклом. Воздух тяжёлый и ледяной.", bgTop: "#1a1412", bgBot: "#050403", accent: "#42332d", rust: "#7a2c1d" },
-  { name: "Шахта старого грузового подъёмника", desc: "Ржавые тросы уходят в непроглядную черноту наверху. На сыром бетоне видны следы чьих-то ногтей.", bgTop: "#121316", bgBot: "#030405", accent: "#2d313b", rust: "#6e261b" }
 ];
 
 function areMainRoomsCompleted() {
@@ -232,7 +225,6 @@ class DarkAmbientAudio {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) return;
     this.ctx = new AudioCtx();
-    // Мягкий компрессор защищает от жёстких пиков после увеличения громкости на +50%
     this.compressor = this.ctx.createDynamicsCompressor();
     this.compressor.threshold.value = -10;
     this.compressor.knee.value = 18;
@@ -241,7 +233,7 @@ class DarkAmbientAudio {
     this.compressor.release.value = 0.18;
 
     this.master = this.ctx.createGain();
-    this.master.gain.value = 1.38; // +50% к базовой громкости 0.92
+    this.master.gain.value = 1.38;
     this.master.connect(this.compressor);
     this.compressor.connect(this.ctx.destination);
     this.dryGain = this.ctx.createGain();
@@ -604,7 +596,6 @@ class DarkAmbientAudio {
     const panner = this.ctx.createStereoPanner();
     panner.pan.value = (Math.random() * 1.4) - 0.7;
 
-    // Двухслойный натуральный гул: глухой инфразвук + дышащий полосовой резонанс
     const src1 = this.ctx.createBufferSource();
     src1.buffer = this.ambientBuffer; src1.loop = true;
     const lp = this.ctx.createBiquadFilter();
@@ -780,7 +771,7 @@ function syncTapeVideo() {
 }
 
 /* ============================================================
-   THREE.JS СЦЕНА 2.5D
+   THREE.JS СЦЕНА 2.5D / 360°
 ============================================================ */
 const renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, alpha: false });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -798,7 +789,6 @@ spotLight.position.set(0, 0, 10);
 scene.add(spotLight);
 scene.add(spotLight.target);
 
-// 2.5D-сфера на базе панорамного осмотра (с плавной инерцией и ограниченным 2.5D-углом обзора)
 const roomSphereGeo = new THREE.SphereGeometry(28, 64, 40);
 roomSphereGeo.scale(-1, 1, 1);
 const roomPlaneMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
@@ -820,8 +810,8 @@ const view25D = {
   lastTime: 0,
   velX: 0,
   velY: 0,
-  maxLonOffset: 180, // полный обзор на 360° по горизонтали
-  maxLatOffset: 68   // широкий наклон вверх/вниз в 360°
+  maxLonOffset: 180,
+  maxLatOffset: 68
 };
 
 function clamp25DAngles() {
@@ -841,7 +831,6 @@ function update25DCameraLook(timeMs, dt, camX, camY, camZ) {
       view25D.velX *= Math.pow(0.87, dt);
       view25D.velY *= Math.pow(0.87, dt);
     } else {
-      // Очень тонкое дыхание камеры без притягивания обратно к центру
       view25D.targetLat += Math.sin(timeMs * 0.0012) * 0.04 * dt;
       clamp25DAngles();
     }
@@ -864,8 +853,7 @@ function update25DCameraLook(timeMs, dt, camX, camY, camZ) {
 }
 
 /* ============================================================
-   ОЖИВЛЕНИЕ КОМНАТ: GOD RAYS (ФРЕНЕЛЬ + АДДИТИВНОЕ СМЕШИВАНИЕ),
-   MESHPHYSICALMATERIAL (ПРЕЛОМЛЕНИЕ / IOR) И ПРОЦЕДУРНЫЙ 3D-СЛОЙ
+   GOD RAYS И PRELOADER LENS
 ============================================================ */
 function buildGodRaysRig() {
   const group = new THREE.Group();
@@ -929,7 +917,6 @@ function buildGodRaysRig() {
 const godRaysRig = buildGodRaysRig();
 scene.add(godRaysRig.group);
 
-// Процедурная текстура ряби/неровности для преломляющей поверхности (MeshPhysicalMaterial)
 function createRefractionNormalCanvas() {
   const c = document.createElement("canvas");
   c.width = 256;
@@ -976,8 +963,6 @@ const refractionLensMesh = new THREE.Mesh(new THREE.IcosahedronGeometry(0.95, 2)
 refractionLensMesh.position.set(-2.6, -1.1, 1.55);
 scene.add(refractionLensMesh);
 
-
-
 const proceduralTextureCache = {};
 
 /* ============================================================
@@ -992,15 +977,12 @@ const roomImageDims = {};
 const roomTickFlags = {};
 
 /* ============================================================
-   СИСТЕМА ГАЛЛЮЦИНАЦИЙ (ОКРОВАВЛЕННЫЙ МЕДВЕДЬ В КОМНАТАХ)
-   - Срабатывает в комнатах с hallucinationFileName (Gorechamber_secret2.jpg, Furnace_secret2.jpg и др.)
-   - Случайная пауза между приступами: 60, 75 или 105 секунд
-   - Учащённое сердцебиение + 2–3 вспышки света/тьмы -> подмена на *_secret2.jpg на 10–15 сек -> возврат через 2–3 вспышки
+   СИСТЕМА ГАЛЛЮЦИНАЦИЙ
 ============================================================ */
 const HALLUCINATION_DELAYS_MS = [60000, 75000, 105000];
 const hallucinationState = {
   roomIdx: -1,
-  phase: "idle", // "idle" | "flash_in" | "active" | "flash_out"
+  phase: "idle",
   nextTriggerAt: 0,
   phaseStartedAt: 0,
   holdDurationMs: 12000,
@@ -1043,7 +1025,7 @@ function startHallucinationHeartbeat() {
       return;
     }
     if (audioEngine.enabled) audioEngine.playHeartbeatPulse(1.0);
-  }, 540); // учащённый пульс ~110 уд/мин
+  }, 540);
 }
 
 function triggerHallucinationNow(now = performance.now()) {
@@ -1055,7 +1037,7 @@ function triggerHallucinationNow(now = performance.now()) {
   hallucinationState.roomIdx = currentRoomIndex;
   hallucinationState.phase = "flash_in";
   hallucinationState.phaseStartedAt = now;
-  hallucinationState.holdDurationMs = 10000 + Math.floor(Math.random() * 5001); // 10–15 секунд
+  hallucinationState.holdDurationMs = 10000 + Math.floor(Math.random() * 5001);
   hallucinationState.flashSeqMs = flashCount === 2 ? [0, 150, 320, 490] : [0, 130, 270, 420, 580, 740];
 
   startHallucinationHeartbeat();
@@ -1063,7 +1045,6 @@ function triggerHallucinationNow(now = performance.now()) {
 }
 
 function createHallucinationFallbackTexture(room) {
-  // Резервная процедура на случай, если *_secret2.jpg ещё не загружен в корень репозитория
   const base = roomTextures[room.id] || proceduralTextureCache[room.id];
   const c = document.createElement("canvas");
   c.width = 1600;
@@ -1077,7 +1058,6 @@ function createHallucinationFallbackTexture(room) {
     g.fillRect(0, 0, 1600, 900);
   }
 
-  // Силуэт окровавленного плюшевого медведя на полу в центре-слева
   const bx = 680, by = 690;
   const vig = g.createRadialGradient(bx, by, 20, bx, by, 280);
   vig.addColorStop(0, "rgba(65, 10, 8, 0.42)");
@@ -1090,16 +1070,15 @@ function createHallucinationFallbackTexture(room) {
   g.beginPath(); g.arc(bx - 6, by - 62, 46, 0, Math.PI * 2); g.fill();
   g.beginPath(); g.arc(bx - 42, by - 96, 17, 0, Math.PI * 2); g.fill();
   g.beginPath(); g.arc(bx + 30, by - 94, 17, 0, Math.PI * 2); g.fill();
-  // Лапы
   g.beginPath(); g.ellipse(bx - 56, by + 18, 22, 34, 0.5, 0, Math.PI * 2); g.fill();
   g.beginPath(); g.ellipse(bx + 54, by + 22, 22, 34, -0.45, 0, Math.PI * 2); g.fill();
   g.beginPath(); g.ellipse(bx - 36, by + 84, 24, 30, -0.3, 0, Math.PI * 2); g.fill();
   g.beginPath(); g.ellipse(bx + 42, by + 82, 24, 30, 0.35, 0, Math.PI * 2); g.fill();
-  // Пятна крови на морде и груди
+
   g.fillStyle = "rgba(115, 10, 10, 0.86)";
   g.beginPath(); g.ellipse(bx - 4, by - 36, 26, 20, 0.1, 0, Math.PI * 2); g.fill();
   g.beginPath(); g.ellipse(bx + 4, by + 12, 32, 36, -0.1, 0, Math.PI * 2); g.fill();
-  // Пустые тёмные глаза
+
   g.fillStyle = "#060505";
   g.beginPath(); g.arc(bx - 20, by - 66, 7, 0, Math.PI * 2); g.fill();
   g.beginPath(); g.arc(bx + 10, by - 64, 7, 0, Math.PI * 2); g.fill();
@@ -1145,7 +1124,6 @@ function updateHallucinationSystem(time) {
     }
     hallucinationState.flashAlpha = activePulse ? 0.92 : 0.0;
 
-    // На пике второй вспышки незаметно подменяем кадр комнаты на *_secret2.jpg
     if (elapsed >= (seq[2] || 260) && !hallucinationState.swappedToAlt) {
       hallucinationState.swappedToAlt = true;
       applyRoomTexture(currentRoomIndex, true);
@@ -1178,7 +1156,6 @@ function updateHallucinationSystem(time) {
     }
     hallucinationState.flashAlpha = activePulse ? 0.92 : 0.0;
 
-    // На второй вспышке возвращаем исходный кадр *_secret1.jpg
     if (elapsed >= (seq[2] || 260) && hallucinationState.swappedToAlt) {
       hallucinationState.swappedToAlt = false;
       applyRoomTexture(currentRoomIndex, false);
@@ -1338,7 +1315,6 @@ function ensureFlashlightSprite() {
   flashlightSprite = c;
 }
 function projectRoomNormToScreen(nx, ny, w, h) {
-  // Полный 360°-охват по азимуту: nx=0.5 — центр прямо по курсу (lon=180°), шаг по горизонтали — до ±135°
   const yawRad = (0.5 - nx) * THREE.MathUtils.degToRad(270);
   const pitchRad = (0.5 - ny) * THREE.MathUtils.degToRad(95);
   const r = 18.0;
@@ -1352,7 +1328,6 @@ function projectRoomNormToScreen(nx, ny, w, h) {
     roomMesh.position.z + dirZ * r
   );
   worldPt.project(camera);
-  // Скрываем маркеры, ушедшие за спину камеры (z > 1 в NDC)
   if (worldPt.z > 1) {
     return { x: -9999, y: -9999 };
   }
@@ -1383,7 +1358,7 @@ function resizeAll() {
   fxCanvas.style.height = window.innerHeight + "px";
   fxCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ensureFlashlightSprite();
-  }
+}
 window.addEventListener("resize", resizeAll);
 resizeAll();
 
@@ -1405,7 +1380,6 @@ function createTextureFromImageSource(img, roomIdx) {
 }
 
 function drawFallbackHint(g, room) {
-  if (room.isProceduralRoom) return;
   const hints = {
     0: { text: "F = 442 Hz", x: 0.14, y: 0.36, size: 32, rot: -0.05, sub: "несущая частота плёнки" },
     1: { text: "I · IV · VII · IX", x: 0.68, y: 0.34, size: 26, rot: 0.04, sub: "порядок дисков" },
@@ -1415,7 +1389,8 @@ function drawFallbackHint(g, room) {
     5: { text: "НЕ СМОТРИ", x: 0.72, y: 0.52, size: 30, rot: -0.02, sub: "выцарапано над водой" },
     6: { text: "618", x: 0.44, y: 0.76, size: 36, rot: -0.04, sub: "процарапано в золе" },
     7: { text: "I - III - IX - X", x: 0.40, y: 0.72, size: 28, rot: 0.0, sub: "выбито на плите пола" },
-    8: { text: "9 / 4", x: 0.62, y: 0.14, size: 28, rot: 0.03, sub: "в проломе потолка" }
+    8: { text: "9 / 4", x: 0.62, y: 0.14, size: 28, rot: 0.03, sub: "в проломе потолка" },
+    9: { text: "4 - 0 - 9", x: 0.45, y: 0.45, size: 30, rot: -0.02, sub: "код релейного щитка" }
   };
   const h = hints[room.id];
   if (!h) return;
@@ -1452,7 +1427,6 @@ function createProceduralTexture(room) {
   g.fillStyle = "#010201";
   g.fillRect(px - 110, py - 150, 220, 300);
   if (room.id === 0) {
-    // Отрисовываем мокрые тапочки у порога и отметку +42 на полу в процедурной текстуре
     const sx = 1280 * 0.25, sy = 720 * 0.72;
     g.fillStyle = "rgba(8, 12, 10, 0.75)";
     g.beginPath(); g.ellipse(sx, sy + 14, 58, 22, 0.08, 0, Math.PI * 2); g.fill();
@@ -1476,95 +1450,12 @@ function createProceduralTexture(room) {
   return tex;
 }
 
-function generateRandomHorrorRoom(roomObj) {
-  const arch = PROCEDURAL_ARCHETYPES[Math.floor(Math.random() * PROCEDURAL_ARCHETYPES.length)];
-  const d1 = Math.floor(Math.random() * 10), d2 = Math.floor(Math.random() * 10), d3 = Math.floor(Math.random() * 10);
-  roomObj.targetPin = [d1, d2, d3];
-  roomObj.solved = false;
-  roomObj.title = arch.name; roomObj.desc = arch.desc;
-  const portalX = 0.68 + Math.random() * 0.18;
-  const portalY = 0.44 + Math.random() * 0.10;
-  const artX = 0.22 + Math.random() * 0.24;
-  const artY = 0.48 + Math.random() * 0.14;
-  roomObj.portal = { x: portalX, y: portalY, label: "Выход на поверхность (В начало)" };
-  roomObj.artifact = { x: artX, y: artY, label: "Ржавый релейный шкаф" };
-  roomObj.shadowSpots = [
-    { x: Math.min(0.88, portalX - 0.04), y: portalY + 0.04, scale: 1.04 },
-    { x: 0.16 + Math.random() * 0.65, y: 0.54, scale: 0.90 }
-  ];
-  const c = document.createElement("canvas");
-  c.width = 1600; c.height = 900;
-  const g = c.getContext("2d");
-  const bg = g.createRadialGradient(800, 380, 60, 800, 450, 980);
-  bg.addColorStop(0, arch.bgTop); bg.addColorStop(0.65, arch.bgBot); bg.addColorStop(1, "#010201");
-  g.fillStyle = bg; g.fillRect(0, 0, 1600, 900);
-  const px = portalX * 1600, py = portalY * 900;
-  const pw = 230 + Math.random() * 60, ph = 340 + Math.random() * 60;
-  g.strokeStyle = "rgba(130, 145, 125, 0.16)"; g.lineWidth = 2;
-  g.beginPath();
-  g.moveTo(0, 0); g.lineTo(px - pw * 0.5, py - ph * 0.5);
-  g.moveTo(1600, 0); g.lineTo(px + pw * 0.5, py - ph * 0.5);
-  g.moveTo(0, 900); g.lineTo(px - pw * 0.5, py + ph * 0.5);
-  g.moveTo(1600, 900); g.lineTo(px + pw * 0.5, py + ph * 0.5);
-  g.stroke();
-  const ribs = 4 + Math.floor(Math.random() * 5);
-  for (let i = 1; i <= ribs; i++) {
-    const t = i / (ribs + 1);
-    const xL = (px - pw * 0.5) * t, xR = 1600 - (1600 - (px + pw * 0.5)) * t;
-    const yT = (py - ph * 0.5) * t, yB = 900 - (900 - (py + ph * 0.5)) * t;
-    g.strokeStyle = "rgba(95, 110, 95, 0.14)"; g.lineWidth = 3;
-    g.strokeRect(xL, yT, xR - xL, yB - yT);
-  }
-  g.fillStyle = "#010201"; g.fillRect(px - pw * 0.5, py - ph * 0.5, pw, ph);
-  g.strokeStyle = arch.rust; g.lineWidth = 4;
-  g.strokeRect(px - pw * 0.5, py - ph * 0.5, pw, ph);
-  for (let i = 0; i < 65; i++) {
-    const mx = Math.random() * 1600, my = Math.random() * 900, mr = 25 + Math.random() * 110;
-    const mg = g.createRadialGradient(mx, my, 4, mx, my, mr);
-    mg.addColorStop(0, i % 3 === 0 ? "rgba(65, 22, 14, 0.34)" : "rgba(10, 14, 10, 0.52)");
-    mg.addColorStop(1, "rgba(0,0,0,0)");
-    g.fillStyle = mg; g.beginPath(); g.arc(mx, my, mr, 0, Math.PI * 2); g.fill();
-  }
-  const cables = 3 + Math.floor(Math.random() * 4);
-  for (let i = 0; i < cables; i++) {
-    const cx = 180 + Math.random() * 1240, len = 140 + Math.random() * 340;
-    g.strokeStyle = "rgba(25, 28, 25, 0.85)"; g.lineWidth = 2 + Math.random() * 3;
-    g.beginPath(); g.moveTo(cx, 0);
-    g.quadraticCurveTo(cx + (Math.random() - 0.5) * 80, len * 0.5, cx + (Math.random() - 0.5) * 40, len);
-    g.stroke();
-  }
-  const ax = artX * 1600, ay = artY * 900;
-  g.fillStyle = "#171412"; g.fillRect(ax - 75, ay - 95, 150, 190);
-  g.strokeStyle = "#4d3c30"; g.lineWidth = 3; g.strokeRect(ax - 75, ay - 95, 150, 190);
-  const clueSpots = [
-    { x: 0.16, y: 0.34 }, { x: 0.52, y: 0.30 }, { x: 0.56, y: 0.72 }, { x: 0.22, y: 0.76 }
-  ];
-  const chosen = clueSpots[Math.floor(Math.random() * clueSpots.length)];
-  const codeText = `${d1} - ${d2} - ${d3}`;
-  g.save();
-  g.translate(chosen.x * 1600, chosen.y * 900);
-  g.rotate((Math.random() - 0.5) * 0.18);
-  g.font = "bold 34px 'Courier New', monospace";
-  g.fillStyle = "rgba(12, 10, 9, 0.82)"; g.fillText(codeText, 3, 3);
-  g.fillStyle = "rgba(205, 190, 165, 0.58)"; g.fillText(codeText, 0, 0);
-  g.strokeStyle = "rgba(200, 185, 160, 0.32)"; g.lineWidth = 1.4;
-  g.beginPath(); g.moveTo(-18, -32); g.lineTo(145, -26);
-  g.moveTo(-12, 16); g.lineTo(138, 20); g.stroke();
-  g.restore();
-  const tex = new THREE.CanvasTexture(c);
-  tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
-  tex.generateMipmaps = false; tex.needsUpdate = true;
-  const anomIdx = ROOMS.length - 1;
-  if (roomTextures[anomIdx]) roomTextures[anomIdx].dispose();
-  roomTextures[anomIdx] = tex;
-  roomImageDims[anomIdx] = { w: 1600, h: 900 };
-}
-
-
 /* ============================================================
    ИНТЕРАКТИВНЫЕ 3D-СЛОИ 360°-РЕДАКТОРА (БАЗОВЫЙ СЛОЙ + ИСКРЫ)
 ============================================================ */
 const editor360ActiveObjects = [];
+const editor360Raycaster = new THREE.Raycaster();
+const editor360Ndc = new THREE.Vector2();
 
 function uvToSpherePos360(u, v, radius = 25.5) {
   const phi = v * Math.PI;
@@ -1592,24 +1483,47 @@ function clearEditor360Objects() {
   }
 }
 
+function triggerEditor360Object(item) {
+  if (!item || !item.cfg) return;
+  if (item.cfg.type === "video" && item.video) {
+    item.mat.opacity = 1;
+    item.video.currentTime = 0;
+    const p = item.video.play();
+    if (p && typeof p.catch === "function") p.catch(() => {});
+    if (audioEngine.enabled) audioEngine.playTick();
+  } else if (item.cfg.type === "image") {
+    item.mat.opacity = item.mat.opacity > 0.5 ? 0 : 1;
+    if (audioEngine.enabled) audioEngine.playTick();
+  }
+  if (item.cfg.action === "open_puzzle") {
+    openPuzzleModal();
+  } else if (item.cfg.action === "show_clue" && item.cfg.clueText) {
+    openPuzzleModal();
+    const fb = document.getElementById("modal-feedback");
+    if (fb) fb.textContent = `УЛИКА: ${item.cfg.clueText}`;
+  }
+}
+
 function mountEditor360ObjectsForRoom(room) {
   clearEditor360Objects();
-  if (!room || !room.is360EditorRoom) return;
+  if (!room) return;
 
-  if (room.startCamera) {
-    view25D.lon = view25D.targetLon = room.startCamera.lon;
-    view25D.lat = view25D.targetLat = room.startCamera.lat;
-    view25D.velX = 0;
-    view25D.velY = 0;
-  }
+  const startLon = room.startCamera ? room.startCamera.lon : 180;
+  const startLat = room.startCamera ? room.startCamera.lat : 0;
+  view25D.lon = view25D.targetLon = startLon;
+  view25D.lat = view25D.targetLat = startLat;
+  view25D.velX = 0;
+  view25D.velY = 0;
 
   const list = Array.isArray(room.editorInteractives) ? room.editorInteractives : [];
-  // Масштабируем размеры редактора (радиус 460 -> радиус 25.5)
+  if (list.length === 0) return;
+
   const radiusScale = 25.5 / 460;
 
-  list.forEach(cfg => {
+  list.forEach((cfg, idx) => {
+    const radius = 25.5 - idx * 0.05;
     const holder = new THREE.Group();
-    holder.position.copy(uvToSpherePos360(cfg.position.u, cfg.position.v, 25.5));
+    holder.position.copy(uvToSpherePos360(cfg.position.u, cfg.position.v, radius));
     holder.lookAt(0, 0, 0);
     holder.rotateZ(THREE.MathUtils.degToRad(cfg.rotationDeg || 0));
     const s = (cfg.scale || 1) * radiusScale;
@@ -1627,7 +1541,11 @@ function mountEditor360ObjectsForRoom(room) {
       new THREE.PlaneGeometry(cfg.size.width, cfg.size.height),
       mat
     );
-    holder.add(mesh);
+    const hitZone = new THREE.Mesh(
+      new THREE.PlaneGeometry(cfg.size.width * 1.25, cfg.size.height * 1.25),
+      new THREE.MeshBasicMaterial({ visible: false })
+    );
+    holder.add(mesh, hitZone);
 
     let video = null;
     if (cfg.type === "video" && cfg.src) {
@@ -1663,15 +1581,28 @@ function mountEditor360ObjectsForRoom(room) {
         const p = video.play();
         if (p && typeof p.catch === "function") p.catch(() => {});
       }
+    } else if (cfg.type === "image" && cfg.src) {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const tex = new THREE.Texture(img);
+        tex.minFilter = THREE.LinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        tex.generateMipmaps = false;
+        tex.needsUpdate = true;
+        mat.map = tex;
+        mat.opacity = cfg.startHidden ? 0 : 1;
+        mat.needsUpdate = true;
+      };
+      img.src = cfg.src;
     }
 
-    editor360ActiveObjects.push({ cfg, holder, mat, mesh, video });
+    editor360ActiveObjects.push({ cfg, holder, mat, mesh, hitZone, video });
   });
 }
 
 function applyRoomTexture(idx, useHallucination = false) {
   const room = ROOMS[idx];
-  if (room.isProceduralRoom && !roomTextures[idx]) generateRandomHorrorRoom(room);
   if (!useHallucination) mountEditor360ObjectsForRoom(room);
 
   if (room.isAnimatedGif && gifRoomLayer) {
@@ -1699,11 +1630,9 @@ function applyRoomTexture(idx, useHallucination = false) {
 
 function tryAutoLoadImages() {
   ROOMS.forEach((room, idx) => {
-    if (room.isProceduralRoom) return;
     const img = new Image();
     img.onload = () => {
       createTextureFromImageSource(img, idx);
-      // Если *_secret2.jpg не загружен из файла, пересобираем fallback поверх реального кадра комнаты
       if (room.hallucinationFileName && !roomHallucinationTextures[idx]._fromRealFile) {
         roomHallucinationTextures[idx] = createHallucinationFallbackTexture(room);
       }
@@ -1751,7 +1680,6 @@ function createOrganicShadowSpriteTexture() {
   const g = c.getContext("2d");
   g.clearRect(0, 0, 512, 512);
 
-  // Мягкое дымчатое тело-силуэт с вытянутыми плечами и склонившейся головой
   const bodyGrad = g.createRadialGradient(256, 275, 18, 256, 275, 195);
   bodyGrad.addColorStop(0.0, "rgba(2, 3, 2, 0.96)");
   bodyGrad.addColorStop(0.55, "rgba(4, 6, 5, 0.72)");
@@ -1761,7 +1689,6 @@ function createOrganicShadowSpriteTexture() {
   g.ellipse(256, 305, 92, 165, 0.04, 0, Math.PI * 2);
   g.fill();
 
-  // Склонённая голова в дымке
   const headGrad = g.createRadialGradient(268, 138, 8, 268, 138, 72);
   headGrad.addColorStop(0.0, "rgba(1, 2, 1, 0.98)");
   headGrad.addColorStop(0.6, "rgba(4, 6, 5, 0.65)");
@@ -1771,7 +1698,6 @@ function createOrganicShadowSpriteTexture() {
   g.ellipse(268, 138, 44, 58, -0.24, 0, Math.PI * 2);
   g.fill();
 
-  // Длинные размытые щупальца/руки, растворяющиеся в темноте
   for (let i = 0; i < 4; i++) {
     const side = i < 2 ? -1 : 1;
     const spread = (i % 2 === 0 ? 1 : 1.35) * side;
@@ -1807,7 +1733,6 @@ function build3DShadowEntity() {
   const plane = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 4.2), shadowMat);
   group.add(plane);
 
-  // Слабый тусклый отблеск в глубине глазниц
   const eyeMat = new THREE.MeshBasicMaterial({
     color: 0xc9b89c,
     transparent: true,
@@ -1849,10 +1774,8 @@ function updateWorldPlaneLayout() {
   return layout;
 }
 
-
 /* ============================================================
    ФОТОРЕАЛИСТИЧНЫЙ ТУМАН ИЗ УГЛОВ КОМНАТ
-   Рандомно выползает из углов экрана, густеет и плавно растворяется
 ============================================================ */
 const cornerFogCanvas = document.getElementById("corner-fog-canvas");
 const cornerFogCtx = cornerFogCanvas ? cornerFogCanvas.getContext("2d") : null;
@@ -1868,7 +1791,7 @@ const cornerFogPlumes = CORNER_ANCHORS.map((anc, idx) => ({
   id: idx,
   anchorX: anc.x,
   anchorY: anc.y,
-  state: "dormant", // "dormant" | "creep_in" | "hold" | "dissolve"
+  state: "dormant",
   stateStartedAt: performance.now() + 2500 + idx * 3200,
   stateDurMs: 6000,
   density: 0.0,
@@ -1913,7 +1836,6 @@ function updateAndRenderCornerFog(now) {
     if (p.state === "dormant") {
       p.density = 0;
       if (now >= p.stateStartedAt) {
-        // Реже запускаем туман (16–32 сек покоя), чтобы не перегружать кадр
         p.state = "creep_in";
         p.stateStartedAt = now;
         p.stateDurMs = 9500 + Math.floor(Math.random() * 6500);
@@ -1950,7 +1872,6 @@ function updateAndRenderCornerFog(now) {
 
     if (p.density <= 0.004) continue;
 
-    // Туман стелется горизонтально вдоль низа/пола и постепенно заполняет углы
     const fromRight = p.anchorX > 0.5;
     const fromBottom = p.anchorY > 0.5;
     const horizDir = fromRight ? -1 : 1;
@@ -2040,11 +1961,10 @@ function animate(time) {
         stopHallucinationHeartbeat();
         hallucinationState.swappedToAlt = false;
         scheduleNextHallucination(currentRoomIndex);
-        if (ROOMS[currentRoomIndex].isProceduralRoom) generateRandomHorrorRoom(ROOMS[currentRoomIndex]);
         applyRoomTexture(currentRoomIndex, false);
         updateRoomHUD();
         syncTapeVideo();
-    editor360ActiveObjects.forEach(o => { if (o.video && o.cfg.loop && o.video.paused) o.video.play().catch(() => {}); });
+        editor360ActiveObjects.forEach(o => { if (o.video && o.cfg.loop && o.video.paused) o.video.play().catch(() => {}); });
         if (audioEngine.ctx) audioEngine.updateCavernReverb(ROOMS[currentRoomIndex].reverbDecay);
         saveProgress();
         transition.phase = "out";
@@ -2115,7 +2035,6 @@ function animate(time) {
   refractionLensMesh.position.x = -2.6 + Math.sin(tSec * 0.45) * 0.25;
   refractionLensMesh.position.y = -1.1 + Math.cos(tSec * 0.38) * 0.18;
 
-
   updateHallucinationSystem(time);
   updateDiscoveryTicks(w, h);
   renderer.render(scene, camera);
@@ -2139,7 +2058,6 @@ function updateDiscoveryTicks(w, h) {
 
 function render2DOverlay(w, h, room, blackFade, time, dt) {
   fxCtx.clearRect(0, 0, w, h);
-  const t = getOverlayTransform(w, h);
   dustParticles.forEach(p => {
     p.x += p.vx * dt * 0.65;
     p.y += p.vy * dt * 0.65;
@@ -2185,7 +2103,6 @@ function render2DOverlay(w, h, room, blackFade, time, dt) {
     fxCtx.fillStyle = alarmGrad; fxCtx.fillRect(0, 0, w, h);
   }
   if (hallucinationState.flashAlpha > 0.01) {
-    // Резкая белёсо-холодная вспышка галлюцинации с красной виньеткой
     fxCtx.fillStyle = `rgba(215, 224, 212, ${(hallucinationState.flashAlpha * 0.72).toFixed(3)})`;
     fxCtx.fillRect(0, 0, w, h);
     const hGrad = fxCtx.createRadialGradient(w * 0.5, h * 0.5, Math.min(w, h) * 0.12, w * 0.5, h * 0.5, Math.max(w, h) * 0.75);
@@ -2225,8 +2142,8 @@ function buildDepthNav() {
   depthNav.innerHTML = "";
   ROOMS.forEach((r, idx) => {
     const node = document.createElement("div");
-    const lockedSecret = (r.isSecret || r.isProceduralRoom) && !areMainRoomsCompleted() && !freeMode;
-    node.className = `depth-node ${idx === currentRoomIndex ? "active" : ""} ${r.solved ? "solved" : ""} ${r.isSecret ? "secret" : ""} ${r.isProceduralRoom ? "procedural" : ""} ${lockedSecret ? "locked-secret" : ""}`;
+    const lockedSecret = (r.isSecret || r.is360EditorRoom) && !areMainRoomsCompleted() && !freeMode;
+    node.className = `depth-node ${idx === currentRoomIndex ? "active" : ""} ${r.solved ? "solved" : ""} ${r.isSecret ? "secret" : ""} ${lockedSecret ? "locked-secret" : ""}`;
     node.setAttribute("role", "button"); node.setAttribute("tabindex", "0");
     const numStr = idx < 9 ? `0${idx + 1}` : `${idx + 1}`;
     const shortName = lockedSecret ? "ЗАПЕЧАТАНО" : r.title.split(" ")[0];
@@ -2243,7 +2160,7 @@ function refreshDepthNavState() {
   const mainDone = areMainRoomsCompleted();
   depthNav.querySelectorAll(".depth-node").forEach((node, idx) => {
     const r = ROOMS[idx];
-    const lockedSecret = (r.isSecret || r.isProceduralRoom) && !mainDone && !freeMode;
+    const lockedSecret = (r.isSecret || r.is360EditorRoom) && !mainDone && !freeMode;
     node.classList.toggle("active", idx === currentRoomIndex);
     node.classList.toggle("solved", r.solved);
     node.classList.toggle("locked-secret", lockedSecret);
@@ -2260,8 +2177,6 @@ function updateRoomHUD() {
   document.getElementById("dossier-code").textContent = room.code;
   document.getElementById("dossier-title").textContent = room.title;
   document.getElementById("dossier-text").textContent = room.desc;
-  const regenBtn = document.getElementById("btn-regen-room");
-  if (regenBtn) regenBtn.style.display = room.isProceduralRoom ? "inline-block" : "none";
   const badge = document.getElementById("puzzle-badge");
   if (room.solved || freeMode) {
     badge.textContent = room.solved ? "ЗАМОК ОТКРЫТ" : "СВОБОДНЫЙ ОБХОД";
@@ -2279,8 +2194,7 @@ function attemptRoomTransition(targetIdx) {
   const currentRoom = ROOMS[currentRoomIndex];
   const targetRoom = ROOMS[targetIdx];
 
-  // Секретные комнаты (индексы 5..8) и аномалия (9) открываются только после прохождения первых 5 комнат
-  if ((targetRoom.isSecret || targetRoom.isProceduralRoom) && !areMainRoomsCompleted() && !freeMode) {
+  if ((targetRoom.isSecret || targetRoom.is360EditorRoom) && !areMainRoomsCompleted() && !freeMode) {
     audioEngine.playSubterraneanRumble();
     audioEngine.playWallScratching();
     const badge = document.getElementById("puzzle-badge");
@@ -2344,7 +2258,7 @@ document.querySelectorAll(".modal-backdrop").forEach(m => {
 });
 
 /* ============================================================
-   ВВОД 2.5D
+   ВВОД 2.5D / 360°
 ============================================================ */
 glCanvas.addEventListener("pointerdown", (e) => {
   pointer.targetX = e.clientX; pointer.targetY = e.clientY;
@@ -2394,16 +2308,30 @@ window.addEventListener("pointerup", () => {
 glCanvas.addEventListener("click", (e) => {
   if (transition.active) return;
   if (document.querySelector(".modal-backdrop.open")) return;
+  if (Math.hypot(e.clientX - view25D.downX, e.clientY - view25D.downY) > 10) return;
 
   pointer.x = pointer.targetX = e.clientX;
   pointer.y = pointer.targetY = e.clientY;
   pointer.normX = (e.clientX / window.innerWidth - 0.5) * 2;
   pointer.normY = (e.clientY / window.innerHeight - 0.5) * 2;
 
+  if (editor360ActiveObjects.length > 0) {
+    const rect = glCanvas.getBoundingClientRect();
+    editor360Ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    editor360Ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    editor360Raycaster.setFromCamera(editor360Ndc, camera);
+
+    for (const item of editor360ActiveObjects) {
+      if (editor360Raycaster.intersectObject(item.hitZone).length > 0) {
+        triggerEditor360Object(item);
+        return;
+      }
+    }
+  }
+
   const w = window.innerWidth, h = window.innerHeight;
   const room = ROOMS[currentRoomIndex];
   updateWorldPlaneLayout();
-  const t = getOverlayTransform(w, h);
 
   const artPosClick = projectRoomNormToScreen(room.artifact.x, room.artifact.y, w, h);
   if (Math.hypot(e.clientX - artPosClick.x, e.clientY - artPosClick.y) < 90) { openPuzzleModal(); return; }
@@ -2487,7 +2415,7 @@ const entitySpawnTimer = setInterval(() => {
 }, 5500);
 
 /* ============================================================
-   ЗАГАДКИ 2.5D (ОСНОВНЫЕ + СЕКРЕТНЫЕ)
+   ЗАГАДКИ 2.5D (ОСНОВНЫЕ + СЕКРЕТНЫЕ + 360° СЕКТОР 10)
 ============================================================ */
 function openPuzzleModal() {
   const room = ROOMS[currentRoomIndex];
@@ -2633,7 +2561,7 @@ function openPuzzleModal() {
     };
     container.querySelector("#btn-word-chk").addEventListener("click", submit);
     inp.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
-  } else if (room.puzzleType === "pin_digits" || room.puzzleType === "procedural_pin") {
+  } else if (room.puzzleType === "pin_digits") {
     const len = room.targetPin.length;
     const curPin = room.solved ? [...room.targetPin] : Array(len).fill(0);
     const wrap = document.createElement("div"); wrap.className = "code-slots";
@@ -2660,7 +2588,6 @@ function openPuzzleModal() {
 function triggerLockHapticFeedback() {
   if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
     try {
-      // Двойной тяжёлый импульс лязга замка на мобильных устройствах
       navigator.vibrate([75, 55, 130]);
     } catch (e) {}
   }
@@ -2670,7 +2597,6 @@ function playMechanismUnlockClank() {
   if (!audioEngine.ctx || !audioEngine.enabled) return;
   const now = audioEngine.ctx.currentTime;
 
-  // Металлический лязг засова и пружины
   [0, 0.14, 0.29].forEach((offset, idx) => {
     const t = now + offset;
     const osc = audioEngine.ctx.createOscillator();
@@ -2699,7 +2625,6 @@ function playMechanismUnlockClank() {
 
   audioEngine.playSteelChains(0);
 }
-
 
 const chamberCutsceneWrap = document.getElementById("chamber-cutscene-wrap");
 const chamberCutsceneVideo = document.getElementById("chamber-cutscene-video");
@@ -2762,7 +2687,6 @@ const introBgm = document.getElementById("intro-bgm");
 let introBgmStarted = false;
 let introProceduralMixActive = false;
 
-// Подмешиваем генерацию DarkAmbientAudio к тихому/короткому лупу, чтобы атмосфера звучала сразу без ожидания OGG
 function startIntroProceduralLayer() {
   if (introProceduralMixActive) return;
   audioEngine.init();
@@ -2770,7 +2694,6 @@ function startIntroProceduralLayer() {
 
   introProceduralMixActive = true;
   if (audioEngine.master) {
-    // Делаем процедурный слой на экране входа приглушённым подложкой под луп
     audioEngine.master.gain.setTargetAtTime(0.42, audioEngine.ctx.currentTime, 0.25);
   }
   audioEngine.playHeartbeatPulse(0.45);
@@ -2796,7 +2719,7 @@ function armAndLoadIntroBgm() {
   if (!introBgm) return;
   introBgm.preload = "metadata";
   introBgm.loop = true;
-  introBgm.volume = 0.56; // тихий/комфортный луп, подмешиваемый к генерации
+  introBgm.volume = 0.56;
 
   const attemptPlay = () => {
     if (!introBgm || document.getElementById("intro-screen").classList.contains("hidden")) return;
@@ -2844,22 +2767,18 @@ function fadeOutIntroBgm() {
   }, 55);
 }
 
-
 /* ============================================================
    ФОТОРЕАЛИСТИЧНЫЙ МНОГОСЛОЙНЫЙ ТУМАН ПОВЕРХ TITLE.JPG
-   Ползёт между буквами, обволакивает тени и подсвечивается изнутри
 ============================================================ */
 const introFogCanvas = document.getElementById("intro-fog-canvas");
 const introFogCtx = introFogCanvas ? introFogCanvas.getContext("2d") : null;
 
-// Оффскрин-буфер низкого разрешения для плавного FBM-шума без просадки FPS
 const fogNoiseCanvas = document.createElement("canvas");
 fogNoiseCanvas.width = 256;
 fogNoiseCanvas.height = 144;
 const fogNoiseCtx = fogNoiseCanvas.getContext("2d");
 const fogNoiseImg = fogNoiseCtx.createImageData(256, 144);
 
-// Плавная детерминированная решётка градиентов / значений
 const GRID_W = 32;
 const GRID_H = 18;
 const baseGrid = new Float32Array(GRID_W * GRID_H);
@@ -2889,7 +2808,6 @@ function samplePeriodicValue(gx, gy, w, h) {
 }
 
 function fbmFog(nx, ny, t) {
-  // Доменное искажение (domain warping) — создаёт живые завихрения тумана между буквами
   const warpX = (samplePeriodicValue(nx * 5.0 + t * 0.045, ny * 4.0 - t * 0.02, GRID_W, GRID_H) - 0.5) * 1.45;
   const warpY = (samplePeriodicValue(nx * 4.5 - t * 0.03, ny * 5.0 + t * 0.038, GRID_W, GRID_H) - 0.5) * 1.25;
 
@@ -2947,14 +2865,12 @@ function renderIntroFog(now) {
   const w = window.innerWidth;
   const h = window.innerHeight;
 
-  // Обновляем FBM-поле тумана с доменным искажением
   const data = fogNoiseImg.data;
   const nw = fogNoiseCanvas.width;
   const nh = fogNoiseCanvas.height;
 
   for (let y = 0; y < nh; y++) {
     const ny = y / nh;
-    // Плотнее всего в средней полосе, где находятся буквы заголовка, и у земли
     const bandWeight = 0.55 + 0.45 * Math.exp(-Math.pow((ny - 0.52) / 0.28, 2));
     for (let x = 0; x < nw; x++) {
       const nx = x / nw;
@@ -2963,7 +2879,6 @@ function renderIntroFog(now) {
       const alphaByte = Math.min(255, Math.floor(shaped * bandWeight * 175));
 
       const idx = (y * nw + x) * 4;
-      // Холодно-серебристый туман с лёгким тёплым/болотным оттенком внутри облачных масс
       data[idx]     = 176 + Math.floor(shaped * 24);
       data[idx + 1] = 184 + Math.floor(shaped * 20);
       data[idx + 2] = 172 + Math.floor(shaped * 14);
@@ -2974,14 +2889,12 @@ function renderIntroFog(now) {
 
   introFogCtx.clearRect(0, 0, w, h);
 
-  // Слой 1: мягко интерполированный объёмный FBM-туман
   introFogCtx.save();
   introFogCtx.filter = "blur(10px)";
   introFogCtx.globalAlpha = 0.86;
   introFogCtx.drawImage(fogNoiseCanvas, 0, 0, w, h);
   introFogCtx.restore();
 
-  // Слой 2: тонкие ползущие клочья дымки, просачивающиеся сквозь просветы букв
   introFogCtx.save();
   for (let i = 0; i < fogWisps.length; i++) {
     const sp = fogWisps[i];
@@ -3031,16 +2944,6 @@ document.getElementById("btn-enter-house").addEventListener("click", () => {
   syncTapeVideo();
   resizeAll();
   setTimeout(() => { spawnShadowEntity(true); audioEngine.playWallScratching(); }, 600);
-});
-
-document.getElementById("btn-regen-room").addEventListener("click", () => {
-  const room = ROOMS[currentRoomIndex];
-  if (!room.isProceduralRoom) return;
-  audioEngine.playSubterraneanRumble();
-  audioEngine.playWallScratching();
-  generateRandomHorrorRoom(room);
-  applyRoomTexture(currentRoomIndex);
-  updateRoomHUD();
 });
 
 document.getElementById("btn-open-puzzle").addEventListener("click", openPuzzleModal);
@@ -3106,7 +3009,6 @@ function handleTabBlurAudio(hidden) {
   if (!audioEngine.ctx || !audioEngine.master) return;
   const now = audioEngine.ctx.currentTime;
   if (hidden) {
-    // Плавное затухание шины до нуля + приостановка AudioContext, чтобы избежать треска и буферных артефактов
     audioEngine.master.gain.cancelScheduledValues(now);
     audioEngine.master.gain.setTargetAtTime(0.0001, now, 0.04);
     stopHallucinationHeartbeat();
@@ -3143,6 +3045,7 @@ document.addEventListener("visibilitychange", () => {
   } else {
     handleTabBlurAudio(false);
     syncTapeVideo();
+    editor360ActiveObjects.forEach(o => { if (o.video && o.cfg.loop && o.video.paused) o.video.play().catch(() => {}); });
     if (chamberCutscenePlaying && chamberCutsceneVideo && chamberCutsceneVideo.paused) {
       const p = chamberCutsceneVideo.play();
       if (p && typeof p.catch === "function") p.catch(() => {});
@@ -3164,10 +3067,8 @@ glCanvas.addEventListener("webglcontextrestored", () => {
   document.getElementById("fatal-overlay").classList.remove("visible");
 });
 
-
 /* ============================================================
    ПРЕЛОАДЕР С PRELOADER.MP4
-   Загружает треки, картинки и текстуры, затем выходит на экран названия игры
 ============================================================ */
 (function initPreloaderFlow() {
   const preloaderEl = document.getElementById("preloader-screen");
@@ -3212,15 +3113,12 @@ glCanvas.addEventListener("webglcontextrestored", () => {
     }
   }
 
-  // Загрузка треков, картинок и текстур в течение 15 секунд
   try {
     const imageAssets = ["title.jpg"];
-    if (Array.isArray(typeof ROOMS !== "undefined" ? ROOMS : null)) {
-      ROOMS.forEach(r => {
-        if (!r.isProceduralRoom && r.fileName) imageAssets.push(r.fileName);
-        if (r.hallucinationFileName) imageAssets.push(r.hallucinationFileName);
-      });
-    }
+    ROOMS.forEach(r => {
+      if (r.fileName) imageAssets.push(r.fileName);
+      if (r.hallucinationFileName) imageAssets.push(r.hallucinationFileName);
+    });
     imageAssets.forEach(src => {
       const img = new Image();
       img.src = src;
@@ -3256,7 +3154,6 @@ glCanvas.addEventListener("webglcontextrestored", () => {
     clearTimeout(hardTimer);
     applyProgress(100);
 
-    // Медленное затемнение прелоадера и плавный переход к экрану названия игры
     preloaderEl.classList.add("done");
     if (introEl) introEl.classList.remove("hidden");
     try {
