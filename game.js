@@ -1159,6 +1159,94 @@ const roomHallucinationTextures = {};
 const roomImageDims = {};
 const roomTickFlags = {};
 
+const roomDarkAnchors = {};
+
+function detectDarkSpotsForImageSource(img, roomIdx) {
+  try {
+    const gw = 32, gh = 18;
+    const c = document.createElement("canvas");
+    c.width = gw;
+    c.height = gh;
+    const g = c.getContext("2d");
+    g.drawImage(img, 0, 0, gw, gh);
+    const data = g.getImageData(0, 0, gw, gh).data;
+
+    // Вычисляем карту яркости (0..1)
+    const luma = new Float32Array(gw * gh);
+    for (let i = 0; i < gw * gh; i++) {
+      const r = data[i * 4] / 255;
+      const gr = data[i * 4 + 1] / 255;
+      const b = data[i * 4 + 2] / 255;
+      luma[i] = 0.2126 * r + 0.7152 * gr + 0.0722 * b;
+    }
+
+    // Сглаживаем (окно 3x3) с лёгким приоритетом периферии/углов, чтобы находить реальные тёмные ниши и углы
+    const candidates = [];
+    for (let y = 1; y < gh - 1; y++) {
+      for (let x = 1; x < gw - 1; x++) {
+        let sum = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            sum += luma[(y + dy) * gw + (x + dx)];
+          }
+        }
+        const avgLuma = sum / 9.0;
+        const nx = (x + 0.5) / gw;
+        const ny = (y + 0.5) / gh;
+        // Бонус за близость к углам и краям кадра, чтобы тени клубились в углах и тёмных зонах
+        const edgeDist = Math.hypot(nx - 0.5, ny - 0.5);
+        const darknessScore = (1.0 - avgLuma) + edgeDist * 0.22;
+        candidates.push({ nx, ny, avgLuma, darknessScore });
+      }
+    }
+
+    candidates.sort((a, b) => b.darknessScore - a.darknessScore);
+
+    // Выбираем до 4 самых тёмных зон на расстоянии не ближе 0.34 друг от друга
+    const chosen = [];
+    for (let i = 0; i < candidates.length && chosen.length < 4; i++) {
+      const cand = candidates[i];
+      if (cand.avgLuma > 0.42 && chosen.length >= 2) continue;
+      const tooClose = chosen.some(ex => Math.hypot(ex.nx - cand.nx, ex.ny - cand.ny) < 0.34);
+      if (!tooClose) {
+        // Направление расползания щупалец: от тёмного очага в сторону центра комнаты
+        const vx = 0.5 - cand.nx;
+        const vy = 0.5 - cand.ny;
+        const len = Math.hypot(vx, vy) || 1;
+        chosen.push({
+          id: chosen.length,
+          nx: cand.nx,
+          ny: cand.ny,
+          dirX: Math.abs(vx / len) > 0.25 ? Math.sign(vx) : (cand.nx < 0.5 ? 1 : -1),
+          dirY: Math.abs(vy / len) > 0.25 ? Math.sign(vy) : (cand.ny < 0.5 ? 1 : -1),
+          darkness: Math.max(0.2, 1.0 - cand.avgLuma)
+        });
+      }
+    }
+
+    while (chosen.length < 4) {
+      const fb = CORNER_SHADOW_ANCHORS[chosen.length];
+      chosen.push({ ...fb, darkness: 0.75 });
+    }
+
+    roomDarkAnchors[roomIdx] = chosen;
+    if (roomIdx === currentRoomIndex) {
+      applyDarkAnchorsToCornerShadows(roomIdx);
+    }
+  } catch (e) {}
+}
+
+function applyDarkAnchorsToCornerShadows(roomIdx) {
+  if (!shadowEntity || !shadowEntity.userData || !Array.isArray(shadowEntity.userData.corners)) return;
+  const anchors = roomDarkAnchors[roomIdx] || CORNER_SHADOW_ANCHORS;
+  shadowEntity.userData.corners.forEach((c, idx) => {
+    const anc = anchors[idx] || CORNER_SHADOW_ANCHORS[idx];
+    c.anchor = anc;
+    c.uniforms.uDir.value.set(anc.dirX, anc.dirY);
+  });
+}
+
+
 /* ============================================================
    СИСТЕМА ГАЛЛЮЦИНАЦИЙ (ОКРОВАВЛЕННЫЙ МЕДВЕДЬ В КОМНАТАХ)
    - Срабатывает в комнатах с hallucinationFileName (Gorechamber_secret2.jpg, Furnace_secret2.jpg и др.)
@@ -1577,6 +1665,7 @@ function createTextureFromImageSource(img, roomIdx) {
   if (roomTextures[roomIdx] && roomTextures[roomIdx] !== proceduralTextureCache[roomIdx]) roomTextures[roomIdx].dispose();
   roomTextures[roomIdx] = tex;
   roomImageDims[roomIdx] = { w, h };
+  detectDarkSpotsForImageSource(img, roomIdx);
   if (roomIdx === currentRoomIndex) applyRoomTexture(roomIdx);
   return true;
 }
@@ -1763,6 +1852,7 @@ function mountEditor360ObjectsForRoom(room) {
 
 function applyRoomTexture(idx, useHallucination = false) {
   const room = ROOMS[idx];
+  applyDarkAnchorsToCornerShadows(idx);
   const targetGeo = room.is360EditorRoom ? roomSphereGeo : roomPlaneGeo;
   if (roomMesh.geometry !== targetGeo) {
     roomMesh.geometry = targetGeo;
@@ -2244,7 +2334,7 @@ const psychoState = {
 
 function resetPsychoTimerForRoom(roomIdx) {
   stopPsychoMode();
-  if (roomIdx === 9 && ROOMS[9] && !ROOMS[9].solved) {
+  if (ROOMS[roomIdx] && !ROOMS[roomIdx].solved) {
     psychoState.roomEnteredAt = performance.now();
   } else {
     psychoState.roomEnteredAt = 0;
@@ -2254,7 +2344,7 @@ function resetPsychoTimerForRoom(roomIdx) {
 function startPsychoMode(now = performance.now()) {
   if (psychoState.active) return;
   const room = ROOMS[currentRoomIndex];
-  if (!room || room.id !== 9 || room.solved) return;
+  if (!room || room.solved) return;
 
   psychoState.active = true;
   psychoState.startedAt = now;
@@ -2343,7 +2433,9 @@ function applyTemporaryPsychoRoomGlitch() {
 
 function updatePsychoState(time, dt) {
   const room = ROOMS[currentRoomIndex];
-  if (!room || room.id !== 9 || room.solved || transition.active) {
+  const introEl = document.getElementById("intro-screen");
+  const introOpen = introEl && !introEl.classList.contains("hidden");
+  if (!room || room.solved || transition.active || introOpen || chamberCutscenePlaying) {
     if (psychoState.active) stopPsychoMode();
     return;
   }
@@ -2404,14 +2496,12 @@ function updatePsychoState(time, dt) {
 
   // 3. Самостоятельное рыскание камеры и фонарика (ослабевает в фазе выхода)
   const swayScale = inAftermath ? Math.max(0.15, (PSYCHO_DURATION_MS - elapsedMs) / PSYCHO_AFTERMATH_MS) : 1.0;
-  if (!view25D.isDragging) {
+  if (!view25D.isDragging && room.is360EditorRoom) {
     const erraticYaw =
-      (Math.sin(tSec * 2.35) * 44 +
-       Math.sin(tSec * 5.7) * 14 +
-       Math.cos(tSec * 1.15) * 18) * swayScale;
+      (Math.sin(tSec * 0.85) * 28 +
+       Math.cos(tSec * 0.45) * 14) * swayScale;
     const erraticPitch =
-      (Math.sin(tSec * 3.1) * 11 +
-       Math.cos(tSec * 6.4) * 5) * swayScale;
+      (Math.sin(tSec * 0.95) * 7) * swayScale;
 
     view25D.targetLon = 180 + erraticYaw;
     view25D.targetLat = erraticPitch;
@@ -2420,16 +2510,18 @@ function updatePsychoState(time, dt) {
 
   const w = window.innerWidth;
   const h = window.innerHeight;
-  const sweepX = w * (0.5 + (Math.sin(tSec * 2.85) * 0.36 + Math.sin(tSec * 7.4) * 0.06) * swayScale);
-  const sweepY = h * (0.5 + (Math.cos(tSec * 2.15) * 0.22 + Math.sin(tSec * 6.9) * 0.05) * swayScale);
-  pointer.targetX += (sweepX - pointer.targetX) * (1 - Math.pow(1 - 0.22, dt));
-  pointer.targetY += (sweepY - pointer.targetY) * (1 - Math.pow(1 - 0.22, dt));
+  const sweepX = w * (0.5 + Math.sin(tSec * 1.05) * 0.26 * swayScale);
+  const sweepY = h * (0.5 + Math.cos(tSec * 0.82) * 0.16 * swayScale);
+  pointer.targetX += (sweepX - pointer.targetX) * (1 - Math.pow(1 - 0.06, dt));
+  pointer.targetY += (sweepY - pointer.targetY) * (1 - Math.pow(1 - 0.06, dt));
 
-  // 4. Пульсация угла обзора (FOV) камеры с плавным возвратом к 75° к концу 15-й секунды
+  // 4. Плавное сужение/дыхание угла обзора (FOV) с возвратом к базовому FOV локации (42° для 2.5D, 75° для 360°)
+  const baseFov = room.is360EditorRoom ? 75 : 42;
+  const fovDrop = room.is360EditorRoom ? 11 : 5.5;
   const targetFov = inAftermath
-    ? (75 - 12 * swayScale + Math.sin(tSec * 4.2) * 3.5 * swayScale)
-    : (64 + Math.sin(tSec * 3.4) * 7.5 + Math.cos(tSec * 7.2) * 2.0);
-  camera.fov += (targetFov - camera.fov) * (1 - Math.pow(1 - 0.14, dt));
+    ? (baseFov - fovDrop * swayScale + Math.sin(tSec * 1.8) * 1.5 * swayScale)
+    : (baseFov - fovDrop + Math.sin(tSec * 1.5) * 2.4);
+  camera.fov += (targetFov - camera.fov) * (1 - Math.pow(1 - 0.08, dt));
   camera.updateProjectionMatrix();
 }
 
@@ -2468,10 +2560,11 @@ function animate(time) {
   let camX = pointer.normX * 0.32;
   let camY = -pointer.normY * 0.22 + Math.sin(time * 0.0022) * 0.03;
   if (panicState.active && !REDUCE_MOTION) {
+    // Медленное вязкое покачивание и тяжелый пульс оцепенения (без дёргания и тряски)
     const pAmp = panicState.intensity;
-    camX += Math.sin(time * 0.067) * 0.11 * pAmp + (Math.random() - 0.5) * 0.06 * pAmp;
-    camY += Math.cos(time * 0.059) * 0.09 * pAmp + (Math.random() - 0.5) * 0.06 * pAmp;
-    camZ -= Math.sin(time * 0.014) * 0.35 * pAmp;
+    camX += Math.sin(time * 0.0028) * 0.07 * pAmp;
+    camY += Math.cos(time * 0.0021) * 0.05 * pAmp;
+    camZ -= (0.28 + Math.sin(time * 0.0045) * 0.12) * pAmp;
   }
   let blackFade = 0;
 
@@ -2620,11 +2713,11 @@ function animate(time) {
       }
     }
 
-    // Лёгкая дрожь оторопи камеры при высоком уровне угловых теней
-    if (entData.totalTerror > 0.62 && !REDUCE_MOTION) {
-      const dreadShake = (entData.totalTerror - 0.62) * 0.045;
-      camera.position.x += Math.sin(time * 0.043) * dreadShake;
-      camera.position.y += Math.cos(time * 0.037) * dreadShake;
+    // Вязкое оцепенение (медленное тяжёлое дыхание камеры, без тряски)
+    if (entData.totalTerror > 0.55 && !REDUCE_MOTION) {
+      const dreadBreath = (entData.totalTerror - 0.55) * 0.06;
+      camera.position.y += Math.sin(time * 0.0018) * dreadBreath;
+      camera.position.z -= (entData.totalTerror - 0.55) * 0.22;
     }
   } else {
     shadowEntity.visible = false;
@@ -2693,7 +2786,7 @@ function render2DOverlay(w, h, room, blackFade, time, dt) {
   const cornerTerror = (shadowEntity && shadowEntity.userData) ? (shadowEntity.userData.totalTerror || 0) : 0;
   if (flashlightOn) {
     const flicker = REDUCE_MOTION ? 1.0 : (Math.sin(time * 0.041) * Math.sin(time * 0.017) > 0.96 ? 0.72 : 1.0);
-    const darkAlpha = Math.min(0.84, 0.68 + cornerTerror * 0.16);
+    const darkAlpha = Math.min(0.76, 0.62 + cornerTerror * 0.14);
     fxCtx.fillStyle = `rgba(1, 2, 1, ${darkAlpha.toFixed(3)})`;
     fxCtx.fillRect(0, 0, w, h);
     if (!flashlightSprite) ensureFlashlightSprite();
@@ -2996,7 +3089,7 @@ window.addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
   if (k === "f" || k === "а") document.getElementById("btn-toggle-flashlight").click();
   if (IS_DEBUG_MODE && (k === "h" || k === "р")) triggerHallucinationNow();
-  if (IS_DEBUG_MODE && (k === "p" || k === "з")) { if (ROOMS[currentRoomIndex].id === 9) startPsychoMode(); }
+  if (IS_DEBUG_MODE && (k === "p" || k === "з")) { startPsychoMode(); }
   if (e.key === "Escape") {
     document.querySelectorAll(".modal-backdrop.open").forEach(m => closeModalEl(m));
   }
@@ -3300,7 +3393,7 @@ function solveCurrentRoom(msg) {
   const alreadySolvedOnce = Boolean(room.solvedOnce);
   room.solved = true;
   room.solvedOnce = true;
-  if (room.id === 9) stopPsychoMode();
+  stopPsychoMode();
   playMechanismUnlockClank();
   triggerLockHapticFeedback();
   document.getElementById("modal-feedback").textContent = msg;
