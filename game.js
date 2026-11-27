@@ -1888,26 +1888,104 @@ function buildAlphaTextureFromWhiteBgImage(img) {
 
 function build3DShadowEntity() {
   const group = new THREE.Group();
-  const shadowMat = new THREE.MeshBasicMaterial({
+
+  const smokeUniforms = {
+    uMap: { value: null },
+    uTime: { value: 0 },
+    uOpacity: { value: 0.0 },
+    uTurbulence: { value: 1.0 }
+  };
+
+  const shadowMat = new THREE.ShaderMaterial({
     transparent: true,
-    opacity: 0.0,
-    depthWrite: false
+    depthWrite: false,
+    uniforms: smokeUniforms,
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform sampler2D uMap;
+      uniform float uTime;
+      uniform float uOpacity;
+      uniform float uTurbulence;
+      varying vec2 vUv;
+
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+      }
+
+      float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        vec2 u = f * f * (3.0 - 2.0 * f);
+        return mix(
+          mix(hash(i + vec2(0.0, 0.0)), hash(i + vec2(1.0, 0.0)), u.x),
+          mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+          u.y
+        );
+      }
+
+      float fbm(vec2 p) {
+        float v = 0.0;
+        float a = 0.5;
+        mat2 rot = mat2(0.8, 0.6, -0.6, 0.8);
+        for (int i = 0; i < 4; i++) {
+          v += a * noise(p);
+          p = rot * p * 2.05;
+          a *= 0.5;
+        }
+        return v;
+      }
+
+      void main() {
+        vec4 rawTex = texture2D(uMap, vUv);
+        float eyeMask = smoothstep(0.04, 0.16, rawTex.r - rawTex.b) * rawTex.a;
+
+        vec2 q = vec2(
+          fbm(vUv * 4.5 + vec2(uTime * 0.28, -uTime * 0.22)),
+          fbm(vUv * 4.5 + vec2(-uTime * 0.24, uTime * 0.31) + vec2(5.2, 1.3))
+        );
+        vec2 r = vec2(
+          fbm(vUv * 7.0 + 2.2 * q + vec2(1.7, 9.2) + uTime * 0.35),
+          fbm(vUv * 7.0 + 2.2 * q + vec2(8.3, 2.8) - uTime * 0.29)
+        );
+
+        float warpStrength = mix(0.055, 0.008, eyeMask) * uTurbulence;
+        vec2 warpedUv = clamp(vUv + (r - 0.5) * warpStrength, 0.002, 0.998);
+
+        vec4 tex = texture2D(uMap, warpedUv);
+
+        float smokeEdge = fbm(vUv * 8.5 + r * 2.4 - vec2(0.0, uTime * 0.45));
+        float edgeErosion = smoothstep(0.18, 0.78, tex.a * (0.65 + smokeEdge * 0.75));
+        float finalAlpha = max(edgeErosion, eyeMask * tex.a) * uOpacity;
+
+        float eyePulse = 1.0 + 0.25 * sin(uTime * 4.2) * eyeMask;
+        vec3 finalColor = tex.rgb * eyePulse;
+
+        gl_FragColor = vec4(finalColor, finalAlpha);
+      }
+    `
   });
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 4.3), shadowMat);
+
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 4.5), shadowMat);
   group.add(plane);
 
   const shadowImg = new Image();
   shadowImg.onload = () => {
     try {
       const tex = buildAlphaTextureFromWhiteBgImage(shadowImg);
-      if (shadowMat.map) shadowMat.map.dispose();
-      shadowMat.map = tex;
+      if (smokeUniforms.uMap.value) smokeUniforms.uMap.value.dispose();
+      smokeUniforms.uMap.value = tex;
       shadowMat.needsUpdate = true;
     } catch (e) {}
   };
   shadowImg.src = "shadow.jpg";
 
-  group.userData = { shadowMat };
+  group.userData = { shadowMat, smokeUniforms };
   return group;
 }
 const shadowEntity = build3DShadowEntity();
@@ -2409,10 +2487,11 @@ function animate(time) {
   spotLight.target.position.set(lightWorldX, lightWorldY, 0);
   spotLight.intensity = flashlightOn ? 2.8 : 0.35;
 
-  if (entityState.visible && shadowEntity.userData.shadowMat.map) {
+  const smokeU = shadowEntity.userData.smokeUniforms;
+  if (entityState.visible && smokeU && smokeU.uMap.value) {
     const ex = (entityState.spot.x - 0.5) * planeW;
     const ey = (0.5 - entityState.spot.y) * planeH;
-    const esc = (entityState.spot.scale || 1.0) * (planeH * 0.22);
+    const esc = (entityState.spot.scale || 1.0) * (planeH * 0.23);
     shadowEntity.visible = true;
     shadowEntity.scale.set(esc, esc, esc);
 
@@ -2428,9 +2507,10 @@ function animate(time) {
       );
       shadowEntity.lookAt(camera.position);
     } else {
-      const swayX = Math.sin(time * 0.0032) * 0.045;
-      shadowEntity.position.set(ex + swayX, ey, 0.35);
-      shadowEntity.rotation.set(0, 0, 0);
+      const swayX = Math.sin(time * 0.0028) * 0.055;
+      const swayY = Math.cos(time * 0.0021) * 0.035;
+      shadowEntity.position.set(ex + swayX, ey + swayY, 0.35);
+      shadowEntity.rotation.set(0, 0, Math.sin(time * 0.0017) * 0.03);
     }
 
     // Проверяем, направлен ли луч фонаря на сущность (в экранных координатах)
@@ -2443,7 +2523,7 @@ function animate(time) {
     if (entityState.timer <= 0) {
       entityState.targetOpacity = 0;
     } else if (litByFlashlight) {
-      // Фонарь направлен на тень -> она быстро исчезает
+      // Фонарь направлен на тень -> она распадается в вихрях дыма и исчезает
       if (!entityState.evading && entityState.opacity > 0.25 && audioEngine.enabled) {
         audioEngine.playWhisper();
       }
@@ -2452,13 +2532,16 @@ function animate(time) {
     } else {
       // Фонарь отведён -> тень проявляет себя из темноты
       entityState.evading = false;
-      entityState.targetOpacity = 0.92;
+      entityState.targetOpacity = 0.94;
     }
 
     const speed = litByFlashlight ? 0.22 : 0.045;
     const opLerp = 1 - Math.pow(1 - speed, dt);
     entityState.opacity += (entityState.targetOpacity - entityState.opacity) * opLerp;
-    shadowEntity.userData.shadowMat.opacity = entityState.opacity;
+
+    smokeU.uTime.value = time * 0.001;
+    smokeU.uOpacity.value = entityState.opacity;
+    smokeU.uTurbulence.value = litByFlashlight ? 2.1 : (psychoState.active ? 1.65 : 1.0);
 
     if (entityState.timer <= 0 && entityState.opacity < 0.015) {
       entityState.visible = false;
