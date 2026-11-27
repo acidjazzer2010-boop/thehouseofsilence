@@ -291,7 +291,7 @@ function isRoomAccessible(targetIdx) {
 
   // Лёгкая предзагрузка обложки и стартовой локации без перегрузки канала
   try {
-    ["title.jpg", "Taperoom.jpg"].forEach(src => {
+    ["title.jpg", "Taperoom.jpg", "shadow.jpg"].forEach(src => {
       const img = new Image();
       img.src = src;
     });
@@ -1842,50 +1842,41 @@ function tryAutoLoadImages() {
 }
 
 /* ============================================================
-   СУЩНОСТЬ 2.5D
+   СУЩНОСТЬ 2.5D ИЗ `shadow.jpg` (АЛЬФА-КАНАЛ ИЗ БЕЛОГО ФОНА)
+   - Проявляется при отведении фонаря и исчезает, когда луч направлен на неё
 ============================================================ */
-function createOrganicShadowSpriteTexture() {
+function buildAlphaTextureFromWhiteBgImage(img) {
+  const w = img.naturalWidth || img.width || 512;
+  const h = img.naturalHeight || img.height || 512;
   const c = document.createElement("canvas");
-  c.width = 512;
-  c.height = 512;
+  c.width = w;
+  c.height = h;
   const g = c.getContext("2d");
-  g.clearRect(0, 0, 512, 512);
+  g.drawImage(img, 0, 0, w, h);
 
-  // Мягкое дымчатое тело-силуэт с вытянутыми плечами и склонившейся головой
-  const bodyGrad = g.createRadialGradient(256, 275, 18, 256, 275, 195);
-  bodyGrad.addColorStop(0.0, "rgba(2, 3, 2, 0.96)");
-  bodyGrad.addColorStop(0.55, "rgba(4, 6, 5, 0.72)");
-  bodyGrad.addColorStop(1.0, "rgba(2, 3, 2, 0.0)");
-  g.fillStyle = bodyGrad;
-  g.beginPath();
-  g.ellipse(256, 305, 92, 165, 0.04, 0, Math.PI * 2);
-  g.fill();
+  const imgData = g.getImageData(0, 0, w, h);
+  const d = imgData.data;
 
-  // Склонённая голова в дымке
-  const headGrad = g.createRadialGradient(268, 138, 8, 268, 138, 72);
-  headGrad.addColorStop(0.0, "rgba(1, 2, 1, 0.98)");
-  headGrad.addColorStop(0.6, "rgba(4, 6, 5, 0.65)");
-  headGrad.addColorStop(1.0, "rgba(2, 3, 2, 0.0)");
-  g.fillStyle = headGrad;
-  g.beginPath();
-  g.ellipse(268, 138, 44, 58, -0.24, 0, Math.PI * 2);
-  g.fill();
+  // Переводим белый фон (#FFFFFF) в прозрачность (alpha = 0), сохраняя тёмный силуэт и янтарно-белые глаза
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i];
+    const gr = d[i + 1];
+    const b = d[i + 2];
+    const minCh = Math.min(r, gr, b);
+    const maxCh = Math.max(r, gr, b);
+    const sat = maxCh - minCh;
 
-  // Длинные размытые щупальца/руки, растворяющиеся в темноте
-  for (let i = 0; i < 4; i++) {
-    const side = i < 2 ? -1 : 1;
-    const spread = (i % 2 === 0 ? 1 : 1.35) * side;
-    const armGrad = g.createLinearGradient(256 + side * 48, 210, 256 + spread * 145, 420);
-    armGrad.addColorStop(0, "rgba(2, 3, 2, 0.85)");
-    armGrad.addColorStop(1, "rgba(2, 3, 2, 0.0)");
-    g.strokeStyle = armGrad;
-    g.lineWidth = 18 - (i % 2) * 5;
-    g.lineCap = "round";
-    g.beginPath();
-    g.moveTo(256 + side * 42, 205);
-    g.quadraticCurveTo(256 + spread * 115, 295, 256 + spread * 140, 415);
-    g.stroke();
+    // Если пиксель близок к чисто белому/светло-серому без цветного отлива — делаем прозрачным
+    if (minCh > 235 && sat < 22) {
+      d[i + 3] = 0;
+    } else if (minCh > 185 && sat < 28) {
+      const fade = 1 - (minCh - 185) / 50;
+      d[i + 3] = Math.max(0, Math.min(255, Math.round(fade * 255)));
+    } else {
+      d[i + 3] = 255;
+    }
   }
+  g.putImageData(imgData, 0, 0);
 
   const tex = new THREE.CanvasTexture(c);
   tex.minFilter = THREE.LinearFilter;
@@ -1897,32 +1888,26 @@ function createOrganicShadowSpriteTexture() {
 
 function build3DShadowEntity() {
   const group = new THREE.Group();
-  const tex = createOrganicShadowSpriteTexture();
   const shadowMat = new THREE.MeshBasicMaterial({
-    map: tex,
     transparent: true,
     opacity: 0.0,
     depthWrite: false
   });
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 4.2), shadowMat);
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 4.3), shadowMat);
   group.add(plane);
 
-  // Слабый тусклый отблеск в глубине глазниц
-  const eyeMat = new THREE.MeshBasicMaterial({
-    color: 0xc9b89c,
-    transparent: true,
-    opacity: 0.0,
-    depthWrite: false
-  });
-  const eyeGeo = new THREE.CircleGeometry(0.022, 10);
-  const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-  eyeL.position.set(0.04, 0.86, 0.03);
-  group.add(eyeL);
-  const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-  eyeR.position.set(0.16, 0.84, 0.03);
-  group.add(eyeR);
+  const shadowImg = new Image();
+  shadowImg.onload = () => {
+    try {
+      const tex = buildAlphaTextureFromWhiteBgImage(shadowImg);
+      if (shadowMat.map) shadowMat.map.dispose();
+      shadowMat.map = tex;
+      shadowMat.needsUpdate = true;
+    } catch (e) {}
+  };
+  shadowImg.src = "shadow.jpg";
 
-  group.userData = { shadowMat, eyeMat };
+  group.userData = { shadowMat };
   return group;
 }
 const shadowEntity = build3DShadowEntity();
@@ -2103,11 +2088,34 @@ function updateAndRenderCornerFog(now) {
 /* ============================================================
    ИЗМЕНЁННОЕ СОСТОЯНИЕ (ПСИХО / ДАВЯЩИЙ ЭФФЕКТ МАНЬЯКА В СЕКТОРЕ 10)
    - Срабатывает в Секторе 10 (id === 9), если загадка не решена за 60 секунд
-   - Инверсия цветов, резкие вспышки, трек psycho.ogg, рыскающая камера + фонарик,
-     сужение луча фонаря, дыхание преследователя и пульсирующий FOV
+   - Длится 15 секунд, затем автоматически завершается с остаточными вспышками
+     и галлюцинацией быстрой смены локаций
+   - Трек psycho.ogg играет ТОЛЬКО во время режима psycho
 ============================================================ */
 const PSYCHO_TRIGGER_DELAY_MS = 60000; // 1 минута без решения загадки в Секторе 10
+const PSYCHO_DURATION_MS      = 15000; // автоматический выход через 15 секунд
+const PSYCHO_AFTERMATH_MS     = 4500;  // последние 4.5 сек: остаточные вспышки и мелькание локаций
 const psychoBgm = document.getElementById("psycho-bgm");
+let psychoAudioUnlocked = false;
+
+function unlockPsychoAudioElement() {
+  if (!psychoBgm || psychoAudioUnlocked) return;
+  try {
+    const prevVol = psychoBgm.volume;
+    psychoBgm.volume = 0.001;
+    const p = psychoBgm.play();
+    if (p && typeof p.then === "function") {
+      p.then(() => {
+        if (!psychoState.active) {
+          psychoBgm.pause();
+          psychoBgm.currentTime = 0;
+        }
+        psychoBgm.volume = prevVol || 0.88;
+        psychoAudioUnlocked = true;
+      }).catch(() => {});
+    }
+  } catch (e) {}
+}
 
 const psychoState = {
   active: false,
@@ -2116,9 +2124,10 @@ const psychoState = {
   flashAlpha: 0,
   flashInvert: false,
   nextFlashAt: 0,
-  swayPhase: 0,
+  nextRoomFlickerAt: 0,
+  flickerActive: false,
   breathTimer: null,
-  baseFov: 42
+  baseFov: 75
 };
 
 function resetPsychoTimerForRoom(roomIdx) {
@@ -2140,20 +2149,22 @@ function startPsychoMode(now = performance.now()) {
   psychoState.flashAlpha = 0.95;
   psychoState.flashInvert = true;
   psychoState.nextFlashAt = now + 220;
+  psychoState.nextRoomFlickerAt = 0;
+  psychoState.flickerActive = false;
   psychoState.baseFov = camera.fov;
 
   document.body.classList.add("psycho-mode");
 
-  // Запускаем psycho.ogg
+  // Запускаем psycho.ogg (играет только во время psycho)
   if (psychoBgm) {
     psychoBgm.loop = true;
-    psychoBgm.volume = 0.85;
+    psychoBgm.muted = false;
+    psychoBgm.volume = 0.88;
     try { psychoBgm.currentTime = 0; } catch (e) {}
     const p = psychoBgm.play();
     if (p && typeof p.catch === "function") p.catch(() => {});
   }
 
-  // Усиливаем аудио: приглушаем обычный эмбиент, включаем учащённый пульс и тяжёлое дыхание за спиной
   if (audioEngine.ctx && audioEngine.enabled) {
     audioEngine.playHeartbeatPulse(1.0);
     audioEngine.playBreathing();
@@ -2170,15 +2181,15 @@ function startPsychoMode(now = performance.now()) {
     }
   }, 1900);
 
-  // Выпускаем преследующую тень в поле зрения
   spawnShadowEntity(true);
 }
 
 function stopPsychoMode() {
-  if (!psychoState.active && !document.body.classList.contains("psycho-mode")) return;
+  const wasActive = psychoState.active || document.body.classList.contains("psycho-mode") || psychoState.flickerActive;
   psychoState.active = false;
   psychoState.flashAlpha = 0;
   psychoState.flashInvert = false;
+  psychoState.flickerActive = false;
   document.body.classList.remove("psycho-mode");
 
   if (psychoState.breathTimer) {
@@ -2186,16 +2197,35 @@ function stopPsychoMode() {
     psychoState.breathTimer = null;
   }
 
-  if (psychoBgm && !psychoBgm.paused) {
+  // Строго останавливаем psycho.ogg вне режима psycho
+  if (psychoBgm) {
     try {
       psychoBgm.pause();
       psychoBgm.currentTime = 0;
     } catch (e) {}
   }
 
+  // Возвращаем родную текстуру и геометрию текущей комнаты (убираем мелькавшие кадры других локаций)
+  if (wasActive && ROOMS[currentRoomIndex]) {
+    applyRoomTexture(currentRoomIndex, false);
+  }
+
   if (camera && Math.abs(camera.fov - psychoState.baseFov) > 0.2) {
-    camera.fov = psychoState.baseFov || 42;
+    camera.fov = psychoState.baseFov || (ROOMS[currentRoomIndex]?.is360EditorRoom ? 75 : 42);
     camera.updateProjectionMatrix();
+  }
+}
+
+function applyTemporaryPsychoRoomGlitch() {
+  // Подменяем только текстуру на сферу/плоскость на долю секунды, не меняя currentRoomIndex
+  const candidates = [0, 1, 2, 3, 4, 5, 6, 7, 8].filter(i => roomTextures[i] || proceduralTextureCache[i]);
+  if (candidates.length === 0) return;
+  const pickIdx = candidates[Math.floor(Math.random() * candidates.length)];
+  const tex = roomTextures[pickIdx] || proceduralTextureCache[pickIdx];
+  if (tex) {
+    roomPlaneMat.map = tex;
+    roomPlaneMat.needsUpdate = true;
+    psychoState.flickerActive = true;
   }
 }
 
@@ -2213,43 +2243,80 @@ function updatePsychoState(time, dt) {
     return;
   }
 
-  const tSec = (time - psychoState.startedAt) * 0.001;
+  const elapsedMs = time - psychoState.startedAt;
 
-  // 1. Резкие непредсказуемые вспышки (стробоскоп + негатив)
+  // Автоматический выход из режима psycho через 15 секунд; перезапуск таймера через 60 сек, если загадка всё ещё не решена
+  if (elapsedMs >= PSYCHO_DURATION_MS) {
+    stopPsychoMode();
+    psychoState.roomEnteredAt = time;
+    return;
+  }
+
+  // Поддерживаем воспроизведение psycho.ogg во время активного psycho (и плавно глушим в последние 1.5 сек)
+  if (psychoBgm && !document.hidden) {
+    if (psychoBgm.paused) {
+      psychoBgm.play().catch(() => {});
+    }
+    const remainingMs = PSYCHO_DURATION_MS - elapsedMs;
+    psychoBgm.volume = remainingMs < 1500 ? Math.max(0, (remainingMs / 1500) * 0.88) : 0.88;
+  }
+
+  const tSec = elapsedMs * 0.001;
+  const inAftermath = elapsedMs >= (PSYCHO_DURATION_MS - PSYCHO_AFTERMATH_MS);
+
+  // 1. Вспышки: резкие в основной фазе и остаточные затухающие при выходе
   if (time >= psychoState.nextFlashAt) {
-    const burst = Math.random() < 0.34;
-    psychoState.flashAlpha = burst ? (0.78 + Math.random() * 0.22) : 0.0;
-    psychoState.flashInvert = burst && Math.random() < 0.5;
-    psychoState.nextFlashAt = time + (burst ? (75 + Math.random() * 95) : (260 + Math.random() * 780));
+    const burst = Math.random() < (inAftermath ? 0.45 : 0.34);
+    const aftermathFade = inAftermath ? Math.max(0.25, (PSYCHO_DURATION_MS - elapsedMs) / PSYCHO_AFTERMATH_MS) : 1.0;
+    psychoState.flashAlpha = burst ? (0.78 + Math.random() * 0.22) * aftermathFade : 0.0;
+    psychoState.flashInvert = burst && Math.random() < 0.55;
+    psychoState.nextFlashAt = time + (burst ? (75 + Math.random() * 95) : (220 + Math.random() * 520));
   } else {
     psychoState.flashAlpha *= Math.pow(0.78, dt);
   }
 
-  // 2. Самостоятельное лихорадочное рыскание камеры и фонарика вправо-влево (давящий эффект маньяка)
+  // 2. Остаточные галлюцинации в виде быстрой смены локаций в последние 4.5 секунды перед выходом
+  if (inAftermath && time >= psychoState.nextRoomFlickerAt) {
+    if (Math.random() < 0.65) {
+      applyTemporaryPsychoRoomGlitch();
+    } else if (psychoState.flickerActive) {
+      psychoState.flickerActive = false;
+      const baseTex = roomTextures[currentRoomIndex] || proceduralTextureCache[currentRoomIndex];
+      if (baseTex) {
+        roomPlaneMat.map = baseTex;
+        roomPlaneMat.needsUpdate = true;
+      }
+    }
+    psychoState.nextRoomFlickerAt = time + 130 + Math.floor(Math.random() * 140);
+  }
+
+  // 3. Самостоятельное рыскание камеры и фонарика (ослабевает в фазе выхода)
+  const swayScale = inAftermath ? Math.max(0.15, (PSYCHO_DURATION_MS - elapsedMs) / PSYCHO_AFTERMATH_MS) : 1.0;
   if (!view25D.isDragging) {
     const erraticYaw =
-      Math.sin(tSec * 2.35) * 44 +
-      Math.sin(tSec * 5.7) * 14 +
-      Math.cos(tSec * 1.15) * 18;
+      (Math.sin(tSec * 2.35) * 44 +
+       Math.sin(tSec * 5.7) * 14 +
+       Math.cos(tSec * 1.15) * 18) * swayScale;
     const erraticPitch =
-      Math.sin(tSec * 3.1) * 11 +
-      Math.cos(tSec * 6.4) * 5;
+      (Math.sin(tSec * 3.1) * 11 +
+       Math.cos(tSec * 6.4) * 5) * swayScale;
 
     view25D.targetLon = 180 + erraticYaw;
     view25D.targetLat = erraticPitch;
     clamp25DAngles();
   }
 
-  // Луч фонарика тоже лихорадочно рыскает вправо-влево и дрожит
   const w = window.innerWidth;
   const h = window.innerHeight;
-  const sweepX = w * (0.5 + Math.sin(tSec * 2.85) * 0.36 + Math.sin(tSec * 7.4) * 0.06);
-  const sweepY = h * (0.5 + Math.cos(tSec * 2.15) * 0.22 + Math.sin(tSec * 6.9) * 0.05);
+  const sweepX = w * (0.5 + (Math.sin(tSec * 2.85) * 0.36 + Math.sin(tSec * 7.4) * 0.06) * swayScale);
+  const sweepY = h * (0.5 + (Math.cos(tSec * 2.15) * 0.22 + Math.sin(tSec * 6.9) * 0.05) * swayScale);
   pointer.targetX += (sweepX - pointer.targetX) * (1 - Math.pow(1 - 0.22, dt));
   pointer.targetY += (sweepY - pointer.targetY) * (1 - Math.pow(1 - 0.22, dt));
 
-  // 3. Давящий эффект клаустрофобии: пульсация угла обзора (FOV) камеры
-  const targetFov = 36 + Math.sin(tSec * 3.4) * 5.5 + Math.cos(tSec * 7.2) * 1.5;
+  // 4. Пульсация угла обзора (FOV) камеры с плавным возвратом к 75° к концу 15-й секунды
+  const targetFov = inAftermath
+    ? (75 - 12 * swayScale + Math.sin(tSec * 4.2) * 3.5 * swayScale)
+    : (64 + Math.sin(tSec * 3.4) * 7.5 + Math.cos(tSec * 7.2) * 2.0);
   camera.fov += (targetFov - camera.fov) * (1 - Math.pow(1 - 0.14, dt));
   camera.updateProjectionMatrix();
 }
@@ -2342,33 +2409,58 @@ function animate(time) {
   spotLight.target.position.set(lightWorldX, lightWorldY, 0);
   spotLight.intensity = flashlightOn ? 2.8 : 0.35;
 
-  if (entityState.visible) {
+  if (entityState.visible && shadowEntity.userData.shadowMat.map) {
     const ex = (entityState.spot.x - 0.5) * planeW;
     const ey = (0.5 - entityState.spot.y) * planeH;
-    const esc = (entityState.spot.scale || 1.0) * (planeH * 0.16);
+    const esc = (entityState.spot.scale || 1.0) * (planeH * 0.22);
     shadowEntity.visible = true;
     shadowEntity.scale.set(esc, esc, esc);
-    const distToSpot = Math.hypot(lightWorldX - ex, lightWorldY - ey);
-    if (distToSpot < planeW * 0.18 && !entityState.evading) {
+
+    // Позиционируем сущность в 2.5D или в секторе 360°
+    if (room && room.is360EditorRoom) {
+      const yawRad = (0.5 - entityState.spot.x) * THREE.MathUtils.degToRad(270);
+      const pitchRad = (0.5 - entityState.spot.y) * THREE.MathUtils.degToRad(95);
+      const r = 16.0;
+      shadowEntity.position.set(
+        -r * Math.cos(pitchRad) * Math.cos(yawRad),
+         r * Math.sin(pitchRad),
+        -r * Math.cos(pitchRad) * Math.sin(yawRad)
+      );
+      shadowEntity.lookAt(camera.position);
+    } else {
+      const swayX = Math.sin(time * 0.0032) * 0.045;
+      shadowEntity.position.set(ex + swayX, ey, 0.35);
+      shadowEntity.rotation.set(0, 0, 0);
+    }
+
+    // Проверяем, направлен ли луч фонаря на сущность (в экранных координатах)
+    const entScreen = projectRoomNormToScreen(entityState.spot.x, entityState.spot.y, w, h);
+    const distPx = Math.hypot(pointer.x - entScreen.x, pointer.y - entScreen.y);
+    const beamHitRadius = (flashlightSpriteRad || Math.min(w, h) * FLASHLIGHT_RATIO) * 0.82;
+    const litByFlashlight = flashlightOn && (distPx < beamHitRadius);
+
+    entityState.timer -= dt;
+    if (entityState.timer <= 0) {
+      entityState.targetOpacity = 0;
+    } else if (litByFlashlight) {
+      // Фонарь направлен на тень -> она быстро исчезает
+      if (!entityState.evading && entityState.opacity > 0.25 && audioEngine.enabled) {
+        audioEngine.playWhisper();
+      }
       entityState.evading = true;
       entityState.targetOpacity = 0;
-      if (audioEngine.enabled) {
-        const panDirection = (ex - lightWorldX) / planeW;
-        audioEngine.playSteelChains(Math.max(-0.9, Math.min(0.9, panDirection * 2)));
-        audioEngine.playHeartbeatPulse(1.0);
-      }
+    } else {
+      // Фонарь отведён -> тень проявляет себя из темноты
+      entityState.evading = false;
+      entityState.targetOpacity = 0.92;
     }
-    entityState.timer -= dt;
-    if (entityState.timer <= 0) entityState.targetOpacity = 0;
-    const speed = entityState.evading ? ENTITY_EVADE_LERP : ENTITY_LERP;
+
+    const speed = litByFlashlight ? 0.22 : 0.045;
     const opLerp = 1 - Math.pow(1 - speed, dt);
     entityState.opacity += (entityState.targetOpacity - entityState.opacity) * opLerp;
-    const recoilX = entityState.evading ? (ex > 0 ? 0.75 : -0.75) * (1 - entityState.opacity) : Math.sin(time * 0.004) * 0.04;
-    const recoilZ = entityState.evading ? -0.3 * (1 - entityState.opacity) : 0.35;
-    shadowEntity.position.set(ex + recoilX, ey, recoilZ);
-    shadowEntity.userData.shadowMat.opacity = entityState.opacity * 0.95;
-    shadowEntity.userData.eyeMat.opacity = entityState.evading ? 0 : entityState.opacity * 0.8;
-    if (entityState.opacity < 0.01 && entityState.targetOpacity === 0) {
+    shadowEntity.userData.shadowMat.opacity = entityState.opacity;
+
+    if (entityState.timer <= 0 && entityState.opacity < 0.015) {
       entityState.visible = false;
       shadowEntity.visible = false;
     }
@@ -2636,6 +2728,7 @@ document.querySelectorAll(".modal-backdrop").forEach(m => {
    ВВОД 2.5D
 ============================================================ */
 glCanvas.addEventListener("pointerdown", (e) => {
+  unlockPsychoAudioElement();
   pointer.targetX = e.clientX; pointer.targetY = e.clientY;
   view25D.isDragging = true;
   view25D.downX = e.clientX;
@@ -3334,6 +3427,7 @@ document.getElementById("btn-enter-house").addEventListener("click", () => {
   if (tapeVideo) tapeVideo.muted = false;
   syncTapeVideo();
   resizeAll();
+  unlockPsychoAudioElement();
   resetPsychoTimerForRoom(currentRoomIndex);
   setTimeout(() => { spawnShadowEntity(true); audioEngine.playWallScratching(); }, 600);
 });
