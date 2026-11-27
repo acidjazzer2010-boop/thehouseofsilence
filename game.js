@@ -87,7 +87,7 @@ const ROOMS = [
   },
   /* ==== 4 СЕКРЕТНЫЕ КОМНАТЫ (2- И 3-СОСТАВНЫЕ КВЕСТЫ ПОСЛЕ ПРОХОЖДЕНИЯ 1–5) ==== */
   {
-    id: 5, code: "СЕКРЕТ 01 // ARCHIVE", fileName: "Archive_secret1.jpg,
+    id: 5, code: "СЕКРЕТ 01 // ARCHIVE", fileName: "Archive_secret1.gif",
     isSecret: true, isAnimatedGif: true,
     title: "Тайник I: Затопленный архив",
     desc: "Полузатопленное хранилище дел № 404. У стеллажа — ржавый ключ и всплывшие папки, а на сырой штукатурке справа процарапано предостережение.",
@@ -207,6 +207,121 @@ function isRoomAccessible(targetIdx) {
   }
   return true;
 }
+
+/* ============================================================
+   ПРЕЛОАДЕР С PRELOADER.MP4
+   Загружает треки, картинки и текстуры, затем выходит на экран названия игры
+============================================================ */
+(function initPreloaderFlow() {
+  const preloaderEl = document.getElementById("preloader-screen");
+  const preloaderVid = document.getElementById("preloader-video");
+  const barFillEl = document.getElementById("preloader-bar-fill");
+  const statusEl = document.getElementById("preloader-status");
+  const titleEl = document.getElementById("preloader-title");
+  const introEl = document.getElementById("intro-screen");
+
+  function fitPreloaderTitle() {
+    if (!titleEl) return;
+    const avail = Math.max(200, window.innerWidth * 0.86);
+    let size = Math.min(30, Math.max(12, Math.floor(window.innerWidth * 0.032)));
+    titleEl.style.fontSize = size + "px";
+    titleEl.style.letterSpacing = size > 18 ? "4px" : "2px";
+    while (size > 11 && titleEl.scrollWidth > avail) {
+      size -= 1;
+      titleEl.style.fontSize = size + "px";
+      titleEl.style.letterSpacing = size > 16 ? "3px" : "1px";
+    }
+  }
+
+  fitPreloaderTitle();
+  window.addEventListener("resize", fitPreloaderTitle);
+
+  if (!preloaderEl) {
+    if (introEl) introEl.classList.remove("hidden");
+    return;
+  }
+
+  preloaderEl.style.display = "flex";
+  preloaderEl.classList.remove("done");
+  if (introEl) introEl.classList.add("hidden");
+
+  if (preloaderVid) {
+    preloaderVid.muted = true;
+    preloaderVid.playsInline = true;
+    preloaderVid.loop = true;
+    const playPromise = preloaderVid.play();
+    if (playPromise && typeof playPromise.catch === "function") {
+      playPromise.catch(() => {});
+    }
+  }
+
+  // Лёгкая предзагрузка обложки и стартовой локации без перегрузки канала
+  try {
+    ["title.jpg", "Taperoom.jpg"].forEach(src => {
+      const img = new Image();
+      img.src = src;
+    });
+  } catch (e) {}
+
+  const totalDurationMs = 15000;
+  const startMs = performance.now();
+  let currentPct = 0;
+  let finished = false;
+
+  function applyProgress(pct) {
+    currentPct = Math.max(currentPct, Math.min(100, Math.round(pct)));
+    if (barFillEl) barFillEl.style.width = currentPct + "%";
+    if (statusEl) {
+      if (currentPct < 30) statusEl.textContent = `Загрузка картинок и текстур... ${currentPct}%`;
+      else if (currentPct < 65) statusEl.textContent = `Загрузка звуковых треков... ${currentPct}%`;
+      else if (currentPct < 100) statusEl.textContent = `Сборка сцен и теней... ${currentPct}%`;
+      else statusEl.textContent = "Загрузка завершена · 100%";
+    }
+  }
+
+  function startSlowFadeToTitle() {
+    if (finished) return;
+    finished = true;
+    clearInterval(tickTimer);
+    clearTimeout(hardTimer);
+    applyProgress(100);
+
+    // Медленное затемнение прелоадера и плавный переход к экрану названия игры
+    preloaderEl.classList.add("done");
+    if (introEl) introEl.classList.remove("hidden");
+    try {
+      if (typeof armAndLoadIntroBgm === "function") armAndLoadIntroBgm();
+      if (typeof startIntroProceduralLayer === "function") startIntroProceduralLayer();
+      const b = document.getElementById("intro-bgm");
+      if (b) {
+        b.preload = "auto";
+        b.volume = 0.65;
+        const p = b.play();
+        if (p && typeof p.catch === "function") p.catch(() => {});
+      }
+    } catch (e) {}
+
+    setTimeout(() => {
+      if (preloaderVid && !preloaderVid.paused) {
+        try { preloaderVid.pause(); } catch (e) {}
+      }
+      preloaderEl.style.display = "none";
+    }, 2250);
+  }
+
+  const tickTimer = setInterval(() => {
+    if (finished) return;
+    const elapsed = performance.now() - startMs;
+    const pct = (elapsed / totalDurationMs) * 100;
+    applyProgress(pct);
+    if (elapsed >= totalDurationMs) {
+      startSlowFadeToTitle();
+    }
+  }, 100);
+
+  const hardTimer = setTimeout(startSlowFadeToTitle, totalDurationMs + 250);
+})();
+
 
 /* ============================================================
    АУДИО-ДВИЖОК
@@ -1611,7 +1726,7 @@ function tryAutoLoadImages() {
     img.onload = () => {
       createTextureFromImageSource(img, idx);
       // Если *_secret2.jpg не загружен из файла, пересобираем fallback поверх реального кадра комнаты
-      if (room.hallucinationFileName && !roomHallucinationTextures[idx]._fromRealFile) {
+      if (room.hallucinationFileName && (!roomHallucinationTextures[idx] || !roomHallucinationTextures[idx]._fromRealFile)) {
         roomHallucinationTextures[idx] = createHallucinationFallbackTexture(room);
       }
     };
@@ -3251,133 +3366,6 @@ glCanvas.addEventListener("webglcontextrestored", () => {
   document.getElementById("fatal-overlay").classList.remove("visible");
 });
 
-
-/* ============================================================
-   ПРЕЛОАДЕР С PRELOADER.MP4
-   Загружает треки, картинки и текстуры, затем выходит на экран названия игры
-============================================================ */
-(function initPreloaderFlow() {
-  const preloaderEl = document.getElementById("preloader-screen");
-  const preloaderVid = document.getElementById("preloader-video");
-  const barFillEl = document.getElementById("preloader-bar-fill");
-  const statusEl = document.getElementById("preloader-status");
-  const titleEl = document.getElementById("preloader-title");
-  const introEl = document.getElementById("intro-screen");
-
-  function fitPreloaderTitle() {
-    if (!titleEl) return;
-    const avail = Math.max(200, window.innerWidth * 0.86);
-    let size = Math.min(30, Math.max(12, Math.floor(window.innerWidth * 0.032)));
-    titleEl.style.fontSize = size + "px";
-    titleEl.style.letterSpacing = size > 18 ? "4px" : "2px";
-    while (size > 11 && titleEl.scrollWidth > avail) {
-      size -= 1;
-      titleEl.style.fontSize = size + "px";
-      titleEl.style.letterSpacing = size > 16 ? "3px" : "1px";
-    }
-  }
-
-  fitPreloaderTitle();
-  window.addEventListener("resize", fitPreloaderTitle);
-
-  if (!preloaderEl) {
-    if (introEl) introEl.classList.remove("hidden");
-    return;
-  }
-
-  preloaderEl.style.display = "flex";
-  preloaderEl.classList.remove("done");
-  if (introEl) introEl.classList.add("hidden");
-
-  if (preloaderVid) {
-    preloaderVid.muted = true;
-    preloaderVid.playsInline = true;
-    preloaderVid.loop = true;
-    const playPromise = preloaderVid.play();
-    if (playPromise && typeof playPromise.catch === "function") {
-      playPromise.catch(() => {});
-    }
-  }
-
-  // Загрузка треков, картинок и текстур в течение 15 секунд
-  try {
-    const imageAssets = ["title.jpg"];
-    if (Array.isArray(typeof ROOMS !== "undefined" ? ROOMS : null)) {
-      ROOMS.forEach(r => {
-        if (r.fileName) imageAssets.push(r.fileName);
-        if (r.hallucinationFileName) imageAssets.push(r.hallucinationFileName);
-      });
-    }
-    imageAssets.forEach(src => {
-      const img = new Image();
-      img.src = src;
-    });
-    ["tape.mp4", "Chamber_cutscene.mp4", "./assets/1000405140.mp4", "1000405140.mp4", "psycho.ogg", "psycho.mp3", "Abandoned%20Victims.mp3", "Abandoned%20Victims.ogg"].forEach(src => {
-      const isAudio = src.includes("Abandoned");
-      const el = document.createElement(isAudio ? "audio" : "video");
-      el.preload = "auto";
-      el.src = src;
-    });
-  } catch (e) {}
-
-  const totalDurationMs = 15000;
-  const startMs = performance.now();
-  let currentPct = 0;
-  let finished = false;
-
-  function applyProgress(pct) {
-    currentPct = Math.max(currentPct, Math.min(100, Math.round(pct)));
-    if (barFillEl) barFillEl.style.width = currentPct + "%";
-    if (statusEl) {
-      if (currentPct < 30) statusEl.textContent = `Загрузка картинок и текстур... ${currentPct}%`;
-      else if (currentPct < 65) statusEl.textContent = `Загрузка звуковых треков... ${currentPct}%`;
-      else if (currentPct < 100) statusEl.textContent = `Сборка сцен и теней... ${currentPct}%`;
-      else statusEl.textContent = "Загрузка завершена · 100%";
-    }
-  }
-
-  function startSlowFadeToTitle() {
-    if (finished) return;
-    finished = true;
-    clearInterval(tickTimer);
-    clearTimeout(hardTimer);
-    applyProgress(100);
-
-    // Медленное затемнение прелоадера и плавный переход к экрану названия игры
-    preloaderEl.classList.add("done");
-    if (introEl) introEl.classList.remove("hidden");
-    try {
-      if (typeof armAndLoadIntroBgm === "function") armAndLoadIntroBgm();
-      if (typeof startIntroProceduralLayer === "function") startIntroProceduralLayer();
-      const b = document.getElementById("intro-bgm");
-      if (b) {
-        b.preload = "auto";
-        b.volume = 0.65;
-        const p = b.play();
-        if (p && typeof p.catch === "function") p.catch(() => {});
-      }
-    } catch (e) {}
-
-    setTimeout(() => {
-      if (preloaderVid && !preloaderVid.paused) {
-        try { preloaderVid.pause(); } catch (e) {}
-      }
-      preloaderEl.style.display = "none";
-    }, 2250);
-  }
-
-  const tickTimer = setInterval(() => {
-    if (finished) return;
-    const elapsed = performance.now() - startMs;
-    const pct = (elapsed / totalDurationMs) * 100;
-    applyProgress(pct);
-    if (elapsed >= totalDurationMs) {
-      startSlowFadeToTitle();
-    }
-  }, 100);
-
-  const hardTimer = setTimeout(startSlowFadeToTitle, totalDurationMs + 250);
-})();
 
 /* ============================================================
    ЗАПУСК
