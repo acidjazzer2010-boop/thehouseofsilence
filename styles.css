@@ -362,7 +362,7 @@
     align-items: center;
     padding: 0 24px 52px;
     overflow: hidden;
-    transition: opacity 2.2s cubic-bezier(0.22, 1, 0.36, 1), visibility 2.2s ease;
+    transition: opacity 1.6s cubic-bezier(0.22, 1, 0.36, 1), visibility 1.6s ease;
   }
   #preloader-screen.done {
     opacity: 0;
@@ -377,15 +377,15 @@
     object-fit: contain;
     background: #010201;
     z-index: 1;
-    filter: contrast(1.08) brightness(0.68);
+    filter: contrast(1.08) brightness(1.06) saturate(1.12);
   }
   #preloader-scrim {
     position: fixed;
     inset: 0;
     z-index: 2;
     background:
-      radial-gradient(circle at 50% 50%, rgba(1,2,1,0.18) 0%, rgba(1,2,1,0.78) 100%),
-      linear-gradient(180deg, rgba(1,2,1,0.45) 0%, rgba(1,2,1,0.15) 45%, rgba(0,0,0,0.95) 100%);
+      radial-gradient(circle at 50% 48%, transparent 52%, rgba(1,2,1,0.52) 100%),
+      linear-gradient(180deg, transparent 0%, transparent 68%, rgba(0,0,0,0.82) 100%);
     pointer-events: none;
   }
   #preloader-screen {

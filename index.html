@@ -12,14 +12,17 @@
 
 <!-- Прелоадер с preloader.mp4: загружает ассеты, затем выходит на название игры -->
 <div id="preloader-screen" aria-label="Загрузка ресурсов">
-  <video id="preloader-video" src="preloader.mp4" autoplay muted playsinline loop preload="auto"></video>
+  <video id="preloader-video" src="preloader.mp4" autoplay playsinline loop preload="auto"></video>
   <div id="preloader-scrim" aria-hidden="true"></div>
   <div id="preloader-ui">
     <div id="preloader-title">ЗАГРУЗКА АРХИВА // ОСОБНЯК</div>
     <div id="preloader-bar-wrap">
       <div id="preloader-bar-fill"></div>
     </div>
-    <div id="preloader-status">Инициализация аудио и текстур... 0%</div>
+    <div style="display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap;">
+      <div id="preloader-status">Инициализация аудио и текстур... 0%</div>
+      <button type="button" class="hud-btn" id="btn-preloader-unmute" style="display:none; padding:4px 10px; font-size:10px;">ВКЛЮЧИТЬ ЗВУК</button>
+    </div>
   </div>
 </div>
 

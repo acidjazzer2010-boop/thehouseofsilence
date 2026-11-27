@@ -245,15 +245,49 @@ function isRoomAccessible(targetIdx) {
   preloaderEl.classList.remove("done");
   if (introEl) introEl.classList.add("hidden");
 
-  if (preloaderVid) {
-    preloaderVid.muted = true;
+  const unmuteBtn = document.getElementById("btn-preloader-unmute");
+
+  function tryStartPreloaderVideoWithSound() {
+    if (!preloaderVid) return;
     preloaderVid.playsInline = true;
     preloaderVid.loop = true;
-    const playPromise = preloaderVid.play();
-    if (playPromise && typeof playPromise.catch === "function") {
-      playPromise.catch(() => {});
+    preloaderVid.muted = false;
+    preloaderVid.volume = 0.9;
+    const p = preloaderVid.play();
+    if (p && typeof p.then === "function") {
+      p.then(() => {
+        if (unmuteBtn) unmuteBtn.style.display = "none";
+      }).catch(() => {
+        // Если браузер требует жест пользователя для звука — запускаем видео и включаем звук по первому касанию
+        preloaderVid.muted = true;
+        preloaderVid.play().catch(() => {});
+        if (unmuteBtn) unmuteBtn.style.display = "inline-block";
+      });
     }
   }
+
+  const unlockPreloaderSound = () => {
+    if (!preloaderVid || finished) return;
+    preloaderVid.muted = false;
+    preloaderVid.volume = 0.9;
+    if (preloaderVid.paused) preloaderVid.play().catch(() => {});
+    if (unmuteBtn) unmuteBtn.style.display = "none";
+    window.removeEventListener("pointerdown", unlockPreloaderSound);
+    window.removeEventListener("keydown", unlockPreloaderSound);
+    window.removeEventListener("touchstart", unlockPreloaderSound);
+  };
+
+  if (unmuteBtn) {
+    unmuteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      unlockPreloaderSound();
+    });
+  }
+  window.addEventListener("pointerdown", unlockPreloaderSound, { passive: true });
+  window.addEventListener("keydown", unlockPreloaderSound, { passive: true });
+  window.addEventListener("touchstart", unlockPreloaderSound, { passive: true });
+
+  tryStartPreloaderVideoWithSound();
 
   // Лёгкая предзагрузка обложки и стартовой локации без перегрузки канала
   try {
@@ -263,7 +297,8 @@ function isRoomAccessible(targetIdx) {
     });
   } catch (e) {}
 
-  const totalDurationMs = 15000;
+  // Общее время загрузки прелоадера — ровно 15 секунд (13.4с прогресс + 1.6с плавное затемнение)
+  const totalDurationMs = 13400;
   const startMs = performance.now();
   let currentPct = 0;
   let finished = false;
@@ -284,9 +319,23 @@ function isRoomAccessible(targetIdx) {
     finished = true;
     clearInterval(tickTimer);
     clearTimeout(hardTimer);
+    window.removeEventListener("pointerdown", unlockPreloaderSound);
+    window.removeEventListener("keydown", unlockPreloaderSound);
+    window.removeEventListener("touchstart", unlockPreloaderSound);
     applyProgress(100);
 
-    // Медленное затемнение прелоадера и плавный переход к экрану названия игры
+    // Плавное затухание звука прелоадера и переход к экрану названия игры
+    if (preloaderVid && !preloaderVid.muted) {
+      const fadeAudio = setInterval(() => {
+        if (!preloaderVid || preloaderVid.volume <= 0.08) {
+          clearInterval(fadeAudio);
+          if (preloaderVid) preloaderVid.volume = 0;
+          return;
+        }
+        preloaderVid.volume = Math.max(0, preloaderVid.volume - 0.08);
+      }, 90);
+    }
+
     preloaderEl.classList.add("done");
     if (introEl) introEl.classList.remove("hidden");
     try {
@@ -306,7 +355,7 @@ function isRoomAccessible(targetIdx) {
         try { preloaderVid.pause(); } catch (e) {}
       }
       preloaderEl.style.display = "none";
-    }, 2250);
+    }, 1600);
   }
 
   const tickTimer = setInterval(() => {
@@ -319,7 +368,7 @@ function isRoomAccessible(targetIdx) {
     }
   }, 100);
 
-  const hardTimer = setTimeout(startSlowFadeToTitle, totalDurationMs + 250);
+  const hardTimer = setTimeout(startSlowFadeToTitle, totalDurationMs + 200);
 })();
 
 
