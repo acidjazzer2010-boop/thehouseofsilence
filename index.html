@@ -43,6 +43,11 @@
   <source src="Abandoned%20Victims.mp3" type="audio/mpeg">
 </audio>
 
+<audio id="psycho-bgm" loop preload="auto">
+  <source src="psycho.ogg" type="audio/ogg">
+  <source src="psycho.mp3" type="audio/mpeg">
+</audio>
+
 <div id="intro-screen" class="hidden">
   <img id="intro-title-img" src="title.jpg" alt="Особняк // Безмолвие">
   <canvas id="intro-fog-canvas" aria-hidden="true"></canvas>
@@ -80,7 +85,6 @@
     <div class="puzzle-status-bar">
       <span class="status-badge" id="puzzle-badge">ПРОХОД ЗАБЛОКИРОВАН</span>
       <div style="display:flex; gap:8px;">
-        <button class="hud-btn" id="btn-regen-room" style="display:none;">ПЕРЕСТРОИТЬ КОМНАТУ</button>
         <button class="hud-btn" id="btn-open-puzzle">ОСМОТРЕТЬ МЕХАНИЗМ</button>
       </div>
     </div>

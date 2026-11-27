@@ -487,3 +487,23 @@
   @media (max-width: 640px) {
     #ending-selector-row { grid-template-columns: 1fr !important; }
   }
+
+  /* ============================================================
+     ЭФФЕКТ ИЗМЕНЁННОГО СОСТОЯНИЯ (ПСИХО / ДАВЯЩИЙ ЭФФЕКТ МАНЬЯКА)
+  ============================================================ */
+  body.psycho-mode #gl-canvas {
+    filter: invert(0.94) hue-rotate(155deg) contrast(1.42) saturate(1.65);
+    transition: filter 0.35s ease;
+  }
+  body.psycho-mode #gif-room-layer {
+    filter: invert(0.94) hue-rotate(155deg) contrast(1.42) saturate(1.65);
+  }
+  body.psycho-mode .room-dossier {
+    border-left-color: #ff2a1a;
+    box-shadow: 0 0 28px rgba(180, 20, 12, 0.45);
+  }
+  body.psycho-mode .brand-title,
+  body.psycho-mode .room-indicator {
+    color: #ff4433;
+    text-shadow: 2px 0 rgba(0, 255, 220, 0.55), -2px 0 rgba(255, 0, 60, 0.75);
+  }
