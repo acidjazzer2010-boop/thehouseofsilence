@@ -479,9 +479,10 @@
     width: 100vw;
     height: 100vh;
     display: block;
-    z-index: 2;
+    z-index: 4;
     pointer-events: none;
     mix-blend-mode: screen;
+    opacity: 0.92;
   }
 
   @media (max-width: 640px) {

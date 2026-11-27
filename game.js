@@ -8,7 +8,7 @@
 ============================================================ */
 const REDUCE_MOTION     = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const STORAGE_KEY       = 'osobnyak_progress_v4';
-const FLASHLIGHT_RATIO  = 0.34;
+const FLASHLIGHT_RATIO  = 0.39;
 const TRANSITION_SPEED  = 0.026;
 const POINTER_LERP      = 0.12;
 const ENTITY_LERP       = 0.035;
@@ -87,8 +87,8 @@ const ROOMS = [
   },
   /* ==== 4 СЕКРЕТНЫЕ КОМНАТЫ (2- И 3-СОСТАВНЫЕ КВЕСТЫ ПОСЛЕ ПРОХОЖДЕНИЯ 1–5) ==== */
   {
-    id: 5, code: "СЕКРЕТ 01 // ARCHIVE", fileName: "Archive_secret1.gif",
-    isSecret: true, isAnimatedGif: true,
+    id: 5, code: "СЕКРЕТ 01 // ARCHIVE", fileName: "Archive_secret1.jpg",
+    isSecret: true,
     title: "Тайник I: Затопленный архив",
     desc: "Полузатопленное хранилище дел № 404. У стеллажа — ржавый ключ и всплывшие папки, а на сырой штукатурке справа процарапано предостережение.",
     portal: { x: 0.50, y: 0.46, label: "Проход в Тайник II: Котельная" },
@@ -906,11 +906,14 @@ spotLight.position.set(0, 0, 10);
 scene.add(spotLight);
 scene.add(spotLight.target);
 
-// 2.5D-сфера на базе панорамного осмотра (с плавной инерцией и ограниченным 2.5D-углом обзора)
+// Двойная геометрия:
+// 1) roomPlaneGeo — классический 2.5D-формат для комнат 1–9 (нормальный масштаб без искажений и зума)
+// 2) roomSphereGeo — сфера 360° исключительно для Сектора 10 (is360EditorRoom)
+const roomPlaneGeo = new THREE.PlaneGeometry(16, 9);
 const roomSphereGeo = new THREE.SphereGeometry(28, 64, 40);
 roomSphereGeo.scale(-1, 1, 1);
 const roomPlaneMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-const roomMesh = new THREE.Mesh(roomSphereGeo, roomPlaneMat);
+const roomMesh = new THREE.Mesh(roomPlaneGeo, roomPlaneMat);
 scene.add(roomMesh);
 
 const view25D = {
@@ -937,6 +940,15 @@ function clamp25DAngles() {
 }
 
 function update25DCameraLook(timeMs, dt, camX, camY, camZ) {
+  const room = ROOMS[currentRoomIndex];
+  if (!room || !room.is360EditorRoom) {
+    // Классический 2.5D-ракурс для комнат 1–9
+    camera.position.set(camX, camY, camZ);
+    camera.lookAt(camX * 0.65, camY * 0.65, 0);
+    return;
+  }
+
+  // Полный 360°-осмотр для Сектора 10
   if (view25D.isDragging) {
     const k = 1 - Math.pow(1 - 0.35, dt);
     view25D.lon += (view25D.targetLon - view25D.lon) * k;
@@ -949,7 +961,6 @@ function update25DCameraLook(timeMs, dt, camX, camY, camZ) {
       view25D.velX *= Math.pow(0.87, dt);
       view25D.velY *= Math.pow(0.87, dt);
     } else {
-      // Очень тонкое дыхание камеры без притягивания обратно к центру
       view25D.targetLat += Math.sin(timeMs * 0.0012) * 0.04 * dt;
       clamp25DAngles();
     }
@@ -1447,7 +1458,16 @@ function ensureFlashlightSprite() {
   flashlightSprite = c;
 }
 function projectRoomNormToScreen(nx, ny, w, h) {
-  // Полный 360°-охват по азимуту: nx=0.5 — центр прямо по курсу (lon=180°), шаг по горизонтали — до ±135°
+  const room = ROOMS[currentRoomIndex];
+  if (!room || !room.is360EditorRoom) {
+    const t = getOverlayTransform(w, h);
+    return {
+      x: t.offsetX + nx * t.scaleX,
+      y: t.offsetY + ny * t.scaleY
+    };
+  }
+
+  // Полный 360°-охват по азимуту для Сектора 10
   const yawRad = (0.5 - nx) * THREE.MathUtils.degToRad(270);
   const pitchRad = (0.5 - ny) * THREE.MathUtils.degToRad(95);
   const r = 18.0;
@@ -1461,7 +1481,6 @@ function projectRoomNormToScreen(nx, ny, w, h) {
     roomMesh.position.z + dirZ * r
   );
   worldPt.project(camera);
-  // Скрываем маркеры, ушедшие за спину камеры (z > 1 в NDC)
   if (worldPt.z > 1) {
     return { x: -9999, y: -9999 };
   }
@@ -1695,6 +1714,16 @@ function mountEditor360ObjectsForRoom(room) {
 
 function applyRoomTexture(idx, useHallucination = false) {
   const room = ROOMS[idx];
+  const targetGeo = room.is360EditorRoom ? roomSphereGeo : roomPlaneGeo;
+  if (roomMesh.geometry !== targetGeo) {
+    roomMesh.geometry = targetGeo;
+  }
+  const desiredFov = room.is360EditorRoom ? 75 : 42;
+  if (!psychoState.active && Math.abs(camera.fov - desiredFov) > 0.1) {
+    camera.fov = desiredFov;
+    camera.updateProjectionMatrix();
+  }
+  psychoState.baseFov = desiredFov;
   if (!useHallucination) mountEditor360ObjectsForRoom(room);
 
   if (room.isAnimatedGif && gifRoomLayer) {
@@ -1859,13 +1888,30 @@ const dustParticles = Array.from({ length: 80 }, () => ({
 let lastFrameTime = performance.now();
 
 function updateWorldPlaneLayout() {
+  const room = ROOMS[currentRoomIndex];
   const dist = Math.max(1, camera.position.z);
   const vFov = THREE.MathUtils.degToRad(camera.fov);
   const viewH = 2 * Math.tan(vFov / 2) * dist;
   const viewW = viewH * camera.aspect;
-  roomMesh.scale.set(1, 1, 1);
-  layout.planeW = viewW * 1.12;
-  layout.planeH = viewH * 1.12;
+
+  if (room && room.is360EditorRoom) {
+    roomMesh.scale.set(1, 1, 1);
+    layout.planeW = viewW * 1.12;
+    layout.planeH = viewH * 1.12;
+    layout.viewW = viewW;
+    layout.viewH = viewH;
+    return layout;
+  }
+
+  const dims = roomImageDims[currentRoomIndex] || { w: 16, h: 9 };
+  const imgAspect = dims.w / dims.h;
+  const viewAspect = viewW / viewH;
+  let planeW, planeH;
+  if (viewAspect > imgAspect) { planeW = viewW * 1.06; planeH = planeW / imgAspect; }
+  else { planeH = viewH * 1.06; planeW = planeH * imgAspect; }
+  roomMesh.scale.set(planeW / 16, planeH / 9, 1);
+  layout.planeW = planeW;
+  layout.planeH = planeH;
   layout.viewW = viewW;
   layout.viewH = viewH;
   return layout;
@@ -1891,7 +1937,7 @@ const cornerFogPlumes = CORNER_ANCHORS.map((anc, idx) => ({
   anchorX: anc.x,
   anchorY: anc.y,
   state: "dormant", // "dormant" | "creep_in" | "hold" | "dissolve"
-  stateStartedAt: performance.now() + 2500 + idx * 3200,
+  stateStartedAt: performance.now() + (idx === 2 ? 1200 : (4500 + idx * 5500)),
   stateDurMs: 6000,
   density: 0.0,
   targetDensity: 0.55,
@@ -1991,7 +2037,7 @@ function updateAndRenderCornerFog(now) {
         fromRight ? cx - spanX * 0.5 : cx + spanX * 0.5,
         cy
       );
-      const a = Math.min(0.36, p.density * (0.28 - lobe * 0.05));
+      const a = Math.min(0.48, p.density * (0.42 - lobe * 0.06));
       grad.addColorStop(0.0, `rgba(168, 178, 166, ${a.toFixed(3)})`);
       grad.addColorStop(0.55, `rgba(138, 148, 136, ${(a * 0.45).toFixed(3)})`);
       grad.addColorStop(1.0, "rgba(110, 120, 108, 0.0)");
@@ -2343,7 +2389,7 @@ function render2DOverlay(w, h, room, blackFade, time, dt) {
   drawMarker2D(portPos.x, portPos.y, room.portal.label, canPass ? "#528c63" : "#8f3222", time);
   if (flashlightOn) {
     const flicker = REDUCE_MOTION ? 1.0 : (Math.sin(time * 0.041) * Math.sin(time * 0.017) > 0.96 ? 0.72 : 1.0);
-    fxCtx.fillStyle = "rgba(1, 2, 1, 0.94)";
+    fxCtx.fillStyle = "rgba(1, 2, 1, 0.80)";
     fxCtx.fillRect(0, 0, w, h);
     if (!flashlightSprite) ensureFlashlightSprite();
     const psychoBeamScale = psychoState.active ? (0.66 + 0.08 * Math.sin(time * 0.025)) : 1.0;
@@ -2352,7 +2398,7 @@ function render2DOverlay(w, h, room, blackFade, time, dt) {
     fxCtx.drawImage(flashlightSprite, pointer.x - s, pointer.y - s, s * 2, s * 2);
     fxCtx.globalCompositeOperation = "source-over";
   } else {
-    fxCtx.fillStyle = "rgba(1, 2, 1, 0.91)";
+    fxCtx.fillStyle = "rgba(1, 2, 1, 0.76)";
     fxCtx.fillRect(0, 0, w, h);
   }
   if (panicState.active) {
