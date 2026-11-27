@@ -291,7 +291,7 @@ function isRoomAccessible(targetIdx) {
 
   // Лёгкая предзагрузка обложки и стартовой локации без перегрузки канала
   try {
-    ["title.jpg", "Taperoom.jpg", "shadow.jpg"].forEach(src => {
+    ["title.jpg", "Taperoom.jpg"].forEach(src => {
       const img = new Image();
       img.src = src;
     });
@@ -1842,150 +1842,311 @@ function tryAutoLoadImages() {
 }
 
 /* ============================================================
-   СУЩНОСТЬ 2.5D ИЗ `shadow.jpg` (АЛЬФА-КАНАЛ ИЗ БЕЛОГО ФОНА)
-   - Проявляется при отведении фонаря и исчезает, когда луч направлен на неё
+   ЖИВАЯ ОБЪЁМНАЯ 3D-СУЩНОСТЬ ИЗ ПОЛЗУЧИХ КЛУБОВ ДЫМА И ТЕНЕЙ
+   - Не статичная картинка: полностью процедурный 3D-сгусток из 6 глубинных
+     слоёв (задний шлейф дыма, живое изменяющееся тело, вытягивающиеся щупальца,
+     передние клубы пара и блуждающие глаза внутри мрака).
+   - Собирается из ползучего по полу/стенам дыма в жуткий силуэт, постоянно
+     меняет позу, наклон головы и длину конечностей, а при наведении фонаря
+     разрывается на вихри чёрного дыма.
 ============================================================ */
-function buildAlphaTextureFromWhiteBgImage(img) {
-  const w = img.naturalWidth || img.width || 512;
-  const h = img.naturalHeight || img.height || 512;
-  const c = document.createElement("canvas");
-  c.width = w;
-  c.height = h;
-  const g = c.getContext("2d");
-  g.drawImage(img, 0, 0, w, h);
-
-  const imgData = g.getImageData(0, 0, w, h);
-  const d = imgData.data;
-
-  // Переводим белый фон (#FFFFFF) в прозрачность (alpha = 0), сохраняя тёмный силуэт и янтарно-белые глаза
-  for (let i = 0; i < d.length; i += 4) {
-    const r = d[i];
-    const gr = d[i + 1];
-    const b = d[i + 2];
-    const minCh = Math.min(r, gr, b);
-    const maxCh = Math.max(r, gr, b);
-    const sat = maxCh - minCh;
-
-    // Если пиксель близок к чисто белому/светло-серому без цветного отлива — делаем прозрачным
-    if (minCh > 235 && sat < 22) {
-      d[i + 3] = 0;
-    } else if (minCh > 185 && sat < 28) {
-      const fade = 1 - (minCh - 185) / 50;
-      d[i + 3] = Math.max(0, Math.min(255, Math.round(fade * 255)));
-    } else {
-      d[i + 3] = 255;
-    }
-  }
-  g.putImageData(imgData, 0, 0);
-
-  const tex = new THREE.CanvasTexture(c);
-  tex.minFilter = THREE.LinearFilter;
-  tex.magFilter = THREE.LinearFilter;
-  tex.generateMipmaps = false;
-  tex.needsUpdate = true;
-  return tex;
-}
-
 function build3DShadowEntity() {
   const group = new THREE.Group();
 
-  const smokeUniforms = {
-    uMap: { value: null },
+  const sharedUniforms = {
     uTime: { value: 0 },
-    uOpacity: { value: 0.0 },
-    uTurbulence: { value: 1.0 }
+    uCoalesce: { value: 0.0 },   // 0 = расползшийся дым, 1 = собранная жуткая сущность
+    uDisperse: { value: 0.0 },   // 0 = цельная, 1 = разорвана светом фонаря
+    uPsycho: { value: 0.0 },     // усиление хаоса в режиме psycho
+    uSeed: { value: Math.random() * 100.0 }
   };
 
-  const shadowMat = new THREE.ShaderMaterial({
+  const vertexShader = `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `;
+
+  // Основной объёмный шейдер сущности (собирается из дыма, меняет форму и наклон головы, выпускает щупальца)
+  const coreFragmentShader = `
+    uniform float uTime;
+    uniform float uCoalesce;
+    uniform float uDisperse;
+    uniform float uPsycho;
+    uniform float uSeed;
+    varying vec2 vUv;
+
+    float hash(vec2 p) {
+      return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+    }
+
+    float noise(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      vec2 u = f * f * (3.0 - 2.0 * f);
+      return mix(
+        mix(hash(i + vec2(0.0, 0.0)), hash(i + vec2(1.0, 0.0)), u.x),
+        mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+        u.y
+      );
+    }
+
+    float fbm(vec2 p) {
+      float v = 0.0;
+      float a = 0.52;
+      mat2 rot = mat2(0.80, 0.60, -0.60, 0.80);
+      for (int i = 0; i < 5; i++) {
+        v += a * noise(p);
+        p = rot * p * 2.04;
+        a *= 0.5;
+      }
+      return v;
+    }
+
+    // Расстояние до капсулы (отрезка с толщиной) — для органических щупалец и конечностей
+    float sdSegment(vec2 p, vec2 a, vec2 b) {
+      vec2 pa = p - a, ba = b - a;
+      float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+      return length(pa - ba * h);
+    }
+
+    void main() {
+      float t = uTime + uSeed;
+
+      // При рассеивании от фонаря (uDisperse) координаты взрываются вихрем в стороны
+      vec2 center = vec2(0.5, 0.48);
+      vec2 fromC = vUv - center;
+      float radial = length(fromC);
+
+      // Многослойное доменное искажение (клубы дыма постоянно текут и закручиваются)
+      vec2 q = vec2(
+        fbm(vUv * 3.8 + vec2(t * 0.22, -t * 0.34)),
+        fbm(vUv * 3.8 + vec2(-t * 0.26, -t * 0.28) + vec2(4.1, 2.7))
+      );
+      vec2 r = vec2(
+        fbm(vUv * 6.5 + 2.3 * q + vec2(1.7, 9.2) + vec2(t * 0.31, -t * 0.42)),
+        fbm(vUv * 6.5 + 2.3 * q + vec2(8.3, 2.8) + vec2(-t * 0.29, -t * 0.38))
+      );
+
+      // Когда uCoalesce мал (начало проявления), дым сильно растянут по горизонтали и внизу (ползёт по полу)
+      float gather = smoothstep(0.0, 1.0, uCoalesce);
+      vec2 p = vUv;
+      p.x = 0.5 + (p.x - 0.5) * mix(0.55, 1.0, gather);
+      p.y = mix(p.y * 0.65 + 0.05, p.y, gather);
+
+      // Вихревой разлёт при попадании луча фонаря
+      vec2 disperseOffset = normalize(fromC + vec2(0.0001)) * uDisperse * (0.22 + 0.25 * r.x);
+      p += (r - 0.5) * mix(0.24, 0.095 + uPsycho * 0.04, gather) + disperseOffset;
+
+      // 1. Живое горбатое туловище (меняет ширину, изгиб позвоночника и дыхание)
+      float spineBend = sin(t * 0.85) * 0.055 + cos(t * 1.45) * 0.025;
+      float breathe = 1.0 + sin(t * 1.9) * 0.07;
+      vec2 torsoPos = vec2(0.50 + spineBend * (p.y - 0.35), 0.44);
+      vec2 torsoRad = vec2(0.145 * breathe, 0.25);
+      float dTorso = length((p - torsoPos) / torsoRad);
+
+      // 2. Голова-сгусток: НЕ застывшая в одном наклоне, а плавно перетекающая из стороны в сторону и втягивающаяся в плечи
+      float headSwingX = sin(t * 0.72) * 0.085 + sin(t * 1.9) * 0.025;
+      float headBobY   = cos(t * 0.95) * 0.032 - (1.0 - gather) * 0.09;
+      vec2 headPos = vec2(0.50 + headSwingX, 0.72 + headBobY);
+      float headTilt = sin(t * 0.65) * 0.45;
+      float cs = cos(headTilt), sn = sin(headTilt);
+      vec2 hp = mat2(cs, -sn, sn, cs) * (p - headPos);
+      float dHead = length(hp / vec2(0.092, 0.118));
+
+      // 3. Длинные дымные руки-щупальца, которые вытягиваются, извиваются и меняют длину
+      float lReach = 0.24 + sin(t * 1.1) * 0.06;
+      float rReach = 0.26 + cos(t * 0.92) * 0.06;
+      vec2 lShoulder = vec2(0.38 + spineBend * 0.4, 0.58);
+      vec2 lElbow    = vec2(0.27 + sin(t * 1.3) * 0.04, 0.42);
+      vec2 lHand     = vec2(0.23 + cos(t * 1.6) * 0.05, 0.42 - lReach);
+
+      vec2 rShoulder = vec2(0.62 + spineBend * 0.4, 0.57);
+      vec2 rElbow    = vec2(0.73 + cos(t * 1.15) * 0.04, 0.41);
+      vec2 rHand     = vec2(0.76 + sin(t * 1.45) * 0.05, 0.41 - rReach);
+
+      float dArmL = min(sdSegment(p, lShoulder, lElbow), sdSegment(p, lElbow, lHand));
+      float dArmR = min(sdSegment(p, rShoulder, rElbow), sdSegment(p, rElbow, rHand));
+
+      // Когтистые дымные нити, расползающиеся от кистей и плеч вверх/в стороны
+      float tendrilWave1 = sdSegment(
+        p,
+        vec2(0.60, 0.63),
+        vec2(0.78 + sin(t * 1.4) * 0.07, 0.84 + cos(t * 1.1) * 0.06)
+      );
+      float tendrilWave2 = sdSegment(
+        p,
+        vec2(0.40, 0.62),
+        vec2(0.20 + cos(t * 1.25) * 0.07, 0.80 + sin(t * 1.35) * 0.05)
+      );
+
+      // 4. Нижний стелющийся шлейф дыма (откуда сущность "вырастает")
+      float dBaseMist = length((p - vec2(0.50, 0.14)) / vec2(0.32, 0.13));
+
+      // Объединяем все части в единое дымное поле плотности
+      float bodyField = 0.0;
+      bodyField += smoothstep(1.35, 0.25, dTorso) * 0.95;
+      bodyField += smoothstep(1.30, 0.22, dHead) * 0.92;
+      bodyField += smoothstep(0.085, 0.012, dArmL) * 0.78;
+      bodyField += smoothstep(0.085, 0.012, dArmR) * 0.78;
+      bodyField += smoothstep(0.055, 0.006, tendrilWave1) * 0.55;
+      bodyField += smoothstep(0.055, 0.006, tendrilWave2) * 0.55;
+      bodyField += smoothstep(1.25, 0.15, dBaseMist) * mix(0.85, 0.45, gather);
+
+      // Модулируем плотность клубящимся шумом — края дымят, рвутся и перетекают
+      float smokeBillow = fbm(vUv * 5.2 + r * 2.1 - vec2(0.0, t * 0.55));
+      float fineWisps   = fbm(vUv * 12.0 - q * 2.8 - vec2(t * 0.2, t * 0.85));
+
+      float density = bodyField * (0.58 + smokeBillow * 0.75) + (fineWisps - 0.48) * 0.35 * bodyField;
+      // При рассеивании от фонаря плотность распадается на отдельные дымные хлопья
+      density -= uDisperse * (0.55 + (1.0 - fineWisps) * 0.65);
+
+      float alpha = smoothstep(0.22, 0.76, density) * gather * (1.0 - uDisperse * 0.85);
+
+      // Внутренний цвет сгустка: глубокий угольно-пепельный мрак с едва заметными пепельными прожилками дыма
+      vec3 smokeDark = vec3(0.012, 0.015, 0.013);
+      vec3 smokeEdge = vec3(0.065, 0.075, 0.068);
+      vec3 col = mix(smokeEdge, smokeDark, smoothstep(0.25, 0.75, density));
+
+      // 5. Жуткие блуждающие глаза внутри дымной головы (прищуриваются, моргают и слепо ищут игрока)
+      vec2 eyeCenter = headPos + vec2(sin(t * 1.1) * 0.012, 0.012);
+      vec2 eyeL = eyeCenter + vec2(-0.028, 0.004);
+      vec2 eyeR = eyeCenter + vec2( 0.028, -0.003);
+
+      // Эффект прищура/моргания (периодически сужаются в щель)
+      float blinkCycle = sin(t * 0.85) * sin(t * 2.1);
+      float eyelidOpen = mix(0.25, 1.0, smoothstep(-0.35, 0.35, blinkCycle));
+
+      vec2 dEyeL = (p - eyeL) / vec2(0.014, 0.0085 * eyelidOpen);
+      vec2 dEyeR = (p - eyeR) / vec2(0.014, 0.0085 * eyelidOpen);
+      float eyeGlow = exp(-dot(dEyeL, dEyeL) * 2.6) + exp(-dot(dEyeR, dEyeR) * 2.6);
+
+      // Глаза проявляются только когда сгусток достаточно собрался, и гаснут при попадании фонаря
+      float eyeVisibility = smoothstep(0.45, 0.92, gather) * (1.0 - smoothstep(0.0, 0.45, uDisperse));
+      float eyeFlicker = 0.82 + 0.18 * sin(t * 6.3);
+      vec3 eyeColor = vec3(0.95, 0.88, 0.74) * eyeGlow * eyeVisibility * eyeFlicker * 1.35;
+
+      col += eyeColor;
+      float finalAlpha = clamp(max(alpha * 0.96, eyeGlow * eyeVisibility * 0.9), 0.0, 1.0);
+
+      // Мягкое затухание у границ плоскости, чтобы не было квадратных обрезанных краёв
+      float boxFade = smoothstep(0.0, 0.12, vUv.x) * smoothstep(1.0, 0.88, vUv.x)
+                    * smoothstep(0.0, 0.10, vUv.y) * smoothstep(1.0, 0.90, vUv.y);
+      finalAlpha *= boxFade;
+
+      gl_FragColor = vec4(col, finalAlpha);
+    }
+  `;
+
+  // Дополнительный шейдер передних/задних клубов дыма, обволакивающих сущность по глубине (Z)
+  const wispFragmentShader = `
+    uniform float uTime;
+    uniform float uCoalesce;
+    uniform float uDisperse;
+    uniform float uSeed;
+    varying vec2 vUv;
+
+    float hash(vec2 p) {
+      return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+    }
+
+    float noise(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      vec2 u = f * f * (3.0 - 2.0 * f);
+      return mix(
+        mix(hash(i + vec2(0.0, 0.0)), hash(i + vec2(1.0, 0.0)), u.x),
+        mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+        u.y
+      );
+    }
+
+    float fbm(vec2 p) {
+      float v = 0.0;
+      float a = 0.5;
+      for (int i = 0; i < 4; i++) {
+        v += a * noise(p);
+        p = p * 2.07 + vec2(1.3, -1.7);
+        a *= 0.5;
+      }
+      return v;
+    }
+
+    void main() {
+      float t = uTime + uSeed;
+      vec2 uv = vUv;
+      vec2 centered = (uv - vec2(0.5, 0.44)) / vec2(0.36, 0.44);
+      float mask = smoothstep(1.15, 0.15, length(centered));
+
+      vec2 flow = vec2(
+        fbm(uv * 4.2 + vec2(t * 0.25, -t * 0.45)),
+        fbm(uv * 4.2 + vec2(-t * 0.31, -t * 0.38) + 3.7)
+      );
+      float cloud = fbm(uv * 6.0 + flow * 2.4 - vec2(0.0, t * 0.65));
+      float wisps = smoothstep(0.36, 0.78, cloud) * mask;
+
+      float vis = smoothstep(0.05, 0.65, uCoalesce) * (1.0 - uDisperse * 0.75);
+      vec3 col = mix(vec3(0.05, 0.06, 0.055), vec3(0.01, 0.012, 0.011), cloud);
+      gl_FragColor = vec4(col, wisps * vis * 0.62);
+    }
+  `;
+
+  // Слой 1 (задний): широкий шлейф расползающегося по стене мрака
+  const backWispMat = new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
-    uniforms: smokeUniforms,
-    vertexShader: `
-      varying vec2 vUv;
-      void main() {
-        vUv = uv;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-    fragmentShader: `
-      uniform sampler2D uMap;
-      uniform float uTime;
-      uniform float uOpacity;
-      uniform float uTurbulence;
-      varying vec2 vUv;
-
-      float hash(vec2 p) {
-        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
-      }
-
-      float noise(vec2 p) {
-        vec2 i = floor(p);
-        vec2 f = fract(p);
-        vec2 u = f * f * (3.0 - 2.0 * f);
-        return mix(
-          mix(hash(i + vec2(0.0, 0.0)), hash(i + vec2(1.0, 0.0)), u.x),
-          mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
-          u.y
-        );
-      }
-
-      float fbm(vec2 p) {
-        float v = 0.0;
-        float a = 0.5;
-        mat2 rot = mat2(0.8, 0.6, -0.6, 0.8);
-        for (int i = 0; i < 4; i++) {
-          v += a * noise(p);
-          p = rot * p * 2.05;
-          a *= 0.5;
-        }
-        return v;
-      }
-
-      void main() {
-        vec4 rawTex = texture2D(uMap, vUv);
-        float eyeMask = smoothstep(0.04, 0.16, rawTex.r - rawTex.b) * rawTex.a;
-
-        vec2 q = vec2(
-          fbm(vUv * 4.5 + vec2(uTime * 0.28, -uTime * 0.22)),
-          fbm(vUv * 4.5 + vec2(-uTime * 0.24, uTime * 0.31) + vec2(5.2, 1.3))
-        );
-        vec2 r = vec2(
-          fbm(vUv * 7.0 + 2.2 * q + vec2(1.7, 9.2) + uTime * 0.35),
-          fbm(vUv * 7.0 + 2.2 * q + vec2(8.3, 2.8) - uTime * 0.29)
-        );
-
-        float warpStrength = mix(0.055, 0.008, eyeMask) * uTurbulence;
-        vec2 warpedUv = clamp(vUv + (r - 0.5) * warpStrength, 0.002, 0.998);
-
-        vec4 tex = texture2D(uMap, warpedUv);
-
-        float smokeEdge = fbm(vUv * 8.5 + r * 2.4 - vec2(0.0, uTime * 0.45));
-        float edgeErosion = smoothstep(0.18, 0.78, tex.a * (0.65 + smokeEdge * 0.75));
-        float finalAlpha = max(edgeErosion, eyeMask * tex.a) * uOpacity;
-
-        float eyePulse = 1.0 + 0.25 * sin(uTime * 4.2) * eyeMask;
-        vec3 finalColor = tex.rgb * eyePulse;
-
-        gl_FragColor = vec4(finalColor, finalAlpha);
-      }
-    `
+    uniforms: {
+      uTime: sharedUniforms.uTime,
+      uCoalesce: sharedUniforms.uCoalesce,
+      uDisperse: sharedUniforms.uDisperse,
+      uSeed: { value: 11.4 }
+    },
+    vertexShader,
+    fragmentShader: wispFragmentShader
   });
+  const backWispMesh = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 5.8), backWispMat);
+  backWispMesh.position.z = -0.18;
+  group.add(backWispMesh);
 
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 4.5), shadowMat);
-  group.add(plane);
+  // Слой 2 (основной): живое изменяющееся тело-сгусток со щупальцами и глазами
+  const coreMat = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    uniforms: sharedUniforms,
+    vertexShader,
+    fragmentShader: coreFragmentShader
+  });
+  const coreMesh = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 5.2), coreMat);
+  coreMesh.position.z = 0.0;
+  group.add(coreMesh);
 
-  const shadowImg = new Image();
-  shadowImg.onload = () => {
-    try {
-      const tex = buildAlphaTextureFromWhiteBgImage(shadowImg);
-      if (smokeUniforms.uMap.value) smokeUniforms.uMap.value.dispose();
-      smokeUniforms.uMap.value = tex;
-      shadowMat.needsUpdate = true;
-    } catch (e) {}
+  // Слой 3 (передний): клубы дыма, проплывающие прямо перед силуэтом и придающие 3D-объём
+  const frontWispMat = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    uniforms: {
+      uTime: sharedUniforms.uTime,
+      uCoalesce: sharedUniforms.uCoalesce,
+      uDisperse: sharedUniforms.uDisperse,
+      uSeed: { value: 47.9 }
+    },
+    vertexShader,
+    fragmentShader: wispFragmentShader
+  });
+  const frontWispMesh = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 5.0), frontWispMat);
+  frontWispMesh.position.z = 0.22;
+  group.add(frontWispMesh);
+
+  group.userData = {
+    sharedUniforms,
+    backWispMesh,
+    coreMesh,
+    frontWispMesh,
+    coalesce: 0.0,
+    disperse: 0.0
   };
-  shadowImg.src = "shadow.jpg";
-
-  group.userData = { shadowMat, smokeUniforms };
   return group;
 }
 const shadowEntity = build3DShadowEntity();
@@ -2487,19 +2648,19 @@ function animate(time) {
   spotLight.target.position.set(lightWorldX, lightWorldY, 0);
   spotLight.intensity = flashlightOn ? 2.8 : 0.35;
 
-  const smokeU = shadowEntity.userData.smokeUniforms;
-  if (entityState.visible && smokeU && smokeU.uMap.value) {
+  const entData = shadowEntity.userData;
+  if (entityState.visible && entData && entData.sharedUniforms) {
     const ex = (entityState.spot.x - 0.5) * planeW;
     const ey = (0.5 - entityState.spot.y) * planeH;
-    const esc = (entityState.spot.scale || 1.0) * (planeH * 0.23);
+    const esc = (entityState.spot.scale || 1.0) * (planeH * 0.24);
     shadowEntity.visible = true;
     shadowEntity.scale.set(esc, esc, esc);
 
-    // Позиционируем сущность в 2.5D или в секторе 360°
+    // Позиционируем объёмную сущность в 2.5D или в 360°
     if (room && room.is360EditorRoom) {
       const yawRad = (0.5 - entityState.spot.x) * THREE.MathUtils.degToRad(270);
       const pitchRad = (0.5 - entityState.spot.y) * THREE.MathUtils.degToRad(95);
-      const r = 16.0;
+      const r = 15.5;
       shadowEntity.position.set(
         -r * Math.cos(pitchRad) * Math.cos(yawRad),
          r * Math.sin(pitchRad),
@@ -2507,43 +2668,56 @@ function animate(time) {
       );
       shadowEntity.lookAt(camera.position);
     } else {
-      const swayX = Math.sin(time * 0.0028) * 0.055;
-      const swayY = Math.cos(time * 0.0021) * 0.035;
-      shadowEntity.position.set(ex + swayX, ey + swayY, 0.35);
-      shadowEntity.rotation.set(0, 0, Math.sin(time * 0.0017) * 0.03);
+      const creepX = Math.sin(time * 0.0014) * 0.14;
+      const creepY = Math.cos(time * 0.0019) * 0.06;
+      shadowEntity.position.set(ex + creepX, ey + creepY, 0.42);
+      shadowEntity.rotation.set(0, pointer.normX * 0.12, 0);
     }
 
-    // Проверяем, направлен ли луч фонаря на сущность (в экранных координатах)
+    // Небольшой 3D-параллакс между слоями дыма, чтобы сущность чувствовалась объёмной
+    entData.backWispMesh.position.x = -pointer.normX * 0.14;
+    entData.frontWispMesh.position.x = pointer.normX * 0.18;
+
+    // Проверяем, направлен ли луч фонаря на сущность
     const entScreen = projectRoomNormToScreen(entityState.spot.x, entityState.spot.y, w, h);
     const distPx = Math.hypot(pointer.x - entScreen.x, pointer.y - entScreen.y);
-    const beamHitRadius = (flashlightSpriteRad || Math.min(w, h) * FLASHLIGHT_RATIO) * 0.82;
+    const beamHitRadius = (flashlightSpriteRad || Math.min(w, h) * FLASHLIGHT_RATIO) * 0.85;
     const litByFlashlight = flashlightOn && (distPx < beamHitRadius);
 
     entityState.timer -= dt;
+    let targetCoalesce = 1.0;
+    let targetDisperse = 0.0;
+
     if (entityState.timer <= 0) {
-      entityState.targetOpacity = 0;
+      targetCoalesce = 0.0;
+      targetDisperse = 0.45;
     } else if (litByFlashlight) {
-      // Фонарь направлен на тень -> она распадается в вихрях дыма и исчезает
-      if (!entityState.evading && entityState.opacity > 0.25 && audioEngine.enabled) {
+      // Фонарь направлен на сущность -> сгусток разрывается на клочья дыма и расползается
+      if (!entityState.evading && entData.coalesce > 0.35 && audioEngine.enabled) {
         audioEngine.playWhisper();
       }
       entityState.evading = true;
-      entityState.targetOpacity = 0;
+      targetDisperse = 1.0;
+      targetCoalesce = 0.25;
     } else {
-      // Фонарь отведён -> тень проявляет себя из темноты
+      // Фонарь отведён -> ползучий дым медленно собирается в жуткую фигуру
       entityState.evading = false;
-      entityState.targetOpacity = 0.94;
+      targetDisperse = 0.0;
+      targetCoalesce = 1.0;
     }
 
-    const speed = litByFlashlight ? 0.22 : 0.045;
-    const opLerp = 1 - Math.pow(1 - speed, dt);
-    entityState.opacity += (entityState.targetOpacity - entityState.opacity) * opLerp;
+    const coalSpeed = targetCoalesce > entData.coalesce ? 0.028 : 0.055;
+    const dispSpeed = litByFlashlight ? 0.16 : 0.04;
+    entData.coalesce += (targetCoalesce - entData.coalesce) * (1 - Math.pow(1 - coalSpeed, dt));
+    entData.disperse += (targetDisperse - entData.disperse) * (1 - Math.pow(1 - dispSpeed, dt));
 
-    smokeU.uTime.value = time * 0.001;
-    smokeU.uOpacity.value = entityState.opacity;
-    smokeU.uTurbulence.value = litByFlashlight ? 2.1 : (psychoState.active ? 1.65 : 1.0);
+    const u = entData.sharedUniforms;
+    u.uTime.value = time * 0.001;
+    u.uCoalesce.value = entData.coalesce;
+    u.uDisperse.value = entData.disperse;
+    u.uPsycho.value = psychoState.active ? 1.0 : 0.0;
 
-    if (entityState.timer <= 0 && entityState.opacity < 0.015) {
+    if (entityState.timer <= 0 && entData.coalesce < 0.02) {
       entityState.visible = false;
       shadowEntity.visible = false;
     }
@@ -2945,7 +3119,14 @@ function spawnShadowEntity(force = false) {
   entityState.opacity = 0.05;
   entityState.targetOpacity = 0.92;
   entityState.evading = false;
-  entityState.timer = 340;
+  entityState.timer = 460;
+  if (shadowEntity && shadowEntity.userData) {
+    shadowEntity.userData.coalesce = 0.02;
+    shadowEntity.userData.disperse = 0.0;
+    if (shadowEntity.userData.sharedUniforms) {
+      shadowEntity.userData.sharedUniforms.uSeed.value = Math.random() * 100.0;
+    }
+  }
   if (audioEngine.enabled) audioEngine.playSubterraneanRumble();
 }
 let entitySpawnTimeout = null;
